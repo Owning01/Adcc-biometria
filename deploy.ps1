@@ -88,5 +88,5 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "------------------------------------------------" -ForegroundColor Cyan
 Write-Host "PROCESO FINALIZADO CON EXITO" -ForegroundColor Green
-Write-Host "Web: https://recofacial-7cea1.web.app" -ForegroundColor Cyan
+Write-Host "Web: https://adccbiometric.web.app" -ForegroundColor Cyan
 Write-Host "------------------------------------------------" -ForegroundColor Cyan

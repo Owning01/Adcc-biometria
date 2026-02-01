@@ -37,7 +37,7 @@ const AltaLocal = () => {
         { icon: <ShieldAlert size={20} color="#f87171" />, text: "Rostro descubierto, sin gafas oscuras" },
         { icon: <Search size={20} color="#a855f7" />, text: "Acércate un poco más si no detecta" },
         { icon: <UserCircle size={20} color="#10b981" />, text: "Asegúrate de que tu cara ocupe buen espacio en el círculo" },
-        ...(isIOS ? [{ icon: <Zap size={20} color="#fbbf24" />, text: "En iPhone, desactiva el 'Ahorro de Batería' para mayor fluidez" }] : [])
+        { icon: <UserCircle size={20} color="#10b981" />, text: "Asegúrate de que tu cara ocupe buen espacio en el círculo" }
     ];
 
     useEffect(() => {
@@ -266,18 +266,17 @@ const AltaLocal = () => {
 
                             {!isVideoReady && (
                                 <div
-                                    onClick={forceStartVideo}
                                     style={{
                                         position: 'absolute', inset: 0,
                                         background: 'rgba(0,0,0,0.8)',
                                         display: 'flex', flexDirection: 'column',
                                         alignItems: 'center', justifyContent: 'center',
-                                        zIndex: 150, cursor: 'pointer', gap: '15px',
+                                        zIndex: 150, gap: '15px',
                                         padding: '20px'
                                     }}
                                 >
-                                    <Zap size={30} color="white" />
-                                    <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>ACTIVAR CÁMARA</p>
+                                    <RefreshCw size={30} className="animate-spin" color="white" />
+                                    <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>INICIANDO CÁMARA...</p>
                                 </div>
                             )}
 

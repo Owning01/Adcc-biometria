@@ -29,3 +29,9 @@
 # ESPECIFICACIONES DE WINDOWS
 - Usa PowerShell para los comandos de terminal.
 - Si necesitas permisos especiales, infórmame, pero intenta solucionar bloqueos de política de ejecución (`Set-ExecutionPolicy`) de forma autónoma para el proceso actual.
+
+# SKILLS OPERATIVAS (CONOCIMIENTO EXPERTO)
+- Consulta siempre la carpeta `.agent/skills/` para aplicar las mejores prácticas del proyecto:
+  - `biometria.md`: Para detección facial y optimización de descriptores.
+  - `ux-campo.md`: Para diseño ultra-accesible y contrastado en exteriores.
+  - `sincre-offline.md`: Para gestión de datos persistentes y sincronización.

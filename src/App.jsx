@@ -1,3 +1,8 @@
+/**
+ * @file App.jsx
+ * @description Punto de entrada principal de la aplicación.
+ * Maneja el enrutamiento, autenticación, control de versiones y lógica global de actualización.
+ */
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { loadModels } from './services/faceService';
@@ -6,8 +11,9 @@ import Register from './pages/Register';
 import AltaLocal from './pages/AltaLocal';
 import Config from './pages/Config';
 import DevTools from './pages/DevTools';
+import Novedades from './pages/Novedades';
 
-import { UserPlus, Home as HomeIcon, Search, RefreshCw, Zap, Lock, Unlock, LogIn, Settings, Globe, Terminal, Users, Trophy } from 'lucide-react';
+import { UserPlus, Home as HomeIcon, Search, RefreshCw, Zap, Lock, Unlock, LogIn, Settings, Globe, Terminal, Users, Trophy, Moon, Sun, WifiOff, CloudOff, Sparkles } from 'lucide-react';
 import adccLogo from './Applogo.png';
 import Equipos from './pages/Equipos';
 import Partidos from './pages/Partidos';
@@ -23,6 +29,8 @@ function App() {
   const [userRole, setUserRole] = useState('public');
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [updateRequired, setUpdateRequired] = useState(false);
   const [updateUrl, setUpdateUrl] = useState('');
   const [availableVersion, setAvailableVersion] = useState('');
@@ -84,7 +92,8 @@ function App() {
       setLoadingAuth(false); // Auth state determined, stop loading
     });
 
-    // 4. Force Cache Clear if Version Changed
+    // 4. Limpieza de caché forzada si hay cambio de versión
+    // Esto asegura que los usuarios no se queden con datos obsoletos o esquemas viejos en localStorage
     const storedVersion = localStorage.getItem('app_version');
     if (storedVersion && storedVersion !== VERSION) {
       console.log("Detectada nueva versión, limpiando caché...");
@@ -92,9 +101,25 @@ function App() {
       localStorage.removeItem('matches_cache');
     }
     localStorage.setItem('app_version', VERSION);
+    // 5. Network Listener
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-    return () => unsubscribe(); // Cleanup auth listener
-  }, [VERSION]); // Re-run effect if VERSION changes
+    return () => {
+      unsubscribe();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [VERSION, theme]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -205,12 +230,57 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="bg-dark min-h-screen text-white">
+      <div style={{ background: 'var(--bg-main)', minHeight: '100vh', color: 'var(--text-main)' }}>
         <div style={{ position: 'fixed', bottom: '100px', right: '20px', fontSize: '10px', color: '#1e293b', zIndex: 200, fontWeight: 'bold' }}>
           VER: {VERSION} {userRole !== 'public' && <span style={{ color: 'var(--success)' }}>[{userRole.toUpperCase()}]</span>}
         </div>
 
-        <Navigation userRole={userRole} onLogout={handleLogout} />
+        {/* Botón Flotante Tema */}
+        <button
+          onClick={toggleTheme}
+          className="glass-button"
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 2000,
+            padding: 0,
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
+        <Navigation userRole={userRole} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+
+        {/* Indicador de Modo Offline */}
+        {!isOnline && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#f59e0b',
+            color: '#020617',
+            padding: '8px 20px',
+            borderRadius: '99px',
+            fontSize: '0.8rem',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 9999,
+            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.4)',
+            animation: 'fadeInDown 0.5s ease'
+          }}>
+            <WifiOff size={16} /> MODO OFFLINE - Los cambios se sincronizarán al conectar
+          </div>
+        )}
 
         <main className="container" style={{ paddingBottom: '120px', paddingTop: '40px' }}>
           <Routes>
@@ -228,6 +298,7 @@ function App() {
             <Route path="/partido/:id" element={userRole !== 'public' ? <MatchDetail /> : <Home />} />
             <Route path="/config" element={userRole === 'dev' ? <Config /> : <Home />} />
             <Route path="/dev" element={userRole === 'dev' ? <DevTools /> : <Home />} />
+            <Route path="/novedades" element={userRole !== 'public' ? <Novedades /> : <Home />} />
 
 
             <Route path="*" element={<NotFound />} />
@@ -274,7 +345,7 @@ const AdminLogin = ({ handleLogin, loginForm, setLoginForm }) => (
   </div>
 );
 
-const Navigation = ({ userRole, onLogout }) => {
+const Navigation = ({ userRole, onLogout, theme, toggleTheme }) => {
   const location = useLocation();
 
   return (
@@ -282,6 +353,7 @@ const Navigation = ({ userRole, onLogout }) => {
       <NavItem to="/" icon={<HomeIcon size={20} />} label="Inicio" active={location.pathname === "/"} />
       {userRole !== 'public' && (
         <>
+          <NavItem to="/novedades" icon={<Sparkles size={20} />} label="Novedades" active={location.pathname === "/novedades"} />
           <NavItem to="/register" icon={<UserPlus size={20} />} label="Registro" active={location.pathname === "/register"} />
           <NavItem to="/alta" icon={<Search size={20} />} label="Consulta" active={location.pathname === "/alta"} />
           <NavItem to="/equipos" icon={<Users size={20} />} label="Torneos" active={location.pathname === "/equipos"} />

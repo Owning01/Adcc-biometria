@@ -1,3 +1,10 @@
+/**
+ * @file Register.jsx
+ * @description Pantalla de registro de nuevos jugadores.
+ * Implementa flujo de dos pasos:
+ * 1. Formulario de datos (Nombre, DNI, Equipo, Categoría).
+ * 2. Captura facial con validación de calidad en tiempo real (MediaPipe) y generación de descriptor (FaceAPI).
+ */
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import * as faceapi from 'face-api.js';
@@ -9,12 +16,21 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, RefreshCw, User, Clipboard, Users, Trophy, Milestone, CheckCircle2, Zap, Globe, ArrowLeft, Plus, SwitchCamera, Lightbulb } from 'lucide-react';
 import adccLogo from '../Applogo.png';
 
+/**
+ * Componente principal para el registro de nuevos usuarios.
+ * Permite la entrada de datos del usuario y la captura de una imagen facial
+ * para su posterior reconocimiento.
+ * @returns {JSX.Element} El componente de registro.
+ */
 const Register = () => {
+    // --- ESTADOS ---
+    /** @type {React.RefObject<Webcam>} Referencia al componente Webcam para acceder a su API. */
     const webcamRef = useRef(null);
     const [users, setUsers] = useState([]);
     const [formData, setFormData] = useState({ name: '', dni: '', team: '', category: '' });
     const [step, setStep] = useState(1); // 1: Form, 2: Camera
 
+    // Estados de UI y Control
     const [status, setStatus] = useState('');
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(0);
@@ -80,7 +96,8 @@ const Register = () => {
         }
     }, [modelsReady, step]);
 
-    // Bucle de calidad en tiempo real para el registro
+    // Bucle de calidad en tiempo real para el registro.
+    // Analiza el stream de video cada 200ms para dar feedback al usuario (Acércate, Aléjate, OK).
     useEffect(() => {
         let interval;
         if (step === 2 && modelsReady && !loading) {
@@ -123,6 +140,13 @@ const Register = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    /**
+     * Captura la foto, genera el descriptor y guarda el usuario en Firestore.
+     * Incluye validaciones robustas:
+     * - DNI duplicado
+     * - Calidad de rostro
+     * - Rostro duplicado (cotejo 1:N contra toda la base)
+     */
     const captureAndSave = useCallback(async () => {
         if (!webcamRef.current) return;
 

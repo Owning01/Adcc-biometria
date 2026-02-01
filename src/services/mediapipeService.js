@@ -4,13 +4,23 @@ let faceEmbedder = null;
 let faceDetector = null;
 let offscreenCanvas = null;
 
+/**
+ * Inicializa los modelos de visión de Google MediaPipe.
+ * Carga el detector de rostros (BlazeFace) y el generador de embeddings (MobileNet V3)
+ * para realizar reconocimiento facial rápido y ligero en el navegador.
+ * Intenta delegar el procesamiento a la GPU para máximo rendimiento.
+ * 
+ * @returns {Promise<boolean>} - True si la carga fue exitosa.
+ */
 export const loadMediaPipeModels = async () => {
     if (faceEmbedder && faceDetector) return true;
     try {
         console.log("Iniciando carga de MediaPipe V2 (Detector + Embedder)...");
+        // Cargar binarios WASM para el runtime de visión
         const visionHost = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm";
         const vision = await FilesetResolver.forVisionTasks(visionHost);
 
+        // URLs de los modelos tflite optimizados para borde (edge devices)
         const embedderUrl = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite";
         const detectorUrl = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
 
@@ -27,14 +37,21 @@ export const loadMediaPipeModels = async () => {
         });
 
         offscreenCanvas = document.createElement('canvas');
-        console.log("MediaPipe V2 Listo (High Precision)");
+        console.log("✅ MediaPipe V2 Listo (High Precision)");
         return true;
     } catch (error) {
-        console.error("Error crítico cargando MediaPipe:", error);
+        console.error("❌ Error crítico cargando MediaPipe:", error);
         throw error;
     }
 };
 
+/**
+ * Genera un vector numérico (embedding) único para el rostro detectado en el video.
+ * Recorta y centra el rostro antes de procesarlo para mejorar la precisión.
+ * 
+ * @param {HTMLVideoElement} videoElement 
+ * @returns {Promise<Float32Array|null>} - Vector de características del rostro.
+ */
 export const getMediaPipeEmbedding = async (videoElement) => {
     if (!faceEmbedder || !faceDetector) {
         await loadMediaPipeModels();
@@ -42,7 +59,7 @@ export const getMediaPipeEmbedding = async (videoElement) => {
 
     try {
         const timestamp = performance.now();
-        // 1. Detectar rostro primero para recortar
+        // 1. Detectar rostro primero para recortar la región de interés (ROI)
         const detectionResult = faceDetector.detectForVideo(videoElement, timestamp);
 
         if (detectionResult.detections && detectionResult.detections.length > 0) {
@@ -50,7 +67,7 @@ export const getMediaPipeEmbedding = async (videoElement) => {
             const { originX, originY, width, height } = face.boundingBox;
 
             // --- MEJORA: Padding y Cuadrado ---
-            // Añadimos un 30% de margen para incluir más rasgos y que el modelo reconozca mejor
+            // Añadimos un 30% de margen alrededor del rostro para incluir contexto (pelo, orejas)
             const padding = 0.3;
             const size = Math.max(width, height) * (1 + padding);
 
@@ -65,6 +82,7 @@ export const getMediaPipeEmbedding = async (videoElement) => {
             const drawH = Math.min(size, videoElement.videoHeight - startY);
 
             // 2. Recortar rostro usando canvas offscreen
+            // Normalizamos a 224x224 que es la entrada estándar de MobileNet
             offscreenCanvas.width = 224;
             offscreenCanvas.height = 224;
             const ctx = offscreenCanvas.getContext('2d');
@@ -92,6 +110,10 @@ export const getMediaPipeEmbedding = async (videoElement) => {
     return null;
 };
 
+/**
+ * Calcula la similitud coseno entre dos vectores (embeddings).
+ * Retorna un valor entre -1 y 1 (donde 1 es idéntico).
+ */
 export const cosineSimilarity = (vecA, vecB) => {
     let dotProduct = 0;
     let normA = 0;
@@ -105,7 +127,11 @@ export const cosineSimilarity = (vecA, vecB) => {
 };
 
 /**
- * Detecta rostros de forma ultra-rápida usando MediaPipe BlazeFace
+ * Detecta rostros de forma ultra-rápida (sólo coordenadas, sin embedding).
+ * Usado para dibujar el recuadro verde/rojo en tiempo real en la UI.
+ * 
+ * @param {HTMLVideoElement} videoElement
+ * @returns {Promise<Object|null>}
  */
 export const detectFaceMediaPipe = async (videoElement) => {
     if (!faceDetector) {
@@ -115,11 +141,10 @@ export const detectFaceMediaPipe = async (videoElement) => {
         const timestamp = performance.now();
         const result = faceDetector.detectForVideo(videoElement, timestamp);
         if (result.detections && result.detections.length > 0) {
-            return result.detections[0]; // Retornamos la detección más prominente
+            return result.detections[0]; // Retornamos la detección más prominente (mayor confianza)
         }
     } catch (error) {
         console.error("Error en detección rápida MediaPipe:", error);
     }
     return null;
 };
-

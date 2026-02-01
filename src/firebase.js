@@ -1,22 +1,35 @@
-
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+    getFirestore,
+    enableMultiTabIndexedDbPersistence,
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-
 const firebaseConfig = {
-    apiKey: "AIzaSyBJT3nG7tRsr8MsYX8D3yK5G2TPG060Iws",
-    authDomain: "recofacial-7cea1.firebaseapp.com",
-    projectId: "recofacial-7cea1",
-    storageBucket: "recofacial-7cea1.firebasestorage.app",
-    messagingSenderId: "556775203131",
-    appId: "1:556775203131:web:01536f40ad02a2c3c0171e",
-    measurementId: "G-K8SP4ZQMRY"
+    apiKey: "AIzaSyDF6zB5DtXdyPkGPHbbvVNZ9KOUXEh7nNk",
+    authDomain: "adccbiometric.firebaseapp.com",
+    projectId: "adccbiometric",
+    storageBucket: "adccbiometric.firebasestorage.app",
+    messagingSenderId: "794425851145",
+    appId: "1:794425851145:web:8cc36940a07eb6ea2567d8",
+    measurementId: "G-HRQJXESGHH"
 };
 
-// Initialize Firebase
+// Inicializamos Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+/**
+ * Inicializamos Firestore con persistencia local habilitada.
+ * Esto permite que la app funcione sin internet (Modo Offline).
+ * Los datos se guardan en IndexedDB y se sincronizan automáticamente al recuperar conexión.
+ */
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+
 const auth = getAuth(app);
 
 export { db, auth };

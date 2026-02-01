@@ -15,7 +15,7 @@ Este archivo es la **Fuente de Verdad** para la coordinación entre diferentes c
 ## 📍 Estado Actual del Proyecto
 - **Rama principal**: Production / Development.
 - **Tecnologías**: HTML, Vanilla CSS, Vite, JavaScript, Firebase, Capacitor (Face-API.js / MediaPipe).
-- **Hito Actual**: Implementación de estrategia de expertos.
+- **Hito Actual**: Implementación de Estrategia de Skills Antigravity y Sincronización Offline.
 
 ## 📝 Registro de Cambios y Decisiones (Handover)
 
@@ -23,7 +23,8 @@ Este archivo es la **Fuente de Verdad** para la coordinación entre diferentes c
 | :--- | :--- | :--- | :--- |
 | 2026-01-25 | Arquitecto | Creación de descriptivo.md | Se inicializa el sistema de coordinación modular. |
 | 2026-01-25 | Lógica | Motor Híbrido MP + FaceAPI | Implementación de Sentinel (MediaPipe) + Deep Recognition (Face-API) para velocidad y precisión. |
-| 2026-01-26 | Visual/Lógica | Optimización y Gestión Directa | **Remoción de animaciones**: Se quitaron transiciones y efectos para máxima velocidad. **Gestión en Home**: Se permite crear equipos/categorías/jugadores desde el Inicio. **Modales Modernos**: Reemplazo de prompts por modales rápidos. **Vista Previa**: Inclusión de zoom de fotos de jugadores. |
+| 2026-01-26 | Visual/Lógica | Optimización y Gestión Directa | Remoción de animaciones para máximo rendimiento. Gestión de equipos desde Home. |
+| 2026-01-30 | Antigravity | **Skills & Offline-First** | Creación de carpeta `.agent/skills`. Implementación de Event-Sourcing para eventos de partido, optimización UX para exteriores (alto contraste) y soporte para vibración háptica. |
 
 ---
 

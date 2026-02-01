@@ -269,14 +269,14 @@ const Equipos = () => {
                         <p style={{ color: 'var(--text-muted)' }}>Crea y gestiona tus torneos, equipos y categorías</p>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => setShowNewTournament(true)} className="glass-button" style={{ padding: '10px 20px' }}><Plus size={20} /> Nuevo Torneo</button>
+                        <button onClick={() => setShowNewTournament(true)} className="glass-button btn-primary" style={{ padding: '10px 20px' }}><Plus size={20} /> Nuevo Torneo</button>
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <button onClick={() => setActiveTab('torneos')} className="glass-button" style={{ flex: 1, background: activeTab === 'torneos' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)', borderColor: activeTab === 'torneos' ? 'var(--primary)' : 'var(--glass-border)' }}><Trophy size={18} /> TORNEOS</button>
-                    <button onClick={() => setActiveTab('equipos')} className="glass-button" style={{ flex: 1, background: activeTab === 'equipos' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)', borderColor: activeTab === 'equipos' ? 'var(--primary)' : 'var(--glass-border)' }}><Users size={18} /> EQUIPOS Y JUGADORES</button>
-                    <button onClick={handleCreateNewTeam} className="glass-button" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'var(--success)', padding: '10px 15px' }}><Plus size={18} /> <span style={{ fontSize: '0.7rem' }}>EQUIPO</span></button>
+                    <button onClick={() => setActiveTab('torneos')} className={`tab-button ${activeTab === 'torneos' ? 'active' : ''}`}><Trophy size={18} /> TORNEOS</button>
+                    <button onClick={() => setActiveTab('equipos')} className={`tab-button ${activeTab === 'equipos' ? 'active' : ''}`}><Users size={18} /> EQUIPOS Y JUGADORES</button>
+                    <button onClick={handleCreateNewTeam} className="glass-button" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'var(--success)', color: 'var(--success)', padding: '10px 15px', flex: '0 0 auto' }}><Plus size={18} /> <span style={{ fontSize: '0.7rem' }}>EQUIPO</span></button>
                 </div>
             </header>
 
@@ -285,7 +285,7 @@ const Equipos = () => {
             ) : activeTab === 'torneos' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                     {tournaments.map(t => (
-                        <div key={t.id} className="glass-panel" style={{ padding: '20px', cursor: 'pointer', border: selectedTournament?.id === t.id ? '2px solid var(--primary)' : '1px solid var(--glass-border)' }} onClick={() => setSelectedTournament(t)}>
+                        <div key={t.id} className="glass-panel" style={{ padding: '20px', cursor: 'pointer', border: selectedTournament?.id === t.id ? '2px solid var(--primary)' : '1px solid var(--glass-border-light)', background: 'var(--header-bg)' }} onClick={() => setSelectedTournament(t)}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
                                 <div style={{ width: '50px', height: '50px', borderRadius: '15px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--primary)' }}><Trophy size={28} /></div>
                                 <div style={{ flex: 1 }}>
@@ -323,13 +323,13 @@ const Equipos = () => {
                                     ) : (
                                         [...new Set([...(teamCategories[team] || []), ...(tempCategories[team] || [])])].map(cat => (
                                             <div key={cat} style={{ position: 'relative' }}>
-                                                <div className="glass-panel" style={{ padding: '10px 15px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div className="glass-panel" style={{ padding: '10px 15px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem', background: 'var(--header-bg)', border: '1px solid var(--glass-border-light)' }}>
                                                     <span style={{ fontWeight: '700', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setExpandedCategory(expandedCategory?.team === team && expandedCategory?.category === cat ? null : { team, category: cat })}>
                                                         {cat} {expandedCategory?.team === team && expandedCategory?.category === cat ? '▾' : '▸'}
                                                     </span>
                                                     <div style={{ display: 'flex', gap: '10px', marginLeft: '5px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '12px' }}>
                                                         <button onClick={() => handleOpenQuickRegister(team, cat)} className="status-badge" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid rgba(34, 197, 94, 0.2)', padding: '4px 10px' }}><Plus size={14} /> JUGADOR</button>
-                                                        <button onClick={() => handleRenameCategory(team, cat)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 0, opacity: 0.3 }}><Edit2 size={12} /></button>
+                                                        <button onClick={() => handleRenameCategory(team, cat)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0, opacity: 0.3 }}><Edit2 size={12} /></button>
                                                     </div>
                                                 </div>
 
@@ -338,7 +338,7 @@ const Equipos = () => {
                                                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.98)', border: '1px solid var(--primary)', borderRadius: '12px', padding: '15px', marginTop: '5px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', maxHeight: '300px', width: '250px', overflowY: 'auto' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                                             <h4 style={{ fontSize: '0.8rem', color: 'var(--primary)', margin: 0 }}>Jugadores</h4>
-                                                            <button onClick={() => setExpandedCategory(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                                                            <button onClick={() => setExpandedCategory(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
                                                         </div>
                                                         <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                                                             <thead>
@@ -400,7 +400,7 @@ const Equipos = () => {
             {/* Modales */}
             {showNewTournament && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ padding: '30px', maxWidth: '500px', width: '100%' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '500px', width: '100%', borderRadius: '24px', border: '1px solid var(--glass-border)' }}>
                         <h2>Nuevo Torneo</h2>
                         <form onSubmit={handleCreateTournament} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                             <input className="premium-input" placeholder="Nombre del Torneo" value={newTournament.name} onChange={e => setNewTournament({ ...newTournament, name: e.target.value })} required />
@@ -416,7 +416,7 @@ const Equipos = () => {
 
             {showNewMatch && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ padding: '30px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', border: '1px solid var(--glass-border)' }}>
                         <h2>Nuevo Partido</h2>
                         <form onSubmit={handleCreateMatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -460,7 +460,7 @@ const Equipos = () => {
 
             {showTeamModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid var(--primary)' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid var(--primary)', borderRadius: '24px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
                         <h3>Nuevo Equipo</h3>
                         <input autoFocus className="premium-input" placeholder="Nombre" value={modalInput} onChange={e => setModalInput(e.target.value)} />
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
@@ -473,7 +473,7 @@ const Equipos = () => {
 
             {showCategoryModal.open && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid var(--primary)' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid var(--primary)', borderRadius: '24px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
                         <h3>Nueva Categoría</h3>
                         <input autoFocus className="premium-input" placeholder="Ej: Libre" value={modalInput} onChange={e => setModalInput(e.target.value)} />
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
@@ -500,7 +500,7 @@ const Equipos = () => {
             {/* Modal de Control de Categorías */}
             {categoryControl.open && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 7000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ padding: '25px', maxWidth: '400px', width: '100%', borderTop: '3px solid var(--primary)' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '25px', maxWidth: '400px', width: '100%', borderTop: '3px solid var(--primary)', borderRadius: '24px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3 style={{ margin: 0 }}>Gestionar Categorías</h3>
                             <button onClick={() => setCategoryControl({ open: false, user: null, currentCat: '' })} style={{ background: 'none', border: 'none', color: 'white', opacity: 0.5, cursor: 'pointer' }}><X size={20} /></button>
@@ -723,7 +723,7 @@ const MatchList = ({ tournamentId, onQuickRegister }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {matches.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', color: 'var(--text-muted)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                <div style={{ padding: '40px', textAlign: 'center', background: 'var(--header-bg)', borderRadius: '20px', color: 'var(--text-muted)', border: '1px dashed var(--glass-border-light)' }}>
                     No hay partidos programados para este torneo aún.
                 </div>
             ) : (
@@ -731,7 +731,7 @@ const MatchList = ({ tournamentId, onQuickRegister }) => {
                     <div
                         key={m.id}
                         className="glass-panel"
-                        style={{ padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}
+                        style={{ padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--glass-border-light)', background: 'var(--header-bg)' }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                             <div style={{

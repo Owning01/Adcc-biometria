@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Trophy, Users, Activity, BarChart2, Plus, ArrowLeft, Calendar, Clock, User, Trash2, Minus, Square, Repeat } from 'lucide-react';
+import { voiceReferee } from '../services/voiceService';
 import { subscribeToMatch, updateMatch } from '../services/matchesService';
 import { getUsers } from '../services/db';
+import { Mic, MicOff, Trophy, Users, Activity, BarChart2, Plus, ArrowLeft, Calendar, Clock, User, Trash2, Minus, Square, Repeat } from 'lucide-react';
 
 const MatchDetail = () => {
     const { id } = useParams();
@@ -14,45 +15,72 @@ const MatchDetail = () => {
     const [allUsers, setAllUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [currentMinute, setCurrentMinute] = useState(0);
+    const [matchTime, setMatchTime] = useState({ min: 0, sec: 0 });
 
+    // Estado para control de Voz
+    const [isVoiceActive, setIsVoiceActive] = useState(false);
+
+    /**
+     * Efecto principal:
+     * 1. Suscribe a actualizaciones en tiempo real del partido.
+     * 2. Gestiona el cronómetro local sincronizado con el servidor.
+     * 3. Carga la lista global de usuarios.
+     */
     useEffect(() => {
         const unsubscribe = subscribeToMatch(id, (data) => {
             setMatch(data);
             setLoading(false);
-            if (data && data.status === 'live' && data.liveStartTime) {
-                const elapsedSinceLastStart = Math.floor((Date.now() - data.liveStartTime) / 60000);
-                setCurrentMinute((data.accumulatedTime || 0) + elapsedSinceLastStart);
-            }
         });
 
-        // Timer para actualizar el minuto en vivo cada 30 segundos
         const timer = setInterval(() => {
             if (match && match.status === 'live' && match.liveStartTime) {
-                const elapsedSinceLastStart = Math.floor((Date.now() - match.liveStartTime) / 60000);
-                setCurrentMinute((match.accumulatedTime || 0) + elapsedSinceLastStart);
+                const totalElapsedSeconds = Math.floor((Date.now() - match.liveStartTime) / 1000) + (match.accumulatedSeconds || (match.accumulatedTime || 0) * 60);
+                setMatchTime({
+                    min: Math.floor(totalElapsedSeconds / 60),
+                    sec: totalElapsedSeconds % 60
+                });
+            } else {
+                const totalSeconds = (match?.accumulatedSeconds || (match?.accumulatedTime || 0) * 60);
+                setMatchTime({
+                    min: Math.floor(totalSeconds / 60),
+                    sec: totalSeconds % 60
+                });
             }
-        }, 30000);
+        }, 1000);
 
         loadUsers();
         return () => {
             unsubscribe();
             clearInterval(timer);
+            if (voiceReferee.isListening) {
+                voiceReferee.stop();
+            }
         };
-    }, [id, match?.status]);
+    }, [id, match?.status, match?.liveStartTime]);
 
     const loadUsers = async () => {
         const data = await getUsers();
         setAllUsers(data);
     };
 
-    const handleScoreChange = async (team, delta) => {
+
+    /**
+     * Actualiza el marcador global del partido.
+     * @param {string} team - 'a' o 'b'
+     * @param {number} delta - Valor a sumar o restar (ej: 1, -1)
+     */
+    const handleScoreChange = async (team, delta, matchOverride = null) => {
+        const targetMatch = matchOverride || match;
         const teamKey = team.toLowerCase();
-        const currentScore = match.score[teamKey] || 0;
+        const currentScore = targetMatch.score[teamKey] || 0;
         const newScore = Math.max(0, currentScore + delta);
-        await updateMatch(id, { score: { ...match.score, [teamKey]: newScore } });
+        await updateMatch(id, { score: { ...targetMatch.score, [teamKey]: newScore } });
     };
 
+    /**
+     * Añade un jugador de la base de datos al plantel del partido.
+     * Inicializa sus stats en 0 para este encuentro.
+     */
     const handleAddPlayer = async (user, teamType) => {
         const playerKey = teamType === 'A' ? 'playersA' : 'playersB';
         const currentPlayers = match[playerKey] || [];
@@ -66,7 +94,7 @@ const MatchDetail = () => {
             userId: user.id,
             name: user.name || (user.nombre + ' ' + (user.apellido || '')),
             photo: user.photos?.[0] || user.photo || null,
-            number: currentPlayers.length + 1,
+            number: user.dorsal ? parseInt(user.dorsal) : (currentPlayers.length + 1),
             goals: 0,
             yellowCards: 0,
             redCard: false,
@@ -90,46 +118,50 @@ const MatchDetail = () => {
 
             if (hasNoPlayersA || hasNoPlayersB) {
                 const autoPopulate = async () => {
-                    let updates = {};
-                    let changed = false;
+                    try {
+                        let updates = {};
+                        let changed = false;
 
-                    if (hasNoPlayersA) {
-                        const teamAUsers = allUsers.filter(u => u.team === match.teamA.name);
-                        if (teamAUsers.length > 0) {
-                            updates.playersA = teamAUsers.map((u, idx) => ({
-                                userId: u.id,
-                                name: u.name || (u.nombre + ' ' + (u.apellido || '')),
-                                photo: u.photos?.[0] || u.photo || null,
-                                number: idx + 1,
-                                goals: 0,
-                                yellowCards: 0,
-                                redCard: false,
-                                status: 'titular'
-                            }));
-                            changed = true;
+                        if (hasNoPlayersA) {
+                            const teamAUsers = allUsers.filter(u => u && u.team === match.teamA.name);
+                            if (teamAUsers.length > 0) {
+                                updates.playersA = teamAUsers.map((u, idx) => ({
+                                    userId: u.id,
+                                    name: u.name || (u.nombre + ' ' + (u.apellido || '')),
+                                    photo: u.photos?.[0] || u.photo || null,
+                                    number: (u.dorsal && !isNaN(parseInt(u.dorsal))) ? parseInt(u.dorsal) : (idx + 1),
+                                    goals: 0,
+                                    yellowCards: 0,
+                                    redCard: false,
+                                    status: 'titular'
+                                }));
+                                changed = true;
+                            }
                         }
-                    }
 
-                    if (hasNoPlayersB) {
-                        const teamBUsers = allUsers.filter(u => u.team === match.teamB.name);
-                        if (teamBUsers.length > 0) {
-                            updates.playersB = teamBUsers.map((u, idx) => ({
-                                userId: u.id,
-                                name: u.name || (u.nombre + ' ' + (u.apellido || '')),
-                                photo: u.photos?.[0] || u.photo || null,
-                                number: idx + 1,
-                                goals: 0,
-                                yellowCards: 0,
-                                redCard: false,
-                                status: 'titular'
-                            }));
-                            changed = true;
+                        if (hasNoPlayersB) {
+                            const teamBUsers = allUsers.filter(u => u && u.team === match.teamB.name);
+                            if (teamBUsers.length > 0) {
+                                updates.playersB = teamBUsers.map((u, idx) => ({
+                                    userId: u.id,
+                                    name: u.name || (u.nombre + ' ' + (u.apellido || '')),
+                                    photo: u.photos?.[0] || u.photo || null,
+                                    number: (u.dorsal && !isNaN(parseInt(u.dorsal))) ? parseInt(u.dorsal) : (idx + 1),
+                                    goals: 0,
+                                    yellowCards: 0,
+                                    redCard: false,
+                                    status: 'titular'
+                                }));
+                                changed = true;
+                            }
                         }
-                    }
 
-                    if (changed) {
-                        console.log("Auto-poblando jugadores...");
-                        await updateMatch(id, updates);
+                        if (changed) {
+                            console.log("Auto-poblando jugadores...");
+                            await updateMatch(id, updates);
+                        }
+                    } catch (error) {
+                        console.error("Error en autoPopulate:", error);
                     }
                 };
                 autoPopulate();
@@ -137,9 +169,15 @@ const MatchDetail = () => {
         }
     }, [loading, match?.id, allUsers.length]);
 
-    const handleUpdatePlayer = async (playerIndex, teamType, field, value) => {
+    /**
+     * Actualiza las estadísticas de un jugador (goles, tarjetas, dorsal).
+     * Genera automáticamente los eventos correspondientes en el timeline.
+     * Maneja reglas de negocio como doble amarilla = roja, y expulsión = no más goles.
+     */
+    const handleUpdatePlayer = async (playerIndex, teamType, field, value, matchOverride = null) => {
+        const targetMatch = matchOverride || match;
         const playerKey = teamType === 'A' ? 'playersA' : 'playersB';
-        const currentPlayers = [...(match[playerKey] || [])];
+        const currentPlayers = [...(targetMatch[playerKey] || [])];
         const player = currentPlayers[playerIndex];
         const oldValue = player[field] || 0;
 
@@ -147,19 +185,13 @@ const MatchDetail = () => {
 
         let extraData = {};
         const getEventTime = () => {
-            if (match.status === 'live' && match.liveStartTime) {
-                const elapsedSinceLastStart = Math.floor((Date.now() - match.liveStartTime) / 60000);
-                const totalMinutes = (match.accumulatedTime || 0) + elapsedSinceLastStart + 1;
-                return `${totalMinutes}'`;
+            if (targetMatch.status === 'live' && targetMatch.liveStartTime) {
+                const totalElapsedSeconds = Math.floor((Date.now() - targetMatch.liveStartTime) / 1000) + (targetMatch.accumulatedSeconds || (targetMatch.accumulatedTime || 0) * 60);
+                const m = Math.floor(totalElapsedSeconds / 60);
+                const s = totalElapsedSeconds % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             }
-            if (match.status === 'halftime') {
-                return `${match.accumulatedTime || 45}' (ET)`;
-            }
-            if (match.status === 'finished') {
-                return "FT";
-            }
-            const now = new Date();
-            return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            return `${matchTime.min.toString().padStart(2, '0')}:${matchTime.sec.toString().padStart(2, '0')}`;
         };
 
         const timeStr = getEventTime();
@@ -168,13 +200,13 @@ const MatchDetail = () => {
             const oldGoals = parseInt(oldValue) || 0;
             const newGoals = parseInt(value) || 0;
             if (newGoals > oldGoals) {
-                extraData.events = [...(match.events || []), {
+                extraData.events = [...(targetMatch.events || []), {
                     id: Date.now().toString(), type: 'goal', player: player.name,
-                    team: teamType === 'A' ? match.teamA.name : match.teamB.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
                     teamSide: teamType, time: timeStr, timestamp: Date.now()
                 }];
             } else if (newGoals < oldGoals) {
-                const allEvents = [...(match.events || [])];
+                const allEvents = [...(targetMatch.events || [])];
                 const lastGoalIdx = allEvents.map((e, idx) => ({ ...e, originalIdx: idx }))
                     .filter(e => e.type === 'goal' && e.player === player.name && e.teamSide === teamType)
                     .pop()?.originalIdx;
@@ -194,17 +226,17 @@ const MatchDetail = () => {
                     type: isDoubleYellow ? 'red_card' : 'yellow_card',
                     player: player.name,
                     detail: isDoubleYellow ? 'Doble Amarilla' : 'Amonestación',
-                    team: teamType === 'A' ? match.teamA.name : match.teamB.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
                     teamSide: teamType, time: timeStr, timestamp: Date.now()
                 };
-                extraData.events = [...(match.events || []), newEvent];
+                extraData.events = [...(targetMatch.events || []), newEvent];
 
                 if (isDoubleYellow) {
                     currentPlayers[playerIndex].status = 'expulsado';
                     currentPlayers[playerIndex].redCard = true;
                 }
             } else if (newCount < oldValue) {
-                const allEvents = [...(match.events || [])];
+                const allEvents = [...(targetMatch.events || [])];
                 const lastIdx = allEvents.map((e, idx) => ({ ...e, originalIdx: idx }))
                     .filter(e => (e.type === 'yellow_card' || (e.type === 'red_card' && e.detail === 'Doble Amarilla')) && e.player === player.name && e.teamSide === teamType)
                     .pop()?.originalIdx;
@@ -221,14 +253,14 @@ const MatchDetail = () => {
         if (field === 'redCard') {
             if (value === true && oldValue !== true) {
                 currentPlayers[playerIndex].status = 'expulsado';
-                extraData.events = [...(match.events || []), {
+                extraData.events = [...(targetMatch.events || []), {
                     id: Date.now().toString(), type: 'red_card', player: player.name,
                     detail: 'Roja Directa',
-                    team: teamType === 'A' ? match.teamA.name : match.teamB.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
                     teamSide: teamType, time: timeStr, timestamp: Date.now()
                 }];
             } else if (value === false && oldValue === true) {
-                const allEvents = [...(match.events || [])];
+                const allEvents = [...(targetMatch.events || [])];
                 const lastIdx = allEvents.map((e, idx) => ({ ...e, originalIdx: idx }))
                     .filter(e => e.type === 'red_card' && e.player === player.name && e.teamSide === teamType && e.detail === 'Roja Directa')
                     .pop()?.originalIdx;
@@ -245,19 +277,27 @@ const MatchDetail = () => {
         await updateMatch(id, { [playerKey]: currentPlayers, ...extraData });
     };
 
+    /**
+     * Registra una sustitución.
+     * Genera el evento en el timeline con el minuto exacto.
+     */
     const handleSubstitution = async (teamType) => {
         const playerIn = prompt("Nombre del jugador que ENTRA:");
         const playerOut = prompt("Nombre del jugador que SALE:");
         if (!playerIn || !playerOut) return;
 
+        await executeSubstitution(teamType, playerIn, playerOut);
+    };
+
+    const executeSubstitution = async (teamType, playerInName, playerOutName) => {
         const getEventTime = () => {
             if (match.status === 'live' && match.liveStartTime) {
-                const elapsedSinceLastStart = Math.floor((Date.now() - match.liveStartTime) / 60000);
-                const totalMinutes = (match.accumulatedTime || 0) + elapsedSinceLastStart + 1;
-                return `${totalMinutes}'`;
+                const totalElapsedSeconds = Math.floor((Date.now() - match.liveStartTime) / 1000) + (match.accumulatedSeconds || (match.accumulatedTime || 0) * 60);
+                const m = Math.floor(totalElapsedSeconds / 60);
+                const s = totalElapsedSeconds % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             }
-            const now = new Date();
-            return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            return `${matchTime.min.toString().padStart(2, '0')}:${matchTime.sec.toString().padStart(2, '0')}`;
         };
 
         const timeStr = getEventTime();
@@ -265,8 +305,8 @@ const MatchDetail = () => {
         const newEvent = {
             id: Date.now().toString(),
             type: 'substitution',
-            playerIn,
-            playerOut,
+            playerIn: playerInName,
+            playerOut: playerOutName,
             team: teamType === 'A' ? match.teamA.name : match.teamB.name,
             teamSide: teamType,
             time: timeStr,
@@ -274,6 +314,181 @@ const MatchDetail = () => {
         };
 
         await updateMatch(id, { events: [...(match.events || []), newEvent] });
+    };
+
+    /**
+     * Procesa comandos de voz del árbitro
+     */
+    // Ref para acceder al estado más reciente dentro del callback de voz (evita closures viejos)
+    const matchRef = useRef(match);
+    useEffect(() => {
+        matchRef.current = match;
+    }, [match]);
+
+    /**
+     * Procesa comandos de voz del árbitro
+     */
+    const handleVoiceCommand = async (data) => {
+        const currentMatch = matchRef.current;
+        if (!currentMatch) return;
+
+        console.log("Comando de voz recibido:", data);
+
+        const { command, dorsal } = data;
+
+        // Función auxiliar para buscar jugador por dorsal
+        const findAndExecute = async (teamSide, action) => {
+            const playerKey = teamSide === 'A' ? 'playersA' : 'playersB';
+            const players = currentMatch[playerKey] || [];
+
+            // Si hay dorsal, buscamos específicamente
+            let playerIndex = -1;
+
+            if (dorsal) {
+                // Buscamos coincidencia exacta con el número de camiseta (string comparison safe)
+                playerIndex = players.findIndex(p => p.number == dorsal);
+            }
+
+            if (playerIndex !== -1) {
+                if (action === 'goal') {
+                    // Sumar gol al jugador
+                    const currentGoals = parseInt(players[playerIndex].goals) || 0;
+                    await handleUpdatePlayer(playerIndex, teamSide, 'goals', currentGoals + 1, currentMatch); // Pasamos currentMatch
+                    // Actualizar marcador global
+                    await handleScoreChange(teamSide, 1, currentMatch);
+                } else if (action === 'yellow') {
+                    const currentCards = parseInt(players[playerIndex].yellowCards) || 0;
+                    await handleUpdatePlayer(playerIndex, teamSide, 'yellowCards', currentCards + 1, currentMatch);
+                } else if (action === 'red') {
+                    await handleUpdatePlayer(playerIndex, teamSide, 'redCard', true, currentMatch);
+                }
+            } else {
+                // Si es gol y no hay dorsal, sumamos al marcador global solamente
+                if (action === 'goal') {
+                    await handleScoreChange(teamSide, 1, currentMatch);
+                }
+            }
+        };
+
+        if (command === 'goal_local') await findAndExecute('A', 'goal');
+        if (command === 'goal_visitor') await findAndExecute('B', 'goal');
+
+        // Si detectamos tarjeta, buscamos el dorsal en AMBOS equipos
+        if (command === 'yellow_card' || command === 'red_card') {
+            if (dorsal) {
+                const idxA = (currentMatch.playersA || []).findIndex(p => p.number == dorsal);
+                const idxB = (currentMatch.playersB || []).findIndex(p => p.number == dorsal);
+
+                const action = command === 'yellow_card' ? 'yellow' : 'red';
+
+                // Priorizamos el equipo que tenga ese dorsal
+                if (idxA !== -1) await findAndExecute('A', action);
+                else if (idxB !== -1) await findAndExecute('B', action);
+                else voiceReferee.speak(`No encuentro al dorsal ${dorsal}`);
+            } else {
+                voiceReferee.speak("Necesito el número de dorsal.");
+            }
+        }
+        if (command === 'time_check') {
+            voiceReferee.speak(`Van ${matchTime.min} minutos de juego.`);
+        }
+
+        if (command === 'score_check') {
+            const leading = currentMatch.score.a > currentMatch.score.b ? `Gana ${currentMatch.teamA.name}` : (currentMatch.score.b > currentMatch.score.a ? `Gana ${currentMatch.teamB.name}` : "Empate");
+            voiceReferee.speak(`${currentMatch.score.a} a ${currentMatch.score.b}. ${leading}`);
+        }
+
+        if (command === 'start_match') await changeMatchStatus('live');
+        if (command === 'halftime') await changeMatchStatus('halftime');
+        if (command === 'finish_match') await changeMatchStatus('finished');
+
+        if (command === 'substitution') {
+            // voiceService devuelve: dorsal (IN), dorsal2 (OUT) usualmente si se dice "Entra X Sale Y"
+            // Pero validaremos buscando al jugador que SALE (dorsal2) en los titulares/plantel
+            const numIn = data.dorsal;
+            const numOut = data.dorsal2;
+
+            if (!numIn || !numOut) {
+                voiceReferee.speak("Indique números. Ejemplo: Entra 8 sale 10");
+                return;
+            }
+
+            // Buscamos quién Sale (numOut) para saber el equipo
+            const pOutA = (currentMatch.playersA || []).find(p => p.number == numOut);
+            const pOutB = (currentMatch.playersB || []).find(p => p.number == numOut);
+
+            let teamSide = null;
+            let playerOutName = '';
+            let playerInName = '';
+
+            if (pOutA) {
+                teamSide = 'A';
+                playerOutName = pOutA.name;
+                const pIn = (currentMatch.playersA || []).find(p => p.number == numIn);
+                playerInName = pIn ? pIn.name : `Dorsal ${numIn}`;
+            } else if (pOutB) {
+                teamSide = 'B';
+                playerOutName = pOutB.name;
+                const pIn = (currentMatch.playersB || []).find(p => p.number == numIn);
+                playerInName = pIn ? pIn.name : `Dorsal ${numIn}`;
+            } else {
+                voiceReferee.speak(`No encuentro al jugador número ${numOut}`);
+                return;
+            }
+
+            // Ejecutar sustitución
+            await executeSubstitution(teamSide, playerInName, playerOutName);
+        }
+
+        if (command === 'undo') {
+            voiceReferee.speak("Función deshacer no disponible por seguridad.");
+        }
+    };
+
+    const changeMatchStatus = async (newStatus) => {
+        const updateData = { status: newStatus };
+        const now = Date.now();
+        let newEvent = null;
+
+        const formatCurrentTime = () => {
+            return `${matchTime.min.toString().padStart(2, '0')}:${matchTime.sec.toString().padStart(2, '0')}`;
+        };
+
+        if (newStatus === 'live') {
+            updateData.liveStartTime = now;
+            if (match.status === 'scheduled') {
+                newEvent = { id: 'start-' + now, type: 'match_start', detail: 'Inicio de Partido', time: '00:00', timestamp: now };
+            } else if (match.status === 'halftime') {
+                newEvent = { id: 'resume-' + now, type: 'match_start', detail: 'Reinicio 2do Tiempo', time: formatCurrentTime(), timestamp: now };
+            }
+        } else if (newStatus === 'halftime' || newStatus === 'finished') {
+            if (match.status === 'live' && match.liveStartTime) {
+                const elapsedSec = Math.floor((now - match.liveStartTime) / 1000);
+                updateData.accumulatedSeconds = (match.accumulatedSeconds || (match.accumulatedTime || 0) * 60) + elapsedSec;
+                updateData.liveStartTime = null;
+            }
+            if (newStatus === 'halftime') {
+                newEvent = { id: 'halftime-' + now, type: 'halftime', detail: 'Entretiempo', time: formatCurrentTime(), timestamp: now };
+            } else if (newStatus === 'finished') {
+                newEvent = { id: 'finish-' + now, type: 'finish', detail: 'Final del Partido', time: formatCurrentTime(), timestamp: now };
+            }
+        }
+
+        if (newEvent) {
+            updateData.events = [...(match.events || []), newEvent];
+        }
+
+        await updateMatch(id, updateData);
+    };
+
+    const toggleVoice = () => {
+        if (isVoiceActive) {
+            voiceReferee.stop();
+            setIsVoiceActive(false);
+        } else {
+            voiceReferee.start(handleVoiceCommand);
+            setIsVoiceActive(true);
+        }
     };
 
     const removeEvent = async (eventId) => {
@@ -320,7 +535,8 @@ const MatchDetail = () => {
     return (
         <div className="animate-fade-in">
             {/* Header Volver */}
-            <div style={{ marginBottom: '20px' }}>
+            {/* Header Volver y Voz */}
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <button
                     onClick={() => navigate('/partidos')}
                     style={{
@@ -341,6 +557,20 @@ const MatchDetail = () => {
                 >
                     <ArrowLeft size={18} /> Volver a Partidos
                 </button>
+
+                <button
+                    onClick={toggleVoice}
+                    className="glass-button"
+                    style={{
+                        padding: '8px 16px',
+                        background: isVoiceActive ? '#ef4444' : 'rgba(255,255,255,0.1)',
+                        borderColor: isVoiceActive ? '#ef4444' : 'rgba(255,255,255,0.2)',
+                        animation: isVoiceActive ? 'pulse 2s infinite' : 'none'
+                    }}
+                >
+                    {isVoiceActive ? <Mic size={18} color="white" /> : <MicOff size={18} />}
+                    <span style={{ marginLeft: '8px' }}>{isVoiceActive ? 'VOZ ACTIVA' : 'Usar Voz'}</span>
+                </button>
             </div>
 
             {/* Scoreboard Card */}
@@ -348,32 +578,14 @@ const MatchDetail = () => {
                 <div style={{ position: 'absolute', top: '15px', right: '15px' }}>
                     <select
                         className="premium-input"
-                        style={{ padding: '5px 10px', fontSize: '0.7rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.05)' }}
+                        style={{ padding: '5px 10px', fontSize: '0.7rem', width: 'auto', border: 'none', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                         value={match.status}
-                        onChange={async (e) => {
-                            const newStatus = e.target.value;
-                            const updateData = { status: newStatus };
-                            const now = Date.now();
-
-                            if (newStatus === 'live') {
-                                // Si estaba en scheduled o en halftime, empezamos a contar
-                                updateData.liveStartTime = now;
-                            } else if (newStatus === 'halftime' || newStatus === 'finished') {
-                                // Si pasamos a pausa/fin, sumamos lo transcurrido al acumulado
-                                if (match.status === 'live' && match.liveStartTime) {
-                                    const elapsed = Math.floor((now - match.liveStartTime) / 60000);
-                                    updateData.accumulatedTime = (match.accumulatedTime || 0) + elapsed;
-                                    updateData.liveStartTime = null; // Detenemos el reloj
-                                }
-                            }
-
-                            await updateMatch(id, updateData);
-                        }}
+                        onChange={(e) => changeMatchStatus(e.target.value)}
                     >
-                        <option value="scheduled">Programado</option>
-                        <option value="live">En Vivo</option>
-                        <option value="halftime">Entretiempo</option>
-                        <option value="finished">Finalizado</option>
+                        <option style={{ color: 'black' }} value="scheduled">Programado</option>
+                        <option style={{ color: 'black' }} value="live">En Vivo</option>
+                        <option style={{ color: 'black' }} value="halftime">Entretiempo</option>
+                        <option style={{ color: 'black' }} value="finished">Finalizado</option>
                     </select>
                 </div>
 
@@ -421,14 +633,14 @@ const MatchDetail = () => {
                                     <div className="pulse-dot"></div>
                                     <span style={{ fontSize: '0.7rem', fontWeight: '800' }}>EN VIVO</span>
                                 </div>
-                                <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#fff', textShadow: '0 0 10px rgba(255,255,255,0.3)' }}>
-                                    {currentMinute}'
+                                <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {matchTime.min.toString().padStart(2, '0')}:{matchTime.sec.toString().padStart(2, '0')}
                                 </div>
                             </div>
                         )}
                         {match.status === 'halftime' && (
                             <div className="halftime-badge" style={{ padding: '8px 15px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                                • ENTRETIEMPO ({match.accumulatedTime || 45}')
+                                • ENTRETIEMPO ({matchTime.min.toString().padStart(2, '0')}:{matchTime.sec.toString().padStart(2, '0')})
                             </div>
                         )}
                         {match.status === 'finished' && (
@@ -473,172 +685,185 @@ const MatchDetail = () => {
             </div>
 
             {/* Tab Content: Planteles */}
-            {activeTab === 'planteles' && (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: window.innerWidth > 768 ? '1fr 1fr' : '1fr',
-                    gap: '20px'
-                }}>
-                    <SquadColumn
-                        title={match.teamA.name}
-                        players={match.playersA || []}
-                        teamType="A"
-                        onAdd={() => setShowAddPlayer('A')}
-                        onSubstitution={() => handleSubstitution('A')}
-                        onUpdate={(idx, f, v) => handleUpdatePlayer(idx, 'A', f, v)}
-                        onRemove={(idx) => removePlayer(idx, 'A')}
-                    />
-                    <SquadColumn
-                        title={match.teamB.name}
-                        players={match.playersB || []}
-                        teamType="B"
-                        onAdd={() => setShowAddPlayer('B')}
-                        onSubstitution={() => handleSubstitution('B')}
-                        onUpdate={(idx, f, v) => handleUpdatePlayer(idx, 'B', f, v)}
-                        onRemove={(idx) => removePlayer(idx, 'B')}
-                    />
-                </div>
-            )}
+            {
+                activeTab === 'planteles' && (
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: window.innerWidth > 768 ? '1fr 1fr' : '1fr',
+                        gap: '20px'
+                    }}>
+                        <SquadColumn
+                            title={match.teamA.name}
+                            players={match.playersA || []}
+                            teamType="A"
+                            onAdd={() => setShowAddPlayer('A')}
+                            onSubstitution={() => handleSubstitution('A')}
+                            onUpdate={(idx, f, v) => handleUpdatePlayer(idx, 'A', f, v)}
+                            onRemove={(idx) => removePlayer(idx, 'A')}
+                        />
+                        <SquadColumn
+                            title={match.teamB.name}
+                            players={match.playersB || []}
+                            teamType="B"
+                            onAdd={() => setShowAddPlayer('B')}
+                            onSubstitution={() => handleSubstitution('B')}
+                            onUpdate={(idx, f, v) => handleUpdatePlayer(idx, 'B', f, v)}
+                            onRemove={(idx) => removePlayer(idx, 'B')}
+                        />
+                    </div>
+                )
+            }
 
-            {activeTab === 'stats' && (
-                <div className="glass-panel" style={{ padding: '30px', textAlign: 'center' }}>
-                    <h3>Resumen de Estadísticas</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>Métricas acumuladas del encuentro.</p>
-                </div>
-            )}
+            {
+                activeTab === 'stats' && (
+                    <div className="glass-panel" style={{ padding: '30px', textAlign: 'center' }}>
+                        <h3>Resumen de Estadísticas</h3>
+                        <p style={{ color: 'var(--text-muted)' }}>Métricas acumuladas del encuentro.</p>
+                    </div>
+                )
+            }
 
-            {activeTab === 'eventos' && (
-                <div className="glass-panel" style={{ padding: '30px' }}>
-                    <h3 style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Activity size={20} color="var(--primary)" />
-                        Cronología del Partido
-                    </h3>
+            {
+                activeTab === 'eventos' && (
+                    <div className="glass-panel" style={{ padding: '30px' }}>
+                        <h3 style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Activity size={20} color="var(--primary)" />
+                            Cronología del Partido
+                        </h3>
 
-                    <div style={{ position: 'relative', paddingLeft: '20px' }}>
-                        <div style={{ position: 'absolute', left: '7px', top: 0, bottom: 0, width: '2px', background: 'rgba(255,255,255,0.05)' }} />
+                        <div style={{ position: 'relative', paddingLeft: '20px' }}>
+                            <div style={{ position: 'absolute', left: '7px', top: 0, bottom: 0, width: '2px', background: 'rgba(255,255,255,0.05)' }} />
 
-                        {(match.events || []).length === 0 ? (
-                            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No hay eventos registrados aún.</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {[...(match.events || [])].reverse().map((event) => (
-                                    <div key={event.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <div style={{
-                                            position: 'absolute',
-                                            left: '-17px',
-                                            width: '10px',
-                                            height: '10px',
-                                            borderRadius: '50%',
-                                            background: event.type === 'goal' ? '#10b981' : (event.type === 'red_card' ? '#ef4444' : (event.type === 'yellow_card' ? '#fbbf24' : 'var(--primary)')),
-                                            boxShadow: `0 0 10px ${event.type === 'goal' ? '#10b981' : 'var(--primary)'}`
-                                        }} />
+                            {(match.events || []).length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No hay eventos registrados aún.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    {[...(match.events || [])].reverse().map((event) => (
+                                        <div key={event.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: '-17px',
+                                                width: '10px',
+                                                height: '10px',
+                                                borderRadius: '50%',
+                                                background: event.type === 'goal' ? '#10b981' : (event.type === 'red_card' ? '#ef4444' : (event.type === 'yellow_card' ? '#fbbf24' : (event.type.includes('match') || event.type === 'halftime' || event.type === 'finish' ? '#3b82f6' : 'var(--primary)'))),
+                                                boxShadow: `0 0 10px ${event.type === 'goal' ? '#10b981' : (event.type.includes('match') ? '#3b82f6' : 'var(--primary)')}`
+                                            }} />
 
-                                        <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', minWidth: '45px' }}>
-                                            {event.time}
-                                        </div>
-
-                                        <div className="glass-panel" style={{
-                                            flex: 1,
-                                            padding: '12px 20px',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            background: 'rgba(255,255,255,0.02)',
-                                            borderColor: 'rgba(255,255,255,0.05)'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{
-                                                    width: '32px', height: '32px', borderRadius: '8px',
-                                                    background: event.type === 'goal' ? '#10b981' : (event.type.includes('card') ? 'transparent' : 'var(--primary)'),
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
-                                                }}>
-                                                    {event.type === 'goal' && <Trophy size={16} />}
-                                                    {event.type === 'yellow_card' && <Square size={18} fill="#fbbf24" color="#fbbf24" style={{ borderRadius: '2px' }} />}
-                                                    {event.type === 'red_card' && <Square size={18} fill="#ef4444" color="#ef4444" style={{ borderRadius: '2px' }} />}
-                                                    {event.type === 'substitution' && <Repeat size={16} />}
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>
-                                                        {event.type === 'goal' && '¡GOOOL!'}
-                                                        {event.type === 'yellow_card' && 'Tarjeta Amarilla'}
-                                                        {event.type === 'red_card' && 'Tarjeta Roja'}
-                                                        {event.type === 'substitution' && 'Cambio de Jugador'}
-                                                    </div>
-                                                    <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-                                                        {event.type === 'substitution' ? (
-                                                            <>Sale <span style={{ color: '#ef4444' }}>{event.playerOut}</span> / Entra <span style={{ color: '#10b981' }}>{event.playerIn}</span></>
-                                                        ) : (
-                                                            <><span style={{ fontWeight: 'bold', color: 'white' }}>{event.player}</span> {event.detail ? `(${event.detail})` : ''}</>
-                                                        )}
-                                                        <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{event.team}</div>
-                                                    </div>
-                                                </div>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', minWidth: '45px' }}>
+                                                {event.time}
                                             </div>
 
-                                            <button
-                                                onClick={() => removeEvent(event.id)}
-                                                style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.3, cursor: 'pointer', padding: '5px' }}
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                            <div className="glass-panel" style={{
+                                                flex: 1,
+                                                padding: '12px 20px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                background: 'rgba(255,255,255,0.02)',
+                                                borderColor: 'rgba(255,255,255,0.05)'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{
+                                                        width: '32px', height: '32px', borderRadius: '8px',
+                                                        background: event.type === 'goal' ? '#10b981' : (event.type.includes('card') ? 'transparent' : 'var(--primary)'),
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
+                                                    }}>
+                                                        {event.type === 'goal' && <Trophy size={16} />}
+                                                        {event.type === 'yellow_card' && <Square size={18} fill="#fbbf24" color="#fbbf24" style={{ borderRadius: '2px' }} />}
+                                                        {event.type === 'red_card' && <Square size={18} fill="#ef4444" color="#ef4444" style={{ borderRadius: '2px' }} />}
+                                                        {event.type === 'substitution' && <Repeat size={16} />}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>
+                                                            {event.type === 'goal' && '¡GOOOL!'}
+                                                            {event.type === 'yellow_card' && 'Tarjeta Amarilla'}
+                                                            {event.type === 'red_card' && 'Tarjeta Roja'}
+                                                            {event.type === 'substitution' && 'Cambio de Jugador'}
+                                                            {event.type === 'match_start' && 'Inicio / Reinicio'}
+                                                            {event.type === 'halftime' && 'Entretiempo'}
+                                                            {event.type === 'finish' && 'Final del Partido'}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                                                            {event.type === 'substitution' ? (
+                                                                <>Sale <span style={{ color: '#ef4444' }}>{event.playerOut}</span> / Entra <span style={{ color: '#10b981' }}>{event.playerIn}</span></>
+                                                            ) : (event.type === 'match_start' || event.type === 'halftime' || event.type === 'finish') ? (
+                                                                <span>{event.detail}</span>
+                                                            ) : (
+                                                                <><span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{event.player}</span> {event.detail ? `(${event.detail})` : ''}</>
+                                                            )}
+                                                            <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{event.team}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => removeEvent(event.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.3, cursor: 'pointer', padding: '5px' }}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal Selector Jugadores */}
+            {
+                showAddPlayer && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                        <div className="glass-panel" style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ padding: '25px', borderBottom: '1px solid var(--glass-border)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h2 style={{ margin: 0 }}>Agregar Jugador a <span style={{ color: 'var(--primary)' }}>{showAddPlayer === 'A' ? match.teamA.name : match.teamB.name}</span></h2>
+                                    <button onClick={() => setShowAddPlayer(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>✕</button>
+                                </div>
+                                <input
+                                    className="premium-input"
+                                    placeholder="Buscar por nombre o DNI..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+                                {filteredUsers.map(user => (
+                                    <div
+                                        key={user.id}
+                                        className="nav-item"
+                                        style={{
+                                            flexDirection: 'row',
+                                            padding: '12px',
+                                            justifyContent: 'flex-start',
+                                            gap: '15px',
+                                            borderRadius: '12px',
+                                            cursor: 'pointer',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            marginBottom: '5px'
+                                        }}
+                                        onClick={() => handleAddPlayer(user, showAddPlayer)}
+                                    >
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', overflow: 'hidden' }}>
+                                            <img src={user.photos?.[0] || user.photo || 'https://via.placeholder.com/40'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{user.name || (user.nombre + ' ' + (user.apellido || ''))}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>DNI: {user.dni}</div>
+                                        </div>
+                                        <Plus size={18} style={{ marginLeft: 'auto', opacity: 0.5 }} />
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Modal Selector Jugadores */}
-            {showAddPlayer && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ padding: '25px', borderBottom: '1px solid var(--glass-border)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h2 style={{ margin: 0 }}>Agregar Jugador a <span style={{ color: 'var(--primary)' }}>{showAddPlayer === 'A' ? match.teamA.name : match.teamB.name}</span></h2>
-                                <button onClick={() => setShowAddPlayer(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>✕</button>
-                            </div>
-                            <input
-                                className="premium-input"
-                                placeholder="Buscar por nombre o DNI..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                autoFocus
-                            />
-                        </div>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-                            {filteredUsers.map(user => (
-                                <div
-                                    key={user.id}
-                                    className="nav-item"
-                                    style={{
-                                        flexDirection: 'row',
-                                        padding: '12px',
-                                        justifyContent: 'flex-start',
-                                        gap: '15px',
-                                        borderRadius: '12px',
-                                        cursor: 'pointer',
-                                        background: 'rgba(255,255,255,0.02)',
-                                        marginBottom: '5px'
-                                    }}
-                                    onClick={() => handleAddPlayer(user, showAddPlayer)}
-                                >
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', overflow: 'hidden' }}>
-                                        <img src={user.photos?.[0] || user.photo || 'https://via.placeholder.com/40'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                    <div style={{ textAlign: 'left' }}>
-                                        <div style={{ fontWeight: '600', color: 'white' }}>{user.name || (user.nombre + ' ' + (user.apellido || ''))}</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>DNI: {user.dni}</div>
-                                    </div>
-                                    <Plus size={18} style={{ marginLeft: 'auto', opacity: 0.5 }} />
-                                </div>
-                            ))}
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
@@ -752,19 +977,22 @@ const SquadColumn = ({ title, players, teamType, onAdd, onSubstitution, onUpdate
                             <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px' }}>
                                 <button
                                     onClick={() => onUpdate(idx, 'goals', Math.max(0, (parseInt(p.goals) || 0) - 1))}
-                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                    disabled={p.status === 'suplente' || p.status === 'expulsado'}
+                                    style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.05)' : '#ef4444', cursor: p.status === 'suplente' || p.status === 'expulsado' ? 'not-allowed' : 'pointer', padding: '2px' }}
                                 >
                                     <Minus size={12} />
                                 </button>
                                 <input
                                     type="number"
                                     value={p.goals}
+                                    disabled={p.status === 'suplente' || p.status === 'expulsado'}
                                     onChange={(e) => onUpdate(idx, 'goals', e.target.value)}
-                                    style={{ background: 'none', border: 'none', color: 'white', width: '25px', textAlign: 'center', appearance: 'none', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                    style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.2)' : 'white', width: '25px', textAlign: 'center', appearance: 'none', fontSize: '0.8rem', fontWeight: 'bold' }}
                                 />
                                 <button
                                     onClick={() => onUpdate(idx, 'goals', (parseInt(p.goals) || 0) + 1)}
-                                    style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', padding: '2px' }}
+                                    disabled={p.status === 'suplente' || p.status === 'expulsado'}
+                                    style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.05)' : '#10b981', cursor: p.status === 'suplente' || p.status === 'expulsado' ? 'not-allowed' : 'pointer', padding: '2px' }}
                                 >
                                     <Plus size={12} />
                                 </button>

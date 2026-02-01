@@ -1,3 +1,9 @@
+/**
+ * @file Partidos.jsx
+ * @description Vista principal del listado de partidos.
+ * Permite visualizar partidos en vivo, programados y finalizados.
+ * Incluye funcionalidad para eliminar partidos (protegida con código).
+ */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Calendar, Clock, ChevronRight, Activity, Trash2, Square } from 'lucide-react';
@@ -10,12 +16,20 @@ const Partidos = () => {
 
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+    // Efecto para suscribirse a la colección de partidos
     useEffect(() => {
         const unsubscribe = subscribeToMatches((data) => {
-            setMatches(data);
+            // Ordenar por fecha y hora descendente (más nuevos arriba)
+            const sorted = [...(data || [])].sort((a, b) => {
+                const dateA = new Date(`${a.date} ${a.time}`);
+                const dateB = new Date(`${b.date} ${b.time}`);
+                return dateB - dateA;
+            });
+            setMatches(sorted);
             setLoading(false);
         });
 
+        // Timer para forzar re-renderizado cada 30 segundos (actualizar tiempos live)
         const timer = setInterval(() => {
             setRefreshTrigger(prev => prev + 1);
         }, 30000);
@@ -26,10 +40,20 @@ const Partidos = () => {
         };
     }, []);
 
-    const calculateMinute = (match) => {
-        if (match.status !== 'live' || !match.liveStartTime) return null;
-        const elapsed = Math.floor((Date.now() - match.liveStartTime) / 60000);
-        return (match.accumulatedTime || 0) + elapsed;
+    /**
+     * Calcula el tiempo transcurrido de un partido.
+     * @param {Object} match - Objeto partido con liveStartTime y accumulatedSeconds.
+     */
+    const formatMatchTime = (match) => {
+        let totalSeconds = 0;
+        if (match.status === 'live' && match.liveStartTime) {
+            totalSeconds = Math.floor((Date.now() - match.liveStartTime) / 1000) + (match.accumulatedSeconds || (match.accumulatedTime || 0) * 60);
+        } else {
+            totalSeconds = (match.accumulatedSeconds || (match.accumulatedTime || 0) * 60);
+        }
+        const min = Math.floor(totalSeconds / 60);
+        const sec = totalSeconds % 60;
+        return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
     };
 
     const getStatusLabel = (status) => {
@@ -51,6 +75,10 @@ const Partidos = () => {
         return colors[status] || 'var(--primary)';
     };
 
+    /**
+     * Maneja la eliminación segura de un partido.
+     * Requiere código '777' para confirmar.
+     */
     const handleDelete = async (e, matchId) => {
         e.stopPropagation();
         const code = prompt("Ingrese el código de seguridad para eliminar este partido:");
@@ -110,9 +138,16 @@ const Partidos = () => {
                                             {match.status === 'live' ? (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <Activity size={14} className="animate-pulse" />
-                                                    <span style={{ fontSize: '1.2rem', color: '#fff', fontWeight: '900' }}>{calculateMinute(match)}'</span>
+                                                    <span style={{ fontSize: '1.2rem', color: '#fff', fontWeight: '900', fontVariantNumeric: 'tabular-nums' }}>{formatMatchTime(match)}</span>
                                                 </div>
-                                            ) : getStatusLabel(match.status)}
+                                            ) : (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {getStatusLabel(match.status)}
+                                                    {(match.status === 'halftime' || match.status === 'finished') && (
+                                                        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>({formatMatchTime(match)})</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                         <button
                                             onClick={(e) => handleDelete(e, match.id)}
