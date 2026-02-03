@@ -13,7 +13,7 @@ import { initHybridEngine, checkFaceQuality } from '../services/hybridFaceServic
 import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { saveUser, checkDniExists, getUsers, subscribeToUsers } from '../services/db';
 import { useNavigate } from 'react-router-dom';
-import { Camera, RefreshCw, User, Clipboard, Users, Trophy, Milestone, CheckCircle2, Zap, Globe, ArrowLeft, Plus, SwitchCamera, Lightbulb } from 'lucide-react';
+import { Camera, RefreshCw, User, Clipboard, Users, Trophy, Milestone, CheckCircle2, Zap, Globe, ArrowLeft, Plus, SwitchCamera, Lightbulb, Upload, X } from 'lucide-react';
 import adccLogo from '../Applogo.png';
 
 /**
@@ -42,6 +42,8 @@ const Register = () => {
     const [qualityError, setQualityError] = useState('');
     const [qualityCode, setQualityCode] = useState('');
     const [faceBox, setFaceBox] = useState(null);
+    const [uploadedImage, setUploadedImage] = useState(null);
+    const fileInputRef = useRef(null);
     const navigate = useNavigate();
 
     const toggleCamera = () => {
@@ -62,6 +64,46 @@ const Register = () => {
             }
         } catch (err) {
             console.warn("Flashlight not supported on this device/camera", err);
+        }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setLoading(true);
+        setStatus('Cargando imagen...');
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const img = new Image();
+                img.onload = async () => {
+                    setStatus('Analizando foto...');
+                    setUploadedImage(event.target.result);
+
+                    const { getFaceDataFromImage } = await import('../services/faceServiceLocal');
+                    const data = await getFaceDataFromImage(img);
+
+                    if (data) {
+                        setStatus('¡Rostro detectado!');
+                        setQualityCode('OK');
+                        setQualityError('¡Foto lista!');
+                        setLoading(false);
+                    } else {
+                        alert("No se detectó un rostro claro en la foto.");
+                        setUploadedImage(null);
+                        setLoading(false);
+                        setStatus('Error en foto');
+                    }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error(err);
+            alert("Error al procesar la imagen");
+            setLoading(false);
         }
     };
 
@@ -148,7 +190,7 @@ const Register = () => {
      * - Rostro duplicado (cotejo 1:N contra toda la base)
      */
     const captureAndSave = useCallback(async () => {
-        if (!webcamRef.current) return;
+        if (!webcamRef.current && !uploadedImage) return;
 
         // VALIDACIÓN: DNI
         const dniExists = await checkDniExists(formData.dni);
@@ -167,7 +209,16 @@ const Register = () => {
         }, 100);
 
         try {
-            const imageSrc = webcamRef.current.getScreenshot();
+            let imageSrc;
+            let videoElement = null;
+
+            if (uploadedImage) {
+                imageSrc = uploadedImage;
+            } else {
+                imageSrc = webcamRef.current.getScreenshot();
+                videoElement = webcamRef.current.video;
+            }
+
             if (!imageSrc) throw new Error("No hay imagen");
 
             const img = new Image();
@@ -186,8 +237,14 @@ const Register = () => {
             const photoUrl = thumbnailCanvas.toDataURL('image/jpeg', 0.8);
 
             setStatus('Procesando rostro...');
-            const { getFaceDataLocal } = await import('../services/faceServiceLocal');
-            const data = await getFaceDataLocal(webcamRef.current.video);
+            const { getFaceDataLocal, getFaceDataFromImage } = await import('../services/faceServiceLocal');
+
+            let data;
+            if (uploadedImage) {
+                data = await getFaceDataFromImage(img);
+            } else {
+                data = await getFaceDataLocal(webcamRef.current.video);
+            }
 
             if (data) {
                 const { descriptor, detection } = data;
@@ -293,35 +350,43 @@ const Register = () => {
             ) : (
                 <div key="camera" className="glass-panel" style={{ padding: '20px', maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
                     <div className="webcam-wrapper" style={{ borderRadius: '15px', overflow: 'hidden', marginBottom: '20px', aspectRatio: '1/1', position: 'relative' }}>
-                        <Webcam
-                            key={cameraKey}
-                            audio={false}
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            width="100%"
-                            height="100%"
-                            playsInline
-                            muted
-                            autoPlay
-                            videoConstraints={{ facingMode }}
-                            onUserMedia={onUserMedia}
-                            onUserMediaError={(err) => {
-                                console.error("Error de cámara:", err);
-                                let msg = "Error de cámara";
-                                if (err.name === 'NotAllowedError') msg = "Permiso denegado";
-                                if (err.name === 'NotFoundError') msg = "No se encontró el dispositivo";
-                                if (err.name === 'NotReadableError') msg = "Cámara en uso";
-                                setStatus("Falla: " + msg + " (iOS Ready)");
-                            }}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover'
-                            }}
-                        />
+                        {uploadedImage ? (
+                            <img
+                                src={uploadedImage}
+                                alt="Uploaded"
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+                            />
+                        ) : (
+                            <Webcam
+                                key={cameraKey}
+                                audio={false}
+                                ref={webcamRef}
+                                screenshotFormat="image/jpeg"
+                                width="100%"
+                                height="100%"
+                                playsInline
+                                muted
+                                autoPlay
+                                videoConstraints={{ facingMode: { ideal: facingMode } }}
+                                onUserMedia={onUserMedia}
+                                onUserMediaError={(err) => {
+                                    console.error("Error de cámara:", err);
+                                    let msg = "Error de cámara";
+                                    if (err.name === 'NotAllowedError') msg = "Permiso denegado";
+                                    if (err.name === 'NotFoundError') msg = "No se encontró el dispositivo";
+                                    if (err.name === 'NotReadableError') msg = "Cámara en uso";
+                                    setStatus("Falla: " + msg + " (iOS Ready)");
+                                }}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover'
+                                }}
+                            />
+                        )}
 
                         <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
-                            {torchAvailable && facingMode === 'environment' && (
+                            {!uploadedImage && torchAvailable && facingMode === 'environment' && (
                                 <button
                                     onClick={toggleTorch}
                                     className="glass-button"
@@ -333,8 +398,6 @@ const Register = () => {
                                         minWidth: '50px',
                                         background: isTorchOn ? '#fbbf24' : 'rgba(0,0,0,0.5)',
                                         border: '2px solid rgba(255,255,255,0.5)',
-                                        // backdropFilter: 'blur(5px)',
-                                        boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -342,29 +405,56 @@ const Register = () => {
                                     }}
                                     title="Alternar Linterna"
                                 >
-                                    <Lightbulb size={24} color={isTorchOn ? "black" : "white"} />
+                                    <Lightbulb style={{ width: '24px', height: '24px' }} color={isTorchOn ? "black" : "white"} />
                                 </button>
                             )}
 
+                            {!uploadedImage && (
+                                <button
+                                    onClick={toggleCamera}
+                                    className="glass-button"
+                                    style={{
+                                        padding: '12px',
+                                        borderRadius: '50%',
+                                        width: '50px',
+                                        height: '50px',
+                                        minWidth: '50px', // Forzar tamaño
+                                        background: 'rgba(59, 130, 246, 0.9)', // Color primario más visible
+                                        border: '2px solid rgba(255,255,255,0.5)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <SwitchCamera style={{ width: '24px', height: '24px' }} color="white" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 100 }}>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                            />
                             <button
-                                onClick={toggleCamera}
+                                onClick={() => uploadedImage ? setUploadedImage(null) : fileInputRef.current.click()}
                                 className="glass-button"
                                 style={{
-                                    padding: '12px',
-                                    borderRadius: '50%',
-                                    width: '50px',
-                                    height: '50px',
-                                    minWidth: '50px', // Forzar tamaño
-                                    background: 'rgba(59, 130, 246, 0.9)', // Color primario más visible
-                                    border: '2px solid rgba(255,255,255,0.5)',
-                                    // backdropFilter: 'blur(5px)',
-                                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                                    padding: '10px 15px',
+                                    borderRadius: '12px',
+                                    background: uploadedImage ? 'rgba(239, 68, 68, 0.8)' : 'rgba(16, 185, 129, 0.8)',
+                                    border: '1px solid rgba(255,255,255,0.2)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center'
+                                    gap: '8px',
+                                    fontSize: '0.7rem'
                                 }}
                             >
-                                <SwitchCamera size={24} color="white" />
+                                {uploadedImage ? <X size={14} /> : <Upload size={14} />}
+                                {uploadedImage ? 'CANCELAR FOTO' : 'SUBIR FOTO'}
                             </button>
                         </div>
 
@@ -409,13 +499,13 @@ const Register = () => {
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => setStep(1)} disabled={loading} className="glass-button" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>ATRÁS</button>
-                        <button onClick={captureAndSave} disabled={loading || qualityCode !== 'OK'} className="glass-button" style={{
+                        <button onClick={() => { setStep(1); setUploadedImage(null); }} disabled={loading} className="glass-button" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>ATRÁS</button>
+                        <button onClick={captureAndSave} disabled={loading || (qualityCode !== 'OK' && !uploadedImage)} className="glass-button" style={{
                             flex: 2,
-                            background: qualityCode === 'OK' ? 'var(--success)' : 'rgba(255,255,255,0.05)',
-                            borderColor: qualityCode === 'OK' ? 'var(--success)' : 'rgba(255,255,255,0.1)',
-                            color: qualityCode === 'OK' ? 'white' : 'rgba(255,255,255,0.3)',
-                            opacity: qualityCode === 'OK' ? 1 : 0.6
+                            background: (qualityCode === 'OK' || uploadedImage) ? 'var(--success)' : 'rgba(255,255,255,0.05)',
+                            borderColor: (qualityCode === 'OK' || uploadedImage) ? 'var(--success)' : 'rgba(255,255,255,0.1)',
+                            color: (qualityCode === 'OK' || uploadedImage) ? 'white' : 'rgba(255,255,255,0.3)',
+                            opacity: (qualityCode === 'OK' || uploadedImage) ? 1 : 0.6
                         }}>
                             {loading ? 'ANALIZANDO...' : 'REGISTRAR JUGADOR'}
                         </button>

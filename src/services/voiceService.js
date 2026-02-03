@@ -86,6 +86,12 @@ class VoiceRefereeService {
             this.recognition.start();
             this.isListening = true;
             this.speak("Sistema de voz activo.");
+
+            // HACK: Keep-Alive para iOS/Android (Reproducir silencio para evitar que el navegador duerma la tab)
+            this.keepAliveAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // Sonido corto o silencio
+            this.keepAliveAudio.loop = true;
+            this.keepAliveAudio.volume = 0.001; // Casi mudo
+            this.keepAliveAudio.play().catch(e => console.warn("Audio keep-alive bloqueado:", e));
         }
     }
 
@@ -94,6 +100,11 @@ class VoiceRefereeService {
             this.isListening = false;
             this.recognition.stop();
             this.speak("Sistema de voz desactivado.");
+
+            if (this.keepAliveAudio) {
+                this.keepAliveAudio.pause();
+                this.keepAliveAudio = null;
+            }
         }
     }
 
@@ -149,12 +160,18 @@ class VoiceRefereeService {
     }
 
     speak(text) {
+        // Feedback auditivo desactivado a pedido del usuario (Punto 1)
+        console.log("🔊 Feedback (Silenciado):", text);
+
+        // Si en el futuro se quiere reactivar, descomentar:
+        /*
         if (this.synthesis) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = this.lang;
-            utterance.rate = 1.1; // Un poco más rápido para fluidez
+            utterance.rate = 1.1; 
             this.synthesis.speak(utterance);
         }
+        */
     }
 }
 

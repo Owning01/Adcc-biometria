@@ -12,8 +12,9 @@ import AltaLocal from './pages/AltaLocal';
 import Config from './pages/Config';
 import DevTools from './pages/DevTools';
 import Novedades from './pages/Novedades';
+import Stats from './pages/Stats';
 
-import { UserPlus, Home as HomeIcon, Search, RefreshCw, Zap, Lock, Unlock, LogIn, Settings, Globe, Terminal, Users, Trophy, Moon, Sun, WifiOff, CloudOff, Sparkles } from 'lucide-react';
+import { UserPlus, Home as HomeIcon, Search, RefreshCw, Zap, Lock, Unlock, LogIn, Settings, Globe, Terminal, Users, Trophy, Moon, Sun, WifiOff, CloudOff, Sparkles, BarChart2 } from 'lucide-react';
 import adccLogo from './Applogo.png';
 import Equipos from './pages/Equipos';
 import Partidos from './pages/Partidos';
@@ -299,6 +300,7 @@ function App() {
             <Route path="/config" element={userRole === 'dev' ? <Config /> : <Home />} />
             <Route path="/dev" element={userRole === 'dev' ? <DevTools /> : <Home />} />
             <Route path="/novedades" element={userRole !== 'public' ? <Novedades /> : <Home />} />
+            <Route path="/estadisticas" element={userRole !== 'public' ? <Stats /> : <Home />} />
 
 
             <Route path="*" element={<NotFound />} />
@@ -357,6 +359,7 @@ const Navigation = ({ userRole, onLogout, theme, toggleTheme }) => {
           <NavItem to="/register" icon={<UserPlus size={20} />} label="Registro" active={location.pathname === "/register"} />
           <NavItem to="/alta" icon={<Search size={20} />} label="Consulta" active={location.pathname === "/alta"} />
           <NavItem to="/equipos" icon={<Users size={20} />} label="Torneos" active={location.pathname === "/equipos"} />
+          <NavItem to="/estadisticas" icon={<BarChart2 size={20} />} label="Estadísticas" active={location.pathname === "/estadisticas"} />
           <NavItem to="/partidos" icon={<Trophy size={20} />} label="Partidos" active={location.pathname === "/partidos" || location.pathname.startsWith('/partido')} />
           {userRole === 'dev' && (
             <>

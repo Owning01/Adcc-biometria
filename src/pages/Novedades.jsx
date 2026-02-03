@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Mic, Trophy, Users, Moon, Zap, Search } from 'lucide-react';
+import { Sparkles, Mic, Trophy, Users, Moon, Zap, Search, BarChart2 } from 'lucide-react';
 
 const Novedades = () => {
     return (
@@ -66,24 +66,34 @@ const Novedades = () => {
 
             <div style={{ display: 'grid', gap: '15px' }}>
                 <UpdateItem
-                    icon={<Moon color="#60a5fa" />}
+                    icon={<Zap color="#fbbf24" />}
+                    title="Control de Asistencias"
+                    desc="¡NUEVO! Ahora puedes registrar asistencias durante el partido. Cada asistencia genera automáticamente un evento en la línea de tiempo."
+                />
+                <UpdateItem
+                    icon={<BarChart2 color="#3b82f6" />}
+                    title="Estadísticas de Jugadores"
+                    desc="Nueva sección de estadísticas con historial de goles, asistencias, temporadas jugadas y tiempo total en la liga ADCC."
+                />
+                <UpdateItem
+                    icon={<Trophy color="#10b981" />}
+                    title="Palmarés de Equipos"
+                    desc="Seguimiento de campeonatos ganados por categoría y años de permanencia en la liga para todos los equipos."
+                />
+                <UpdateItem
+                    icon={<Users color="#a855f7" />}
+                    title="Gestión de Campeones"
+                    desc="Los administradores ahora pueden asignar ganadores a los torneos para alimentar el historial de títulos de los equipos."
+                />
+                <UpdateItem
+                    icon={<Search color="#60a5fa" />}
+                    title="Optimización de Cámara"
+                    desc="Se corrigió un problema visual donde los iconos de la linterna y cambio de cámara se veían diminutos en algunos móviles."
+                />
+                <UpdateItem
+                    icon={<Moon color="#94a3b8" />}
                     title="Modo Oscuro / Claro"
-                    desc="Nuevo botón flotante en la esquina superior derecha para alternar entre temas visuales según tu preferencia."
-                />
-                <UpdateItem
-                    icon={<Users color="#10b981" />}
-                    title="Asignación Inteligente de Dorsales"
-                    desc="Al crear partidos, los jugadores ahora se cargan con su número de camiseta real registrado en la base de datos."
-                />
-                <UpdateItem
-                    icon={<Trophy color="#fbbf24" />}
-                    title="Marcador en Tiempo Real"
-                    desc="Corrección en la sincronización de goles. Ahora el marcador refleja siempre el estado exacto, incluso al usar comandos de voz repetidos."
-                />
-                <UpdateItem
-                    icon={<Search color="#a855f7" />}
-                    title="Búsqueda Optimizada"
-                    desc="Mejoras en el filtro de jugadores y equipos para encontrar registros más rápido."
+                    desc="Botón flotante disponible para alternar entre temas visuales según tu preferencia."
                 />
             </div>
 

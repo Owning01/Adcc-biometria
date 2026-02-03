@@ -7,7 +7,7 @@ import { initHybridEngine, checkFaceQuality } from '../services/hybridFaceServic
 import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { getFaceDataLocal } from '../services/faceServiceLocal';
 import { playSuccessSound, playErrorSound } from '../services/audioService';
-import { ShieldCheck, Search, RefreshCw, BadgeInfo, Cpu, Zap, ShieldAlert, XCircle, UserCircle, SwitchCamera, ArrowLeft, Lightbulb } from 'lucide-react';
+import { ShieldCheck, Search, RefreshCw, BadgeInfo, Cpu, Zap, ShieldAlert, XCircle, UserCircle, SwitchCamera, ArrowLeft, Lightbulb, Upload, X } from 'lucide-react';
 import adccLogo from '../Applogo.png';
 
 const AltaLocal = () => {
@@ -76,19 +76,13 @@ const AltaLocal = () => {
         }
     };
 
-    const handlePlay = () => {
-        setIsVideoReady(true);
+    const onUserMediaError = (err) => {
+        console.error("Camera Error:", err);
+        setLoadError(`Error de cámara: ${err.name}. Asegúrate de dar permisos.`);
     };
 
-    const forceStartVideo = () => {
-        if (webcamRef.current && webcamRef.current.video) {
-            webcamRef.current.video.play()
-                .then(() => setIsVideoReady(true))
-                .catch(e => {
-                    console.error("Error al forzar play:", e);
-                    alert("Por favor, desactiva el ahorro de batería o presiona fuerte el botón de Play.");
-                });
-        }
+    const handlePlay = () => {
+        setIsVideoReady(true);
     };
 
     useEffect(() => {
@@ -259,8 +253,9 @@ const AltaLocal = () => {
                                 muted
                                 autoPlay
                                 onPlaying={handlePlay}
-                                videoConstraints={{ facingMode }}
                                 onUserMedia={onUserMedia}
+                                onUserMediaError={onUserMediaError}
+                                videoConstraints={{ facingMode: { ideal: facingMode } }}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
 
@@ -280,14 +275,42 @@ const AltaLocal = () => {
                                 </div>
                             )}
 
-                            <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
+                            <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 200 }}>
                                 {torchAvailable && facingMode === 'environment' && (
-                                    <button onClick={toggleTorch} className="glass-button" style={{ borderRadius: '50%', width: '50px', height: '50px', background: isTorchOn ? '#fbbf24' : 'rgba(0,0,0,0.5)', border: '2px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Lightbulb size={24} color={isTorchOn ? "black" : "white"} />
+                                    <button
+                                        onClick={toggleTorch}
+                                        className="glass-button"
+                                        style={{
+                                            borderRadius: '50%',
+                                            width: '55px',
+                                            height: '55px',
+                                            background: isTorchOn ? '#fbbf24' : 'rgba(0,0,0,0.6)',
+                                            border: '2px solid white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                                        }}
+                                    >
+                                        <Lightbulb style={{ width: '24px', height: '24px' }} color={isTorchOn ? "black" : "white"} />
                                     </button>
                                 )}
-                                <button onClick={toggleCamera} className="glass-button" style={{ borderRadius: '50%', width: '50px', height: '50px', background: 'rgba(245, 158, 11, 0.9)', border: '2px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <SwitchCamera size={24} color="white" />
+                                <button
+                                    onClick={toggleCamera}
+                                    className="glass-button"
+                                    style={{
+                                        borderRadius: '50%',
+                                        width: '55px',
+                                        height: '55px',
+                                        background: 'rgba(59, 130, 246, 0.9)',
+                                        border: '2px solid white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                                    }}
+                                >
+                                    <SwitchCamera style={{ width: '24px', height: '24px' }} color="white" />
                                 </button>
                             </div>
 
@@ -304,7 +327,7 @@ const AltaLocal = () => {
 
                             <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', zIndex: 20 }}>
                                 <div className="status-badge" style={{ background: qualityError ? 'rgba(239, 68, 68, 0.8)' : (isProcessing ? 'rgba(59, 130, 246, 0.8)' : 'rgba(34, 197, 94, 0.8)'), color: '#fff' }}>
-                                    {isProcessing ? <RefreshCw size={12} className="animate-spin" /> : (qualityError ? <XCircle size={12} /> : <Zap size={12} />)}
+                                    {isProcessing ? <RefreshCw style={{ width: '12px', height: '12px' }} className="animate-spin" /> : (qualityError ? <XCircle style={{ width: '12px', height: '12px' }} /> : <Zap style={{ width: '12px', height: '12px' }} />)}
                                     {qualityError ? qualityError : statusText}
                                 </div>
                                 {!isProcessing && !matchResult && (

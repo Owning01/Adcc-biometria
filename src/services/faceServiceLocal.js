@@ -151,3 +151,29 @@ export const getFaceDescriptorLocal = async (videoElement) => {
     const data = await getFaceDataLocal(videoElement);
     return data ? data.descriptor : null;
 };
+
+/**
+ * Procesa una imagen estática para obtener datos faciales.
+ * @param {HTMLImageElement} imageElement 
+ * @returns {Promise<Object|null>}
+ */
+export const getFaceDataFromImage = async (imageElement) => {
+    if (!imageElement) return null;
+    try {
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+        const result = await faceapi.detectSingleFace(imageElement, options)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+        if (result) {
+            return {
+                descriptor: result.descriptor,
+                detection: result.detection
+            };
+        }
+        return null;
+    } catch (err) {
+        console.error("Error en detección desde imagen:", err);
+        return null;
+    }
+};

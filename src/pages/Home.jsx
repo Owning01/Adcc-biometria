@@ -57,6 +57,10 @@ import {
     Calendar,
     Clock,
     Activity,
+    SwitchCamera,
+    Lightbulb,
+    Camera,
+    Upload,
 } from "lucide-react";
 import adccLogo from "../Applogo.png";
 
@@ -1987,6 +1991,82 @@ const QuickRegisterModal = ({ data, onClose }) => {
     const [qualityError, setQualityError] = useState("");
     const [qualityCode, setQualityCode] = useState("");
     const [faceBox, setFaceBox] = useState(null);
+    const [facingMode, setFacingMode] = useState("user");
+    const [cameraKey, setCameraKey] = useState(0);
+    const [isTorchOn, setIsTorchOn] = useState(false);
+    const [torchAvailable, setTorchAvailable] = useState(false);
+    const [uploadedImage, setUploadedImage] = useState(null);
+    const fileInputRef = useRef(null);
+
+    const toggleCamera = () => {
+        setIsTorchOn(false);
+        setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
+        setCameraKey((prev) => prev + 1);
+    };
+
+    const toggleTorch = async () => {
+        try {
+            const videoTrack = webcamRef.current?.video?.srcObject?.getVideoTracks()[0];
+            if (videoTrack) {
+                const newTorchState = !isTorchOn;
+                await videoTrack.applyConstraints({
+                    advanced: [{ torch: newTorchState }],
+                });
+                setIsTorchOn(newTorchState);
+            }
+        } catch (err) {
+            console.warn("Flashlight not supported", err);
+        }
+    };
+
+    const onUserMedia = (stream) => {
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+            const capabilities = videoTrack.getCapabilities?.() || {};
+            setTorchAvailable(!!capabilities.torch);
+        }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setLoading(true);
+        setStatus("Cargando imagen...");
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const img = new Image();
+                img.onload = async () => {
+                    setStatus("Analizando foto...");
+                    setUploadedImage(event.target.result);
+
+                    // Extraer descriptor de la imagen cargada
+                    const { getFaceDataFromImage } = await import("../services/faceServiceLocal");
+                    const data = await getFaceDataFromImage(img);
+
+                    if (data) {
+                        setStatus("¡Rostro detectado!");
+                        setQualityCode("OK");
+                        setQualityError("¡Foto lista!");
+                        setLoading(false);
+                    } else {
+                        alert("No se detectó un rostro claro en la foto.");
+                        setUploadedImage(null);
+                        setLoading(false);
+                        setStatus("Error en foto");
+                    }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error(err);
+            alert("Error al procesar la imagen");
+            setLoading(false);
+        }
+    };
 
     const initModels = async () => {
         setStatus("Iniciando IA...");
@@ -2000,7 +2080,7 @@ const QuickRegisterModal = ({ data, onClose }) => {
     };
 
     const handleCapture = async () => {
-        if (!webcamRef.current) return;
+        if (!webcamRef.current && !uploadedImage) return;
 
         if (!formData.name || !formData.dni) {
             alert("Completa nombre y DNI");
@@ -2017,7 +2097,16 @@ const QuickRegisterModal = ({ data, onClose }) => {
         setStatus("Procesando...");
 
         try {
-            const imageSrc = webcamRef.current.getScreenshot();
+            let imageSrc;
+            let videoElement = null;
+
+            if (uploadedImage) {
+                imageSrc = uploadedImage;
+            } else {
+                imageSrc = webcamRef.current.getScreenshot();
+                videoElement = webcamRef.current.video;
+            }
+
             if (!imageSrc) throw new Error("No hay imagen");
 
             const img = new Image();
@@ -2042,7 +2131,15 @@ const QuickRegisterModal = ({ data, onClose }) => {
             );
             const photoUrl = canvas.toDataURL("image/jpeg", 0.8);
 
-            const faceData = await getFaceDataLocal(webcamRef.current.video);
+            const { getFaceDataLocal, getFaceDataFromImage } = await import("../services/faceServiceLocal");
+
+            let faceData;
+            if (uploadedImage) {
+                faceData = await getFaceDataFromImage(img);
+            } else {
+                faceData = await getFaceDataLocal(videoElement);
+            }
+
             if (!faceData) throw new Error("No se detecta rostro claramente");
 
             const allUsers = await getUsers(true);
@@ -2201,15 +2298,96 @@ const QuickRegisterModal = ({ data, onClose }) => {
                                 border: `2px solid ${qualityCode === "OK" ? "#22c55e" : qualityCode === "NO_FACE" ? "rgba(255,255,255,0.1)" : "#f59e0b"}`,
                             }}
                         >
-                            <Webcam
-                                audio={false}
-                                ref={webcamRef}
-                                screenshotFormat="image/jpeg"
-                                width="100%"
-                                height="100%"
-                                videoConstraints={{ facingMode: "user" }}
-                                style={{ objectFit: "cover" }}
-                            />
+                            {uploadedImage ? (
+                                <img
+                                    src={uploadedImage}
+                                    alt="Uploaded"
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+                                />
+                            ) : (
+                                <Webcam
+                                    key={cameraKey}
+                                    audio={false}
+                                    ref={webcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    width="100%"
+                                    height="100%"
+                                    videoConstraints={{ facingMode: { ideal: facingMode } }}
+                                    onUserMedia={onUserMedia}
+                                    style={{ objectFit: "cover" }}
+                                />
+                            )}
+
+                            {!uploadedImage && (
+                                <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
+                                    {torchAvailable && facingMode === 'environment' && (
+                                        <button
+                                            onClick={toggleTorch}
+                                            className="glass-button"
+                                            style={{
+                                                padding: '12px',
+                                                borderRadius: '50%',
+                                                width: '50px',
+                                                height: '50px',
+                                                minWidth: '50px',
+                                                background: isTorchOn ? '#fbbf24' : 'rgba(0,0,0,0.5)',
+                                                border: '2px solid rgba(255,255,255,0.5)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <Lightbulb style={{ width: '22px', height: '22px' }} color={isTorchOn ? "black" : "white"} />
+                                        </button>
+                                    )}
+
+                                    <button
+                                        onClick={toggleCamera}
+                                        className="glass-button"
+                                        style={{
+                                            padding: '12px',
+                                            borderRadius: '50%',
+                                            width: '50px',
+                                            height: '50px',
+                                            minWidth: '50px',
+                                            background: 'rgba(59, 130, 246, 0.9)',
+                                            border: '2px solid rgba(255,255,255,0.5)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        <SwitchCamera style={{ width: '22px', height: '22px' }} color="white" />
+                                    </button>
+                                </div>
+                            )}
+
+                            <div style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 100 }}>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                />
+                                <button
+                                    onClick={() => uploadedImage ? setUploadedImage(null) : fileInputRef.current.click()}
+                                    className="glass-button"
+                                    style={{
+                                        padding: '10px 15px',
+                                        borderRadius: '12px',
+                                        background: uploadedImage ? 'rgba(239, 68, 68, 0.8)' : 'rgba(16, 185, 129, 0.8)',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        fontSize: '0.7rem'
+                                    }}
+                                >
+                                    {uploadedImage ? <X size={14} /> : <Upload size={14} />}
+                                    {uploadedImage ? 'CANCELAR FOTO' : 'SUBIR FOTO'}
+                                </button>
+                            </div>
                             {faceBox && (
                                 <div className="face-box-overlay">
                                     <div

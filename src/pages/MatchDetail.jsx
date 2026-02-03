@@ -96,6 +96,7 @@ const MatchDetail = () => {
             photo: user.photos?.[0] || user.photo || null,
             number: user.dorsal ? parseInt(user.dorsal) : (currentPlayers.length + 1),
             goals: 0,
+            assists: 0,
             yellowCards: 0,
             redCard: false,
             status: 'titular'
@@ -131,6 +132,7 @@ const MatchDetail = () => {
                                     photo: u.photos?.[0] || u.photo || null,
                                     number: (u.dorsal && !isNaN(parseInt(u.dorsal))) ? parseInt(u.dorsal) : (idx + 1),
                                     goals: 0,
+                                    assists: 0,
                                     yellowCards: 0,
                                     redCard: false,
                                     status: 'titular'
@@ -148,6 +150,7 @@ const MatchDetail = () => {
                                     photo: u.photos?.[0] || u.photo || null,
                                     number: (u.dorsal && !isNaN(parseInt(u.dorsal))) ? parseInt(u.dorsal) : (idx + 1),
                                     goals: 0,
+                                    assists: 0,
                                     yellowCards: 0,
                                     redCard: false,
                                     status: 'titular'
@@ -212,6 +215,27 @@ const MatchDetail = () => {
                     .pop()?.originalIdx;
                 if (lastGoalIdx !== undefined) {
                     allEvents.splice(lastGoalIdx, 1);
+                    extraData.events = allEvents;
+                }
+            }
+        }
+
+        if (field === 'assists') {
+            const oldQty = parseInt(oldValue) || 0;
+            const newQty = parseInt(value) || 0;
+            if (newQty > oldQty) {
+                extraData.events = [...(targetMatch.events || []), {
+                    id: Date.now().toString(), type: 'assist', player: player.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
+                    teamSide: teamType, time: timeStr, timestamp: Date.now()
+                }];
+            } else if (newQty < oldQty) {
+                const allEvents = [...(targetMatch.events || [])];
+                const lastIdx = allEvents.map((e, idx) => ({ ...e, originalIdx: idx }))
+                    .filter(e => e.type === 'assist' && e.player === player.name && e.teamSide === teamType)
+                    .pop()?.originalIdx;
+                if (lastIdx !== undefined) {
+                    allEvents.splice(lastIdx, 1);
                     extraData.events = allEvents;
                 }
             }
@@ -770,6 +794,7 @@ const MatchDetail = () => {
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
                                                     }}>
                                                         {event.type === 'goal' && <Trophy size={16} />}
+                                                        {event.type === 'assist' && <Activity size={16} />}
                                                         {event.type === 'yellow_card' && <Square size={18} fill="#fbbf24" color="#fbbf24" style={{ borderRadius: '2px' }} />}
                                                         {event.type === 'red_card' && <Square size={18} fill="#ef4444" color="#ef4444" style={{ borderRadius: '2px' }} />}
                                                         {event.type === 'substitution' && <Repeat size={16} />}
@@ -777,6 +802,7 @@ const MatchDetail = () => {
                                                     <div>
                                                         <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>
                                                             {event.type === 'goal' && '¡GOOOL!'}
+                                                            {event.type === 'assist' && '¡ASISTENCIA!'}
                                                             {event.type === 'yellow_card' && 'Tarjeta Amarilla'}
                                                             {event.type === 'red_card' && 'Tarjeta Roja'}
                                                             {event.type === 'substitution' && 'Cambio de Jugador'}
@@ -973,28 +999,43 @@ const SquadColumn = ({ title, players, teamType, onAdd, onSubstitution, onUpdate
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Goles:</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>G:</span>
                             <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px' }}>
                                 <button
                                     onClick={() => onUpdate(idx, 'goals', Math.max(0, (parseInt(p.goals) || 0) - 1))}
                                     disabled={p.status === 'suplente' || p.status === 'expulsado'}
                                     style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.05)' : '#ef4444', cursor: p.status === 'suplente' || p.status === 'expulsado' ? 'not-allowed' : 'pointer', padding: '2px' }}
                                 >
-                                    <Minus size={12} />
+                                    <Minus size={10} />
                                 </button>
-                                <input
-                                    type="number"
-                                    value={p.goals}
-                                    disabled={p.status === 'suplente' || p.status === 'expulsado'}
-                                    onChange={(e) => onUpdate(idx, 'goals', e.target.value)}
-                                    style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.2)' : 'white', width: '25px', textAlign: 'center', appearance: 'none', fontSize: '0.8rem', fontWeight: 'bold' }}
-                                />
+                                <div style={{ minWidth: '15px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>{p.goals || 0}</div>
                                 <button
                                     onClick={() => onUpdate(idx, 'goals', (parseInt(p.goals) || 0) + 1)}
                                     disabled={p.status === 'suplente' || p.status === 'expulsado'}
                                     style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.05)' : '#10b981', cursor: p.status === 'suplente' || p.status === 'expulsado' ? 'not-allowed' : 'pointer', padding: '2px' }}
                                 >
-                                    <Plus size={12} />
+                                    <Plus size={10} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>A:</span>
+                            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px' }}>
+                                <button
+                                    onClick={() => onUpdate(idx, 'assists', Math.max(0, (parseInt(p.assists) || 0) - 1))}
+                                    disabled={p.status === 'suplente' || p.status === 'expulsado'}
+                                    style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.05)' : '#3b82f6', cursor: p.status === 'suplente' || p.status === 'expulsado' ? 'not-allowed' : 'pointer', padding: '2px' }}
+                                >
+                                    <Minus size={10} />
+                                </button>
+                                <div style={{ minWidth: '15px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>{p.assists || 0}</div>
+                                <button
+                                    onClick={() => onUpdate(idx, 'assists', (parseInt(p.assists) || 0) + 1)}
+                                    disabled={p.status === 'suplente' || p.status === 'expulsado'}
+                                    style={{ background: 'none', border: 'none', color: p.status === 'suplente' || p.status === 'expulsado' ? 'rgba(255,255,255,0.05)' : '#3b82f6', cursor: p.status === 'suplente' || p.status === 'expulsado' ? 'not-allowed' : 'pointer', padding: '2px' }}
+                                >
+                                    <Plus size={10} />
                                 </button>
                             </div>
                         </div>

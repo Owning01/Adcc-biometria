@@ -1,6 +1,6 @@
 {
     "android":  {
-                    "version":  "0.0.174",
+                    "version":  "0.0.182",
                     "url":  "https://recofacial-7cea1.web.app/adcc-biometric.apk",
                     "mandatory":  true
                 },

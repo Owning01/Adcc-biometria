@@ -1,11 +1,17 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const jimp = require("jimp");
+const Fuse = require("fuse.js"); // Necesitamos agregar fuse.js al package.json de functions
 
 // Variables globales para reutilizar la carga
 let faceapi;
 let tf;
 let modelsLoaded = false;
+
+// Inicialización de Firebase
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
 
 const initializeIA = async () => {
     if (modelsLoaded) return;
@@ -31,7 +37,123 @@ const initializeIA = async () => {
     modelsLoaded = true;
 };
 
-admin.initializeApp();
+// ==========================================
+// API DE VOZ PARA ÁRBITROS (Watch/Shortcuts)
+// ==========================================
+
+// Configuración de comandos (Duplicada del frontend para consistencia)
+const COMMANDS = [
+    { id: 'goal_local', keys: ['gol local', 'gol equipo a', 'gol del local', 'tanto local'] },
+    { id: 'goal_visitor', keys: ['gol visitante', 'gol equipo b', 'gol del visitante', 'tanto visitante'] },
+    { id: 'yellow_card', keys: ['tarjeta amarilla', 'amonestación', 'amarilla'] },
+    { id: 'red_card', keys: ['tarjeta roja', 'roja', 'expulsión'] },
+    { id: 'substitution', keys: ['cambio', 'sustitución', 'sale'] },
+    { id: 'start_match', keys: ['iniciar partido', 'arrancar', 'comenzar', 'pitazo inicial'] },
+    { id: 'halftime', keys: ['entretiempo', 'final primer tiempo', 'descanso', 'medio tiempo'] },
+    { id: 'finish_match', keys: ['final del partido', 'terminar partido', 'fin del juego', 'finalizar'] }
+];
+
+const fuse = new Fuse(COMMANDS, { keys: ['keys'], threshold: 0.4, includeScore: true });
+
+/**
+ * Función que recibe comandos de voz (texto transcrito) desde Apple Watch / Android.
+ * URL: https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/apiRefereeVoice
+ * Method: POST
+ * Body: { "text": "Gol local", "matchId": "...", "key": "SECRET_KEY" }
+ */
+// Force Update
+exports.apiRefereeVoice = functions.https.onRequest(async (req, res) => {
+    // 1. CORS Headers para permitir llamadas desde cualquier lado (Watch, web, etc)
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        const { text, matchId, secretKey } = req.body;
+
+        // Validación básica de seguridad (en producción usar autenticación real)
+        if (!text || !matchId) {
+            return res.status(400).json({ ok: false, message: "Faltan datos (text, matchId)" });
+        }
+
+        // TODO: Validar secretKey si se desea mayor seguridad simple
+
+        console.log(`🎤 API Audio recibido para Match ${matchId}: "${text}"`);
+
+        // 2. Procesamiento de Texto (NLP Básico)
+        // Normalizar texto
+        const transcript = text.toLowerCase().trim();
+
+        // Buscar comando
+        const results = fuse.search(transcript);
+
+        if (results.length === 0 || results[0].score > 0.4) {
+            return res.status(200).json({ ok: false, message: "No entendí la orden." });
+        }
+
+        const commandId = results[0].item.id;
+
+        // Extraer dorsales
+        const numbers = (transcript.match(/\d+/g) || []).map(n => parseInt(n));
+        const dorsal = numbers.length > 0 ? numbers[0] : null;
+        const dorsal2 = numbers.length > 1 ? numbers[1] : null;
+
+        console.log(`✅ Comando detectado: ${commandId}, Dorsales: ${numbers}`);
+
+        // 3. Obtener el partido de Firestore
+        const matchRef = admin.firestore().collection('matches').doc(matchId);
+        const matchSnap = await matchRef.get();
+
+        if (!matchSnap.exists) {
+            return res.status(404).json({ ok: false, message: "Partido no encontrado" });
+        }
+
+        const matchData = matchSnap.data();
+
+        // 4. Lógica de Negocio (Actualizar Firestore)
+        // NOTA: Replicamos lógica simplificada del frontend. Lo ideal sería tener un módulo compartido.
+
+        if (commandId === 'goal_local') {
+            await matchRef.update({
+                'score.a': admin.firestore.FieldValue.increment(1)
+            });
+            // TODO: Si hay dorsal, buscar jugador y sumarle gol
+        }
+        else if (commandId === 'goal_visitor') {
+            await matchRef.update({
+                'score.b': admin.firestore.FieldValue.increment(1)
+            });
+        }
+        else if (commandId === 'start_match') {
+            await matchRef.update({ status: 'live', startTime: Date.now() });
+        }
+        else if (commandId === 'finish_match') {
+            await matchRef.update({ status: 'finished', endTime: Date.now() });
+        }
+
+        // Respuesta exitosa para el reloj
+        return res.status(200).json({
+            ok: true,
+            message: "Comando procesado",
+            command: commandId,
+            dorsal: dorsal
+        });
+
+    } catch (error) {
+        console.error("Error en apiRefereeVoice:", error);
+        return res.status(500).json({ ok: false, message: "Error interno", error: error.message });
+    }
+});
+
+
+// ==========================================
+// FUNCIÓN EXISTENTE DE RECONOCIMIENTO FACIAL
+// ==========================================
 
 // ✅ OPTIMIZACIÓN: Rate limiting simple para prevenir abuso
 let invocationCount = 0;

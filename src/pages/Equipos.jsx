@@ -388,7 +388,32 @@ const Equipos = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                             <div>
                                 <h2 style={{ margin: 0 }}>Gestión de {selectedTournament.name}</h2>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '5px' }}>Administra partidos y registra jugadores directamente</p>
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginTop: '5px' }}>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Administra partidos y registra jugadores directamente</p>
+                                    <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '5px', color: 'var(--primary)' }}>{selectedTournament.category}</span>
+                                </div>
+                                {selectedTournament.winner ? (
+                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', color: '#fbbf24', fontWeight: 'bold' }}>
+                                        <Trophy size={16} /> CAMPEÓN: {selectedTournament.winner.toUpperCase()}
+                                        <button onClick={() => {
+                                            if (confirm("¿Quitar campeón?")) updateTournament(selectedTournament.id, { winner: null });
+                                        }} style={{ background: 'none', border: 'none', color: '#f87171', fontSize: '0.6rem', cursor: 'pointer' }}>[X]</button>
+                                    </div>
+                                ) : (
+                                    <div style={{ marginTop: '10px' }}>
+                                        <select
+                                            onChange={(e) => {
+                                                if (e.target.value && confirm(`¿Confirmar a ${e.target.value} como campeón?`)) {
+                                                    updateTournament(selectedTournament.id, { winner: e.target.value });
+                                                }
+                                            }}
+                                            style={{ background: 'rgba(251, 191, 36, 0.1)', border: '1px solid #fbbf24', color: '#fbbf24', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                                        >
+                                            <option value="">+ ASIGNAR CAMPEÓN</option>
+                                            {[...availableTeams, ...tempTeams].map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                             <button onClick={() => setShowNewMatch(true)} className="glass-button" style={{ background: 'var(--success)', fontSize: '0.8rem' }}><Plus size={18} /> Agregar Encuentro</button>
                         </div>
@@ -614,7 +639,7 @@ const QuickRegisterModal = ({ data, onClose }) => {
     };
 
     const handleCapture = async () => {
-        if (!webcamRef.current) return;
+        if (!webcamRef.current && !uploadedImage) return;
         setLoading(true);
         setStatus('Procesando...');
         try {
