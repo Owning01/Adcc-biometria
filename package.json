@@ -1,14 +1,14 @@
 {
   "name": "reconocimiento-facial",
   "private": true,
-  "version": "0.0.191",
+  "version": "0.0.193",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1"
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./god-mode.ps1"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
