@@ -2,19 +2,30 @@
     "name": "functions",
     "description": "Cloud Functions for Firebase",
     "scripts": {
-        "deploy": "firebase deploy --only functions"
+        "build": "tsc",
+        "build:watch": "tsc --watch",
+        "serve": "npm run build && firebase emulators:start --only functions",
+        "shell": "npm run build && firebase functions:shell",
+        "start": "npm run shell",
+        "deploy": "firebase deploy --only functions",
+        "logs": "firebase functions:log"
     },
     "engines": {
         "node": "20"
     },
-    "main": "index.js",
+    "main": "lib/index.js",
     "dependencies": {
+        "@tensorflow/tfjs": "^4.10.0",
+        "face-api.js": "^0.22.2",
         "firebase-admin": "^12.0.0",
         "firebase-functions": "^5.1.1",
-        "face-api.js": "^0.22.2",
-        "@tensorflow/tfjs": "^4.10.0",
-        "jimp": "^0.22.10",
-        "fuse.js": "^7.0.0"
+        "fuse.js": "^7.0.0",
+        "jimp": "^0.22.10"
     },
-    "private": true
+    "private": true,
+    "devDependencies": {
+        "@types/node": "^25.2.0",
+        "firebase-functions-test": "^3.4.1",
+        "typescript": "^5.9.3"
+    }
 }

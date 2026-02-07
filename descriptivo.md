@@ -24,7 +24,9 @@ Este archivo es la **Fuente de Verdad** para la coordinación entre diferentes c
 | 2026-01-25 | Arquitecto | Creación de descriptivo.md | Se inicializa el sistema de coordinación modular. |
 | 2026-01-25 | Lógica | Motor Híbrido MP + FaceAPI | Implementación de Sentinel (MediaPipe) + Deep Recognition (Face-API) para velocidad y precisión. |
 | 2026-01-26 | Visual/Lógica | Optimización y Gestión Directa | Remoción de animaciones para máximo rendimiento. Gestión de equipos desde Home. |
-| 2026-01-30 | Antigravity | **Skills & Offline-First** | Creación de carpeta `.agent/skills`. Implementación de Event-Sourcing para eventos de partido, optimización UX para exteriores (alto contraste) y soporte para vibración háptica. |
+| 2026-01-30 | Antigravity | **Skills & Offline-First** | Creación de carpeta `.agent/skills`. Implementación de Event-Sourcing para eventos de partido. |
+| 2026-02-04 | Arquitecto/Sistemas | **God Mode & APK Diagnostics** | Unificación de build/deploy en `god-mode.ps1`. Diagnóstico avanzado de carga de modelos para APK (cache-busting via `ai_models`). |
+| 2026-02-06 | Arquitecto | **Arquitectura & Limpieza** | Consolidación de scripts legados en `temp/`. Actualización de `.antigravityrules` y `.antigravityignore`. |
 
 ---
 

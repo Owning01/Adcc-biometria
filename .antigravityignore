@@ -1,0 +1,14 @@
+node_modules/
+dist/
+temp/
+android/app/build/
+android/.gradle/
+.git/
+package-lock.json
+*.png
+*.jpg
+*.jpeg
+*.svg
+public/ai_models/
+dist/ai_models/
+functions/node_modules/

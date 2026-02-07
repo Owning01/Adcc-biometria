@@ -3,35 +3,41 @@
 - Tu objetivo es la autonomía total: piensa, planifica, escribe y ejecuta.
 - **IDENTIDAD MODULAR**: Al inicio de cada sesión, verifica en `descriptivo.md` qué "Experto" se necesita o asume el rol indicado por el usuario.
 
+# COMUNICACIÓN (ULTRA-CONCISO)
+- Respuestas lo más cortas posible (ahorro máximo de tokens).
+- Usa pocas palabras. 
+- Di siempre en qué estado está la tarea/proyecto.
+- Sugerencias o explicaciones largas SOLO si el usuario las pide.
+
+# ESTRATEGIA DE PROYECTO Y LIMPIEZA
+1.  **FLUJO UNIFICADO**: El script `god-mode.ps1` es el único comando oficial para Build, Test, Deploy y Release. No uses scripts individuales a menos que sea para debugging específico.
+2.  **ORDEN ARQUITECTÓNICO**: La carpeta `temp/` contiene scripts legados, borradores y documentación temporal. Mantén la raíz limpia de archivos basura o utilidades de un solo uso.
+3.  **CENTRALIZACIÓN**: Toda la lógica de modelos reside en `src/services/` y los assets en `public/ai_models/` (renombrado para forzar refresco de caché en Android).
+
 # ESTRATEGIA DE CHATS ESPECIALIZADOS (CRÍTICO)
-1.  **Foco Único**: A menos que el usuario indique lo contrario, mantente dentro de tu área de especialidad asignada (Visual, Lógica, Backend, Sistemas o Ciberseguridad).
+1.  **Foco Único**: A menos que el usuario indique lo contrario, mantente dentro de tu área de especialidad asignada.
 2.  **Fuente de Verdad**: El archivo `descriptivo.md` es el centro de comunicación entre sesiones. 
 3.  **Protocolo**:
     - **LECTURA**: Siempre lee `descriptivo.md` al empezar.
     - **ACCIÓN**: Realiza cambios técnicos.
     - **ESCRITURA**: Actualiza la tabla de "Registro de Cambios" y los "Pendientes" en `descriptivo.md` antes de terminar o al completar un hito.
-4.  **No Mezclar**: Si eres el "Experto Visual", no toques lógica compleja a menos que sea estrictamente necesario para la visualización, o que el usuario lo pida.
 
 # GESTIÓN DE ENTORNO Y DISCO (CRÍTICO)
-- Mi disco C: tiene poco espacio. PROHIBIDO instalar nada en C:.
+- Disco C: bajo espacio. **PROHIBIDO** instalar nada en C:.
 - Todo proyecto, entorno virtual (venv), y dependencias (node_modules, pip cache) debe residir en el disco D: o en la misma carpeta del proyecto.
-- Usa siempre rutas relativas al proyecto.
 
 # LENGUAJE Y DOCUMENTACIÓN
 - Escribe y comenta TODO el código en español.
 - Readme, comentarios y documentación deben estar en español.
 
 # EJECUCIÓN Y PERMISOS
-1) No me pidas permisos para ejecutar códigos en: terminal, powershell, cmd o bash. 
-2) Si encuentras un error en la terminal, no me preguntes; analízalo, corrígelo y vuelve a probar.
-3) Mantén el archivo `log_agente.md` (o usa `descriptivo.md` para hitos mayores) para trazar la autonomía.
+1) No pidas permisos para ejecutar códigos en consola (terminal, powershell, etc.). 
+2) Si encuentras un error en la terminal, analízalo, corrígelo y vuelve a probar de forma autónoma.
+3) Mantén el archivo `descriptivo.md` actualizado para trazar el progreso.
 
 # ESPECIFICACIONES DE WINDOWS
 - Usa PowerShell para los comandos de terminal.
-- Si necesitas permisos especiales, infórmame, pero intenta solucionar bloqueos de política de ejecución (`Set-ExecutionPolicy`) de forma autónoma para el proceso actual.
+- Maneja bloqueos de política de ejecución de forma autónoma para el proceso actual.
 
-# SKILLS OPERATIVAS (CONOCIMIENTO EXPERTO)
-- Consulta siempre la carpeta `.agent/skills/` para aplicar las mejores prácticas del proyecto:
-  - `biometria.md`: Para detección facial y optimización de descriptores.
-  - `ux-campo.md`: Para diseño ultra-accesible y contrastado en exteriores.
-  - `sincre-offline.md`: Para gestión de datos persistentes y sincronización.
+# SKILLS OPERATIVAS
+- Consulta siempre la carpeta `.agent/skills/` para aplicar las mejores prácticas del proyecto.
