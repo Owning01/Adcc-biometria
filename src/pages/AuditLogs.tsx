@@ -1,7 +1,16 @@
+/**
+ * @file AuditLogs.tsx
+ * @description PÁGINA DE AUDITORÍA
+ * Visualiza el registro inmutable de acciones críticas del sistema (Logins, Ediciones, Borrados).
+ * Permite filtrar por usuario, fecha o tipo de evento.
+ */
 import React, { useState, useEffect } from 'react';
 import { getAuditLogs, AuditLog } from '../services/auditService';
 import { Shield, Clock, User, Trash2, Edit, LogIn, ChevronRight, Search } from 'lucide-react';
 
+// ============================================================================
+// 1. COMPONENTE PRINCIPAL & ESTADO
+// ============================================================================
 const AuditLogs = () => {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -16,6 +25,9 @@ const AuditLogs = () => {
         fetchLogs();
     }, []);
 
+    // ============================================================================
+    // 2. HELPERS VISUALES (ICONOS & LABELS)
+    // ============================================================================
     const getTypeIcon = (type: string) => {
         switch (type) {
             case 'access': return <LogIn size={16} className="text-blue-400" />;

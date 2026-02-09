@@ -1,8 +1,17 @@
+/**
+ * @file Stats.tsx
+ * @description PÁGINA DE ESTADÍSTICAS
+ * Dashboard analítico que muestra el rendimiento histórico de jugadores y equipos.
+ * Permite la edición manual de estadísticas base (goles/asistencias heredados).
+ */
 import React, { useState, useEffect } from 'react';
 import { calculateAllStats, calculateTeamStats } from '../services/statsService';
 import { getUsers, updateUser, User } from '../services/db';
 import { LayoutGrid, Users, Trophy, Search, Activity, Calendar, Clock, BarChart2, ChevronRight, User as UserIcon, Edit2, Save, X } from 'lucide-react';
 
+// ============================================================================
+// 1. HELPER INTERFACES
+// ============================================================================
 interface PlayerStats {
     totalGoals: number;
     totalAssists: number;
@@ -17,6 +26,9 @@ interface TeamStats {
     championshipsByCat: Record<string, number>;
 }
 
+// ============================================================================
+// 2. MAIN COMPONENT & STATE
+// ============================================================================
 const Stats = () => {
     const [activeTab, setActiveTab] = useState('players'); // 'players', 'teams'
     const [loading, setLoading] = useState(true);
@@ -246,6 +258,10 @@ const Stats = () => {
         </div>
     );
 };
+
+// ============================================================================
+// 3. HELPER COMPONENTS (CARDS & EDITABLES)
+// ============================================================================
 
 const StatCard = ({ label, value, icon, editable = false, baseValue = 0, onSave }: { label: string, value: any, icon: any, editable?: boolean, baseValue?: any, onSave?: (v: any) => void }) => {
     const [isEditing, setIsEditing] = useState(false);
