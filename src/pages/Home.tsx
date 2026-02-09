@@ -70,7 +70,9 @@ import {
 import releaseInfo from '../release.json';
 import adccLogo from "../Applogo.png";
 
-// --- HELPER COMPONENTS ---
+// ============================================================================
+// 1. HELPER COMPONENTS (Cards, Badges)
+// ============================================================================
 
 interface DashboardCardProps {
     title: string;
@@ -130,6 +132,9 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, onClick }) => {
 };
 
 
+// ============================================================================
+// 2. MAIN COMPONENT & STATE
+// ============================================================================
 /**
  * Componente principal Home.
  * Renderiza el dashboard administrativo y la tabla de gestión de usuarios.
@@ -178,6 +183,10 @@ const Home = ({ userRole }: { userRole?: string }) => {
         currentCat: "",
     });
 
+    // ============================================================================
+    // 3. EFFECT HOOKS (Data Fetching & Subscriptions)
+    // ============================================================================
+
     useEffect(() => {
         // Fetch version para el boton
         fetch("https://adccbiometric.web.app/version.json?t=" + Date.now())
@@ -215,6 +224,10 @@ const Home = ({ userRole }: { userRole?: string }) => {
             unsubMatches();
         };
     }, []);
+
+    // ============================================================================
+    // 4. ACTION HANDLERS (CRUD, Modals)
+    // ============================================================================
 
     /**
      * Ejecuta la eliminación de un usuario específico.
@@ -306,6 +319,10 @@ const Home = ({ userRole }: { userRole?: string }) => {
         setShowQuickRegister(true);
     };
 
+    // ============================================================================
+    // 5. DATA PROCESSING & FILTERING
+    // ============================================================================
+
     // --- LÓGICA DE FILTRADO Y PROCESAMIENTO DE DATOS ---
 
     // Obtener lista única de equipos ordenada alfabéticamente
@@ -349,6 +366,10 @@ const Home = ({ userRole }: { userRole?: string }) => {
         if (u.team !== selectedTeam) return false;
         return cats.includes(selectedCategory);
     });
+
+    // ============================================================================
+    // 6. RENDER UI
+    // ============================================================================
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando...</div>;
 

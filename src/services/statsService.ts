@@ -1,7 +1,19 @@
+/**
+ * @file statsService.ts
+ * @description SERVICIO DE ESTADÍSTICAS
+ * Calcula métricas agregadas para jugadores y equipos basándose en el historial de partidos.
+ *
+ * Funciones Principales:
+ * 1. Estadísticas de Jugadores (Goles, Asistencias, Tiempo en Liga).
+ * 2. Estadísticas de Equipos (Campeonatos, Antigüedad).
+ */
 import { db } from '../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { User } from './db';
 
+// ============================================================================
+// 1. ESTADÍSTICAS DE JUGADORES
+// ============================================================================
 /**
  * Calculates comprehensive statistics for all players.
  * @returns {Promise<Object>} Object with userId as key and stats as value.
@@ -104,6 +116,9 @@ export const calculateAllStats = async (allUsers: User[] = []) => {
     }
 };
 
+// ============================================================================
+// 2. ESTADÍSTICAS DE EQUIPOS
+// ============================================================================
 /**
  * Calculates team statistics: championships and years in league.
  */

@@ -1,11 +1,26 @@
 import Fuse from 'fuse.js';
 
 /**
+ * @file voiceService.ts
+ * @description SERVICIO DE RECONOCIMIENTO DE VOZ (REF-VOICE)
+ * Sistema de comandos por voz para árbitros en campo.
+ *
+ * Características:
+ * 1. Listening Continuo: Se reactiva automáticamente si el SO lo corta.
+ * 2. Hotword Detection: Detecta "Árbitro", "Juez", etc.
+ * 3. Fuzzy Matching: Entiende variaciones de comandos ("Gol local", "Anota local", "Uno pal local").
+ * 4. Feedback Auditivo: Confirma las acciones hablando (TTS).
+ */
+
+/**
  * Servicio de Reconocimiento de Voz para Árbitros (Ref-Voice)
  * V2: Optimizado para alta sensibilidad y respuesta rápida en campo.
  */
 
 class VoiceRefereeService {
+    // ============================================================================
+    // 1. CONFIG & STATE
+    // ============================================================================
     private recognition: any = null;
     private synthesis: SpeechSynthesis = window.speechSynthesis;
     public isListening: boolean = false;
@@ -61,6 +76,9 @@ class VoiceRefereeService {
         this.init();
     }
 
+    // ============================================================================
+    // 2. INICIALIZACIÓN (WEB SPEECH API)
+    // ============================================================================
     private init() {
         const win = window as any;
         const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
@@ -103,6 +121,9 @@ class VoiceRefereeService {
         };
     }
 
+    // ============================================================================
+    // 3. RECOGNITION LOOP & RESTART
+    // ============================================================================
     public start(callback: (data: any) => void) {
         this.onCommand = callback;
         this.isListening = true;
@@ -132,6 +153,9 @@ class VoiceRefereeService {
         this.speak("Apagado.");
     }
 
+    // ============================================================================
+    // 4. COMMAND PROCESSING (NLP / FUZZY LOGIC)
+    // ============================================================================
     private processCommand(transcript: string) {
         console.log("🎤 Analizando:", transcript);
 

@@ -13,12 +13,15 @@ let faceEmbedder = null;
 let faceDetector = null;
 let offscreenCanvas = null;
 
+// ============================================================================
+// 1. INICIALIZACIÓN DE MODELOS
+// ============================================================================
 /**
  * Inicializa los modelos de visión de Google MediaPipe.
  * Carga el detector de rostros (BlazeFace) y el generador de embeddings (MobileNet V3)
  * para realizar reconocimiento facial rápido y ligero en el navegador.
  * Intenta delegar el procesamiento a la GPU para máximo rendimiento.
- * 
+ *
  * @returns {Promise<boolean>} - True si la carga fue exitosa.
  */
 export const loadMediaPipeModels = async () => {
@@ -54,11 +57,14 @@ export const loadMediaPipeModels = async () => {
     }
 };
 
+// ============================================================================
+// 2. GENERACIÓN DE VECTORES (EMBEDDINGS)
+// ============================================================================
 /**
  * Genera un vector numérico (embedding) único para el rostro detectado en el video.
  * Recorta y centra el rostro antes de procesarlo para mejorar la precisión.
- * 
- * @param {HTMLVideoElement} videoElement 
+ *
+ * @param {HTMLVideoElement} videoElement
  * @returns {Promise<Float32Array|null>} - Vector de características del rostro.
  */
 export const getMediaPipeEmbedding = async (videoElement) => {
@@ -135,10 +141,13 @@ export const cosineSimilarity = (vecA, vecB) => {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
+// ============================================================================
+// 3. DETECCIÓN RÁPIDA (SOLO POSICIONAMIENTO)
+// ============================================================================
 /**
  * Detecta rostros de forma ultra-rápida (sólo coordenadas, sin embedding).
  * Usado para dibujar el recuadro verde/rojo en tiempo real en la UI.
- * 
+ *
  * @param {HTMLVideoElement} videoElement
  * @returns {Promise<Object|null>}
  */

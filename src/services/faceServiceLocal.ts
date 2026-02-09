@@ -1,13 +1,26 @@
+/**
+ * @file faceServiceLocal.ts
+ * @description CLIENT-SIDE FACE RECOGNITION (FACE-API.JS)
+ * Implementa el reconocimiento facial profundo usando TensorFlow.js en el cliente.
+ * 
+ * Funciones Principales:
+ * 1. Carga de modelos neuronales (SSD Mobilenet V1, Landmarks, Recognition).
+ * 2. Extracción de descriptores faciales (128 floats) de video e imágenes.
+ * 3. Fallback inteligente de carga de modelos (Local -> Nube).
+ */
 import * as faceapi from 'face-api.js';
 
 let modelsLoaded = false;
 
+// ============================================================================
+// 1. CARGA DE MODELOS (CLIENT-SIDE)
+// ============================================================================
 /**
  * Carga los modelos de reconocimiento facial en el cliente (navegador).
  * Utiliza Face-API.js sobre TensorFlow.js.
  * Implementa una estrategia de redundancia (fallback) para intentar cargar los modelos
  * desde múltiples fuentes (Nube o Local) si alguna falla.
- * 
+ *
  * @returns {Promise<Object>} - Resultado de la carga {success: boolean, error?: string}
  */
 export const loadModelsLocal = async () => {
@@ -100,9 +113,12 @@ export const loadModelsLocal = async () => {
     }
 };
 
+// ============================================================================
+// 2. PROCESAMIENTO FACIAL (VIDEO & IMAGEN)
+// ============================================================================
 /**
  * Procesa la imagen del video directamente en el navegador para obtener datos faciales.
- * 
+ *
  * @param {HTMLVideoElement} videoElement - Elemento de video HTML5.
  * @returns {Promise<Object|null>} - Objeto con { descriptor, detection } o null si no hay rostro.
  */
