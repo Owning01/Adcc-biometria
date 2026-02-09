@@ -2,7 +2,7 @@ import * as faceapi from 'face-api.js';
 
 // URL de la Cloud Function de Firebase.
 // Esta función procesa la imagen en el servidor (backend) para reducir la carga en dispositivos móviles lentos.
-const CLOUD_FUNCTION_URL = 'https://us-central1-recofacial-7cea1.cloudfunctions.net/processFace';
+const CLOUD_FUNCTION_URL = 'https://us-central1-adccbiometric.cloudfunctions.net/processFace';
 
 /**
  * Inicializa el servicio en modo nube.

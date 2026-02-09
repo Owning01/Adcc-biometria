@@ -1,21 +1,22 @@
 import { db } from '../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { User } from './db';
 
 /**
  * Calculates comprehensive statistics for all players.
  * @returns {Promise<Object>} Object with userId as key and stats as value.
  */
-export const calculateAllStats = async (allUsers = []) => {
+export const calculateAllStats = async (allUsers: User[] = []) => {
     try {
         const matchesSnapshot = await getDocs(collection(db, 'matches'));
         const tournamentsSnapshot = await getDocs(collection(db, 'tournaments'));
 
-        const tournamentsMap = {};
+        const tournamentsMap: Record<string, any> = {};
         tournamentsSnapshot.docs.forEach(doc => {
             tournamentsMap[doc.id] = doc.data();
         });
 
-        const playerStats = {};
+        const playerStats: Record<string, any> = {};
 
         matchesSnapshot.docs.forEach(matchDoc => {
             const match = matchDoc.data();
@@ -24,7 +25,7 @@ export const calculateAllStats = async (allUsers = []) => {
             const matchDate = new Date(match.date);
 
             // Process players from both teams
-            const processPlayers = (players, teamName) => {
+            const processPlayers = (players: any[] | undefined, teamName: string) => {
                 if (!players) return;
                 players.forEach(p => {
                     const id = p.userId;
@@ -86,7 +87,7 @@ export const calculateAllStats = async (allUsers = []) => {
             const s = playerStats[id];
             if (!(s.clubs instanceof Array)) s.clubs = Array.from(s.clubs || []);
 
-            const diffTime = Math.abs(new Date() - s.firstMatchDate);
+            const diffTime = Math.abs(new Date().getTime() - s.firstMatchDate.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             const calculatedYears = diffDays / 365;
             const totalYears = calculatedYears + (s.yearsAdjustment || 0);
@@ -110,7 +111,7 @@ export const calculateTeamStats = async () => {
     try {
         const tournamentsSnapshot = await getDocs(collection(db, 'tournaments'));
         const matchesSnapshot = await getDocs(collection(db, 'matches'));
-        const teamStats = {};
+        const teamStats: Record<string, any> = {};
 
         // Track when teams participated in matches to calculate years in league
         const matches = matchesSnapshot.docs.map(d => d.data());
@@ -159,7 +160,7 @@ export const calculateTeamStats = async () => {
         // Final calculation
         Object.keys(teamStats).forEach(team => {
             const s = teamStats[team];
-            const diffTime = Math.abs(new Date() - s.firstSeen);
+            const diffTime = Math.abs(new Date().getTime() - s.firstSeen.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             s.yearsInLeague = (diffDays / 365).toFixed(1);
         });

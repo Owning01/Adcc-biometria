@@ -6,6 +6,7 @@
  */
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import QuickRegisterModal from "../components/QuickRegisterModal";
 import {
     getUsers,
     deleteUser,
@@ -61,25 +62,90 @@ import {
     Lightbulb,
     Camera,
     Upload,
-    Download
+    Download,
+    ArrowRight,
+    ScanFace,
+    QrCode
 } from "lucide-react";
 import releaseInfo from '../release.json';
 import adccLogo from "../Applogo.png";
+
+// --- HELPER COMPONENTS ---
+
+interface DashboardCardProps {
+    title: string;
+    value: string | number;
+    color: string;
+    icon: React.ReactNode;
+}
+
+const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, color, icon }) => (
+    <div className="stat-card-premium" style={{ '--accent-color': color } as React.CSSProperties}>
+        <div className="stat-card-icon-wrapper">
+            {icon}
+        </div>
+        <div className="stat-card-value">{value}</div>
+        <div className="stat-card-label">{title}</div>
+    </div>
+);
+
+interface StatusBadgeProps {
+    status: string;
+    onClick?: (e: React.MouseEvent) => void;
+}
+
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status, onClick }) => {
+    const isEnabled = status?.toLowerCase() === "habilitado";
+    return (
+        <span
+            onClick={onClick}
+            style={{
+                padding: "3px 8px",
+                borderRadius: "20px",
+                fontSize: "0.6rem",
+                fontWeight: "800",
+                background: isEnabled
+                    ? "rgba(16, 185, 129, 0.1)"
+                    : "rgba(239, 68, 68, 0.1)",
+                color: isEnabled ? "#10b981" : "#f87171",
+                border: `1px solid ${isEnabled ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
+                cursor: onClick ? "pointer" : "default",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                textTransform: "uppercase",
+            }}
+        >
+            {isEnabled ? (
+                <>
+                    <ShieldCheck size={10} /> HABILITADO
+                </>
+            ) : (
+                <>
+                    <ShieldAlert size={10} /> BLOQUEADO
+                </>
+            )}
+        </span>
+    );
+};
+
 
 /**
  * Componente principal Home.
  * Renderiza el dashboard administrativo y la tabla de gestión de usuarios.
  */
-const Home = () => {
+const Home = ({ userRole }: { userRole?: string }) => {
     // --- ESTADOS PRINCIPALES ---
     // Lista completa de usuarios obtenidos de Firestore
-    const [users, setUsers] = useState([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [remoteData, setRemoteData] = useState<any>(null);
     const [remoteVersion, setRemoteVersion] = useState("...");
-    const [selectedTeam, setSelectedTeam] = useState(null); // Equipo seleccionado para filtrar
-    const [selectedCategory, setSelectedCategory] = useState(null); // Categoría seleccionada
+    const [selectedTeam, setSelectedTeam] = useState<string | null>(null); // Equipo seleccionado para filtrar
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoría seleccionada
     const [searchTerm, setSearchTerm] = useState(""); // Término de búsqueda (filtro global)
-    const [matches, setMatches] = useState([]); // Lista de partidos para el panel lateral
+    const [matches, setMatches] = useState<any[]>([]); // Lista de partidos para el panel lateral
+    const [showHistory, setShowHistory] = useState(false); // Vista de historial de registros
     const navigate = useNavigate();
 
     // Modales
@@ -114,23 +180,31 @@ const Home = () => {
 
     useEffect(() => {
         // Fetch version para el boton
-        fetch("https://recofacial-7cea1.web.app/version.json?t=" + Date.now())
+        fetch("https://adccbiometric.web.app/version.json?t=" + Date.now())
             .then((res) => res.json())
-            .then((data) => setRemoteVersion(data.android.version))
-            .catch(() => setRemoteVersion("Error"));
+            .then((data) => {
+                if (data && data.android) {
+                    setRemoteData(data.android);
+                    setRemoteVersion(data.android.version || "Error");
+                }
+            })
+            .catch((err) => {
+                console.error("Version fetch error:", err);
+                setRemoteVersion("Error");
+            });
 
         // Suscripción a cambios en tiempo real de la colección de usuarios
-        const unsubUsers = subscribeToUsers((data) => {
+        const unsubUsers = subscribeToUsers((data: any[]) => {
             setUsers(data || []);
             setLoading(false);
         });
 
         // Suscripción a cambios en partidos (para mostrar live events y resultados)
-        const unsubMatches = subscribeToMatches((data) => {
+        const unsubMatches = subscribeToMatches((data: any[]) => {
             // Ordenar por fecha y hora descendente (más nuevos arriba)
             const sorted = [...(data || [])].sort((a, b) => {
-                const dateA = new Date(`${a.date} ${a.time}`);
-                const dateB = new Date(`${b.date} ${b.time}`);
+                const dateA = new Date(`${a.date} ${a.time}`).getTime();
+                const dateB = new Date(`${b.date} ${b.time}`).getTime();
                 return dateB - dateA;
             });
             setMatches(sorted);
@@ -151,7 +225,7 @@ const Home = () => {
         setDeleteModal({ open: false, userId: null, userName: "" });
 
         try {
-            await deleteUser(id);
+            if (id) await deleteUser(id);
             // La actualización visual ocurre sola vía subscribeToUsers
         } catch (error) {
             alert("Error al eliminar en el servidor");
@@ -165,52 +239,32 @@ const Home = () => {
      * @param {string|null} categoryOverride - Categoría específica (opcional).
      * @returns {Promise<void>}
      */
-    const handleToggleStatus = async (user, categoryOverride = null) => {
-        // Determinamos para qué categoría estamos cambiando el estado
-        const cat =
-            categoryOverride ||
-            selectedCategory ||
-            (Array.isArray(user.categories) && user.categories.length > 0
-                ? user.categories[0]
-                : user.category);
-
-        // Obtenemos el estado actual para esa categoría específica
-        const currentStatus =
-            (user.categoryStatuses && user.categoryStatuses[cat]) ||
-            user.status ||
-            "habilitado";
-        const newStatus =
-            currentStatus === "habilitado" ? "deshabilitado" : "habilitado";
-
+    const handleToggleStatus = async (user: any, categoryOverride: string | null = null) => {
         try {
-            await updateUserStatus(user.id, newStatus, cat);
+            const currentStatus = categoryOverride
+                ? (user.categoryStatuses && user.categoryStatuses[categoryOverride]) || user.status
+                : user.status;
+
+            const newStatus = currentStatus === "habilitado" ? "deshabilitado" : "habilitado";
+            const updateData: any = {};
+
+            if (categoryOverride) {
+                updateData.categoryStatuses = {
+                    ...(user.categoryStatuses || {}),
+                    [categoryOverride]: newStatus,
+                };
+            } else {
+                updateData.status = newStatus;
+            }
+
+            await updateUser(user.id, updateData);
         } catch (error) {
-            alert("Error al actualizar estado");
+            console.error("Error toggling status:", error);
+            alert("No se pudo actualizar el estado");
         }
     };
 
-    /**
-     * Ejecuta el borrado masivo de TODOS los usuarios (requiere confirmación "ELIMINAR").
-     * ¡CUIDADO! Esta acción es irreversible.
-     * @returns {Promise<void>}
-     */
-    const execNuclearDelete = async () => {
-        if (nuclearConfirm === "ELIMINAR") {
-            setLoading(true);
-            setNuclearModal(false);
-            setNuclearConfirm("");
-            try {
-                await clearAllUsers();
-                setUsers([]);
-                setSelectedTeam(null);
-                setSelectedCategory(null);
-            } catch (error) {
-                alert("Error masivo");
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
+
 
     /**
      * Confirma y crea un nuevo equipo.
@@ -247,7 +301,7 @@ const Home = () => {
      * @param {string} category - Nombre de la categoría.
      * @returns {void}
      */
-    const handleOpenQuickRegister = (team, category) => {
+    const handleOpenQuickRegister = (team: string, category: string) => {
         setQuickRegisterData({ name: "", dni: "", team, category });
         setShowQuickRegister(true);
     };
@@ -285,10 +339,10 @@ const Home = () => {
 
         if (searchTerm) {
             return (
-                u.name.toLowerCase().includes(searchLower) ||
-                (u.dni && u.dni.toLowerCase().includes(searchLower)) ||
+                (u.name && u.name.toLowerCase().includes(searchLower)) ||
+                (u.dni && String(u.dni).toLowerCase().includes(searchLower)) ||
                 (u.team && u.team.toLowerCase().includes(searchLower)) ||
-                cats.some((c) => c && c.toLowerCase().includes(searchLower))
+                cats.some((c: string) => c && String(c).toLowerCase().includes(searchLower))
             );
         }
 
@@ -296,2258 +350,850 @@ const Home = () => {
         return cats.includes(selectedCategory);
     });
 
-    return (
-        <div className="animate-fade-in">
-            <header
-                style={{
-                    marginBottom: "30px",
-                    textAlign: "center",
-                    position: "relative",
-                }}
-            >
-                <img
-                    src={adccLogo}
-                    alt="ADCC"
-                    style={{ width: "80px", marginBottom: "10px" }}
-                />
-                <h1 style={{ fontSize: "2.2rem", margin: 0, fontWeight: "800" }}>
-                    ADCC <span style={{ color: "var(--primary)" }}>Biometría</span>
-                </h1>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                    Gestión de accesos y registros
-                </p>
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Cargando...</div>;
 
-                {/* Botón Flotante de Descarga de App */}
-                {releaseInfo?.downloadUrl && (
-                    <div style={{ marginTop: '10px' }}>
-                        <a
-                            href={releaseInfo.downloadUrl}
-                            className="bg-green-600/10 text-green-400 border border-green-500/20 px-4 py-1.5 rounded-full text-xs inline-flex items-center gap-2 hover:bg-green-600/20 transition-all no-underline"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ textDecoration: 'none' }}
-                        >
-                            <Download size={14} />
-                            Instalar App Nativa (v{releaseInfo.version})
-                        </a>
+    return (
+        <div className="home-container animate-fade-in">
+            {/* Header / Top Bar */}
+            <header className="home-header">
+                <div>
+                    <div className="header-brand">
+                        <img src={adccLogo} alt="ADCC" className="logo-small drop-shadow-gold" />
+                        <div>
+                            <h1 className="brand-title">ADCC <span className="text-highlight amber-glow">BIOMETRÍA</span></h1>
+                            <p className="brand-subtitle">Gestión de Acceso de Alto Rendimiento</p>
+                        </div>
                     </div>
-                )}
+                </div>
+
+                <div className="header-actions">
+                    {userRole !== 'usuario' && (
+                        <button
+                            onClick={() => navigate('/register')}
+                            className="btn-register-main"
+                        >
+                            + Registrar Jugador
+                        </button>
+                    )}
+                    {releaseInfo?.downloadUrl && (
+                        <div className="apk-badge-wrapper">
+                            <a
+                                href={remoteData?.downloadUrl || releaseInfo.downloadUrl}
+                                className={`apk-badge-link ${remoteVersion !== "..." && remoteVersion !== releaseInfo.version ? 'ring-active' : ''}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Download size={14} className={remoteVersion !== "..." && remoteVersion !== releaseInfo.version ? "animate-bounce" : ""} />
+                                APK ANDROID
+                            </a>
+
+                            {remoteVersion !== "..." && remoteVersion !== "Error" && remoteVersion !== releaseInfo.version && (
+                                <div className="apk-notification-container">
+                                    <span className="notification-ping"></span>
+                                    <span className="notification-dot">
+                                        <div className="w-1-5 h-1-5 bg-black rounded-full animate-heartbeat"></div>
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </header>
 
-            <div
-                style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    justifyContent: "center",
-                    gap: "10px",
-                    marginBottom: "20px",
-                }}
-            >
-                <StatBadgeMinimal
-                    title="Registros"
-                    value={users.length}
-                    color="#3b82f6"
-                    icon={<UsersIcon size={14} />}
-                />
-                <StatBadgeMinimal
-                    title="Clubes"
-                    value={teams.length}
-                    color="#10b981"
-                    icon={<Trophy size={14} />}
-                />
-                <StatBadgeMinimal
-                    title="Observados"
-                    value={
-                        users.filter(
-                            (u) =>
-                                u.status === "deshabilitado" ||
-                                (u.categoryStatuses &&
-                                    Object.values(u.categoryStatuses).includes("deshabilitado")),
-                        ).length
-                    }
-                    color="#ef4444"
-                    icon={<ShieldAlert size={14} />}
-                />
-            </div>
 
-            {/* SECCIÓN DE PARTIDOS EN CURSO */}
-            {matches.filter((m) => m.status === "live" || m.status === "halftime")
-                .length > 0 && (
-                    <div style={{ marginBottom: "25px" }}>
-                        <h3
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "10px",
-                                fontSize: "1rem",
-                                marginBottom: "15px",
-                            }}
-                        >
-                            <Activity size={18} color="#ef4444" className="animate-pulse" />
-                            PARTIDOS EN CURSO
-                        </h3>
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                                gap: "15px",
-                            }}
-                        >
-                            {matches
-                                .filter((m) => m.status === "live" || m.status === "halftime")
-                                .map((match) => (
-                                    <div
-                                        key={match.id}
-                                        className="glass-panel"
-                                        style={{
-                                            padding: "15px",
-                                            borderLeft: "3px solid #ef4444",
-                                            cursor: "pointer",
-                                        }}
-                                        onClick={() => navigate(`/partido/${match.id}`)}
-                                    >
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                marginBottom: "10px",
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontSize: "0.6rem",
-                                                    fontWeight: "800",
-                                                    color: match.status === "live" ? "#ef4444" : "#fbbf24",
-                                                    textTransform: "uppercase",
-                                                }}
-                                            >
-                                                {match.status === "live" ? "• En Vivo" : "• Entretiempo"}
-                                            </span>
-                                            <span style={{ fontSize: "0.6rem", opacity: 0.5 }}>
-                                                {match.category || "Competencia"}
-                                            </span>
-                                        </div>
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                gap: "10px",
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    flex: 1,
-                                                    textAlign: "right",
-                                                    fontWeight: "bold",
-                                                    fontSize: "0.9rem",
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    whiteSpace: "nowrap",
-                                                }}
-                                            >
-                                                {match.teamA.name}
-                                            </div>
-                                            <div
-                                                style={{
-                                                    background: "var(--header-bg)",
-                                                    padding: "4px 10px",
-                                                    borderRadius: "6px",
-                                                    fontWeight: "900",
-                                                    fontSize: "1.1rem",
-                                                    minWidth: "60px",
-                                                    textAlign: "center",
-                                                    border: "1px solid var(--glass-border-light)",
-                                                }}
-                                            >
-                                                {match.score.a} - {match.score.b}
-                                            </div>
-                                            <div
-                                                style={{
-                                                    flex: 1,
-                                                    textAlign: "left",
-                                                    fontWeight: "bold",
-                                                    fontSize: "0.9rem",
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    whiteSpace: "nowrap",
-                                                }}
-                                            >
-                                                {match.teamB.name}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                        </div>
-                    </div>
-                )}
-
-            <div
-                className="home-content-layout"
-                style={{ display: "flex", gap: "25px", alignItems: "flex-start" }}
-            >
-                {/* COLUMNA IZQUIERDA: HISTORIAL */}
-                {matches.filter((m) => m.status === "finished").length > 0 && (
-                    <div
-                        style={{ width: "320px", flexShrink: 0 }}
-                    >
-                        <h3
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "10px",
-                                fontSize: "1rem",
-                                marginBottom: "15px",
-                                opacity: 0.7,
-                            }}
-                        >
-                            <Trophy size={18} />
-                            ÚLTIMOS RESULTADOS
-                        </h3>
-                        <div
-                            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-                        >
-                            {matches
-                                .filter((m) => m.status === "finished")
-                                .slice(0, 8)
-                                .map((match) => (
-                                    <div
-                                        key={match.id}
-                                        className="glass-panel"
-                                        style={{
-                                            padding: "12px",
-                                            fontSize: "0.8rem",
-                                            cursor: "pointer",
-                                            background: "var(--header-bg)",
-                                        }}
-                                        onClick={() => navigate(`/partido/${match.id}`)}
-                                    >
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                opacity: 0.5,
-                                                fontSize: "0.6rem",
-                                                marginBottom: "8px",
-                                            }}
-                                        >
-                                            <span>{match.date}</span>
-                                            <span>{match.category}</span>
-                                        </div>
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                            }}
-                                        >
-                                            <span
-                                                style={{ fontWeight: "600", color: "var(--text-main)" }}
-                                            >
-                                                {match.teamA.name.substring(0, 15)}
-                                            </span>
-                                            <span
-                                                style={{ fontWeight: "900", color: "var(--primary)" }}
-                                            >
-                                                {match.score.a}
-                                            </span>
-                                        </div>
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                            }}
-                                        >
-                                            <span
-                                                style={{ fontWeight: "600", color: "var(--text-main)" }}
-                                            >
-                                                {match.teamB.name.substring(0, 15)}
-                                            </span>
-                                            <span
-                                                style={{ fontWeight: "900", color: "var(--primary)" }}
-                                            >
-                                                {match.score.b}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* COLUMNA DERECHA: GESTIÓN */}
-                <div style={{ flex: 1 }}>
-                    <div
-                        className="glass-panel"
-                        style={{ padding: "0", overflow: "hidden" }}
-                    >
-                        <div
-                            style={{
-                                padding: "12px 20px",
-                                background: "var(--header-bg)",
-                                borderBottom: "1px solid var(--glass-border-light)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                fontSize: "0.8rem",
-                            }}
-                        >
-                            <div
-                                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                            >
-                                <LayoutGrid size={14} color="var(--primary)" />
-                                <span
-                                    onClick={() => {
-                                        setSelectedTeam(null);
-                                        setSelectedCategory(null);
-                                    }}
-                                    style={{
-                                        cursor: "pointer",
-                                        color: !selectedTeam ? "var(--primary)" : "inherit",
-                                        fontWeight: !selectedTeam ? "800" : "normal",
-                                    }}
-                                >
-                                    Equipos / Categoría / Jugadores
-                                </span>
-                                {selectedTeam && (
-                                    <>
-                                        <ChevronRight size={12} opacity={0.5} />
-                                        <span
-                                            onClick={() => setSelectedCategory(null)}
-                                            style={{
-                                                cursor: "pointer",
-                                                color: !selectedCategory ? "var(--primary)" : "inherit",
-                                                fontWeight: !selectedCategory ? "800" : "normal",
-                                            }}
-                                        >
-                                            {selectedTeam.toUpperCase()}
-                                        </span>
-                                    </>
-                                )}
-                                {selectedCategory && (
-                                    <>
-                                        <ChevronRight size={12} opacity={0.5} />
-                                        <span
-                                            style={{ color: "var(--primary)", fontWeight: "800" }}
-                                        >
-                                            {selectedCategory.toUpperCase()}
-                                        </span>
-                                    </>
-                                )}
+            {/* Dashboard Content */}
+            {!searchTerm && !selectedTeam && !showHistory ? (
+                <div className="bento-grid">
+                    {/* Panel 1: Estado Global (Radial Chart) - Top Left */}
+                    <div className="panel-premium panel-radial-status">
+                        <div className="panel-decoration-blob"></div>
+                        <h3 className="panel-label text-center" style={{ marginBottom: '1rem' }}>Estado Global</h3>
+                        <div className="radial-progress-container">
+                            <svg className="radial-progress-svg">
+                                <circle className="radial-progress-bg" cx="70" cy="70" r="64" />
+                                <circle
+                                    className="radial-progress-bar"
+                                    cx="70" cy="70" r="64"
+                                    strokeDasharray="402"
+                                    strokeDashoffset={402 - (402 * (users.filter(u => u.photo).length / Math.max(users.length, 1)))}
+                                />
+                            </svg>
+                            <div className="loading-status-stack" style={{ position: 'absolute' }}>
+                                <span className="stat-value-large">{Math.round((users.filter(u => u.photo).length / Math.max(users.length, 1)) * 100)}%</span>
+                                <span className="panel-label">Biometría</span>
                             </div>
-                            {!selectedTeam && (
+                        </div>
+                        <div className="radial-stat-group">
+                            <div className="stat-item">
+                                <span className="stat-label-muted">Total Jugadores</span>
+                                <span className="stat-value-highlight">{users.length}</span>
+                            </div>
+                            <div className="stat-divider"></div>
+                            <div className="stat-item">
+                                <span className="stat-label-muted">Pendientes</span>
+                                <span className="stat-value-primary">{users.filter(u => !u.photo).length}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Panel 2: Equipos (Hexagons) - Center Content */}
+                    <div className="panel-premium panel-teams-management">
+                        <div className="panel-header">
+                            <div className="panel-title-group">
+                                <h3>Gestión de Planteles</h3>
+                                <p>Equipos ADCC</p>
+                            </div>
+                            {userRole !== 'usuario' && (
                                 <button
-                                    onClick={() => {
-                                        setModalInput("");
-                                        setShowTeamModal(true);
-                                    }}
-                                    className="glass-button"
-                                    style={{
-                                        padding: "5px 12px",
-                                        fontSize: "0.7rem",
-                                        background: "rgba(34, 197, 94, 0.1)",
-                                        borderColor: "var(--success)",
-                                    }}
+                                    onClick={() => { setModalInput(""); setShowTeamModal(true); }}
+                                    className="btn-panel-header"
                                 >
-                                    <Plus size={14} /> NUEVO EQUIPO
+                                    <Plus size={24} />
                                 </button>
                             )}
                         </div>
+                        <div className="teams-grid custom-scrollbar">
+                            {teams.map(team => (
+                                <div key={team} onClick={() => setSelectedTeam(team)} className="team-card">
+                                    <div className="hexagon-container">
+                                        <div className="team-card-content">
+                                            <UsersIcon size={32} className="team-icon" />
+                                            <h4 className="team-name">{team}</h4>
+                                            <span className="team-count">
+                                                {users.filter(u => u.team === team).length} JUGADORES
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div onClick={() => setSelectedTeam(null)} className="team-card">
+                                <div className="hexagon-container" style={{ opacity: 0.5 }}>
+                                    <div className="team-card-content">
+                                        <LayoutGrid size={28} className="team-icon" />
+                                        <h4 className="team-name">VER TODOS</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div
-                            style={{
-                                padding: "10px 20px",
-                                borderBottom: "1px solid rgba(255,255,255,0.05)",
-                                display: "flex",
-                                gap: "10px",
-                            }}
-                        >
-                            <div style={{ position: "relative", flex: 1 }}>
-                                <Search
-                                    size={14}
-                                    style={{
-                                        position: "absolute",
-                                        left: "12px",
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        opacity: 0.4,
-                                    }}
-                                />
+                    {/* Panel 3: Timeline de Resultados (Últimos Partidos) - Top Right */}
+                    <div className="panel-premium panel-matches-timeline">
+                        <div className="panel-title-container">
+                            <div className="card-icon-wrapper">
+                                <Trophy size={14} className="text-highlight" />
+                            </div>
+                            <h3 className="panel-label">Últimos Partidos</h3>
+                        </div>
+                        <div className="timeline-scroll-area custom-scrollbar">
+                            <div className="timeline-list">
+                                {matches.filter(m => m.status === "finished").slice(0, 15).map(match => (
+                                    <div key={match.id} className="match-log-entry" onClick={() => navigate(`/partido/${match.id}`)}>
+                                        <div className="match-log-dot"></div>
+                                        <span className="match-meta">{match.category} · {match.date}</span>
+
+                                        <div className="match-teams-list">
+                                            <div className="match-team-row">
+                                                <span className="match-team-name">{match.teamA.name}</span>
+                                                <div className="score-badge">
+                                                    <span className="text-10px font-black text-primary">{match.score.a}</span>
+                                                </div>
+                                            </div>
+                                            <div className="match-team-row">
+                                                <span className="match-team-name">{match.teamB.name}</span>
+                                                <div className="score-badge">
+                                                    <span className="text-10px font-black text-primary">{match.score.b}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <button onClick={() => navigate('/partidos')} className="button-full-width">
+                            Historial Completo
+                        </button>
+                    </div>
+
+                    <div
+                        className="panel-premium panel-scanner-shortcut"
+                        onClick={() => navigate('/alta')}
+                    >
+                        <div className="panel-decoration-blob" style={{ right: 0, top: 0, left: 'auto', width: '12rem', height: '12rem', opacity: 0.5 }}></div>
+
+                        <div className="icon-box-large">
+                            <QrCode size={32} className="text-highlight" />
+                        </div>
+
+                        <div className="scanner-text-content">
+                            <h4 className="text-display-medium text-white">
+                                ESCANEAR<br />
+                                <span className="text-highlight">BIOMETRÍA</span>
+                            </h4>
+                            <p className="scanner-description">
+                                Inicia el proceso de validación facial para nuevos ingresos.
+                            </p>
+                        </div>
+
+                        <div className="scanner-action-arrow">
+                            <ArrowRight size={24} />
+                        </div>
+                    </div>
+
+                    {/* Panel 5: Últimos Registros - Bottom Left */}
+                    <div className="panel-premium panel-records-list">
+                        <div className="panel-decoration-blob" style={{ right: 0, top: 0, left: 'auto', width: '12rem', height: '12rem' }}></div>
+                        <div className="panel-header records-header-group">
+                            <div className="panel-title-group">
+                                <h3 className="panel-label opacity-60 mobile-hidden">Control de Ingresos</h3>
+                                <p className="records-display-title">Últimos registros</p>
+                            </div>
+                            <button
+                                onClick={() => setShowHistory(true)}
+                                className="btn-history-toggle"
+                            >
+                                Ver Historial Completo
+                            </button>
+                        </div>
+
+                        <div className="records-scroll-container custom-scrollbar">
+                            {users.slice().reverse().slice(0, 20).map((u) => (
+                                <div key={u.id} className="record-item group" onClick={() => { setPreviewImage(u.photo); }}>
+                                    <div className="record-avatar-wrapper">
+                                        <div className="record-avatar">
+                                            {u.photo ? (
+                                                <img src={u.photo} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
+                                            ) : (
+                                                <div className="w-full h-full user-avatar-placeholder-bg">
+                                                    <UserCircle size={32} className="user-avatar-placeholder-icon" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="record-status-check">
+                                            <SuccessIcon size={12} />
+                                        </div>
+                                    </div>
+                                    <span className="record-name-label">{u.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ) : showHistory ? (
+                /* HISTORIAL DE REGISTROS VIEW */
+                <div className="panel-premium overflow-hidden animate-fade-in-up">
+                    <div className="panel-view-header">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setShowHistory(false)}
+                                className="btn-back"
+                            >
+                                <ArrowLeft size={18} />
+                            </button>
+                            <div>
+                                <h2 className="brand-title uppercase">Historial de Registros</h2>
+                                <p className="brand-subtitle flex items-center gap-2">
+                                    <SuccessIcon size={10} className="text-primary" />
+                                    Listado cronológico de jugadores habilitados
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className="premium-search-container md:w-80">
+                                <Search size={14} className="premium-search-icon" />
                                 <input
                                     type="text"
-                                    placeholder="Buscar por Nombre, DNI, Equipo o Categoría..."
+                                    placeholder="Buscar en el historial..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    style={{
-                                        width: "100%",
-                                        background: "var(--input-bg)",
-                                        border: "1px solid var(--glass-border)",
-                                        borderRadius: "10px",
-                                        padding: "10px 12px 10px 35px",
-                                        color: "var(--text-main)",
-                                        fontSize: "0.85rem",
-                                        outline: "none",
-                                    }}
+                                    className="premium-input w-full"
                                 />
-                                {searchTerm && (
-                                    <X
-                                        size={14}
-                                        onClick={() => setSearchTerm("")}
-                                        style={{
-                                            position: "absolute",
-                                            right: "12px",
-                                            top: "50%",
-                                            transform: "translateY(-50%)",
-                                            cursor: "pointer",
-                                            opacity: 0.6,
-                                        }}
-                                    />
-                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="table-premium">
+                            <thead>
+                                <tr className="bg-black/20">
+                                    <th>Jugador</th>
+                                    <th>DNI</th>
+                                    <th>Equipo / Cat</th>
+                                    <th className="text-center">Estado</th>
+                                    <th className="text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users
+                                    .filter(u =>
+                                        (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                                        (u.dni && String(u.dni).includes(searchTerm)) ||
+                                        (u.team && u.team.toLowerCase().includes(searchTerm.toLowerCase()))
+                                    )
+                                    .slice()
+                                    .reverse()
+                                    .map((u) => (
+                                        <tr key={u.id} className="group transition-colors">
+                                            <td>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="user-avatar-small">
+                                                        {u.photo ? (
+                                                            <img src={u.photo} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center bg-slate-900">
+                                                                <UserCircle size={20} className="text-slate-700" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs font-bold text-slate-200 uppercase tracking-tight">{u.name}</div>
+                                                        <div className="text-9px text-slate-500 uppercase">Registrado hace poco</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="font-mono text-xs text-primary">{userRole === 'usuario' ? '********' : u.dni}</td>
+                                            <td>
+                                                <div className="text-xs font-bold uppercase">{u.team}</div>
+                                                <div className="text-9px text-slate-500 uppercase">{u.category}</div>
+                                            </td>
+                                            <td>
+                                                <div className="flex justify-center">
+                                                    <span className={`status-badge ${u.status === 'habilitado' ? 'status-active' : 'status-disabled'}`}>
+                                                        {u.status}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="table-row-actions">
+                                                    <button onClick={() => setPreviewImage(u.photo)} className="btn-action-small">
+                                                        <Camera size={14} />
+                                                    </button>
+                                                    <button onClick={() => navigate(`/registro/${u.id}`)} className="btn-action-primary">
+                                                        <ChevronRight size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                /* MANAGEMENT VIEW (Table) - Shown when searching or team selected */
+                <div className="panel-premium overflow-hidden animate-fade-in-up">
+                    <div className="panel-view-header">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => { setSelectedTeam(null); setSelectedCategory(null); setSearchTerm(""); }}
+                                className="btn-back"
+                            >
+                                <ArrowLeft size={16} />
+                            </button>
+                            <div>
+                                <h2 className="text-lg font-bold flex items-center gap-2">
+                                    {searchTerm ? "Resultados de búsqueda" : selectedTeam?.toUpperCase()}
+                                    {selectedCategory && <span className="text-primary text-sm ml-2">/ {selectedCategory}</span>}
+                                </h2>
+                                <p className="brand-subtitle mt-0">
+                                    {filteredUsers.length} Jugadores encontrados
+                                </p>
                             </div>
                         </div>
 
-                        <div style={{ padding: "20px", minHeight: "300px" }}>
-                            {searchTerm ? (
-                                /* BÚSQUEDA ACTIVA: Mostrar tabla directamente */
-                                <div>
-                                    <div style={{ overflowX: "auto" }}>
-                                        <table
-                                            style={{ width: "100%", borderCollapse: "collapse" }}
-                                        >
-                                            <thead>
-                                                <tr
-                                                    style={{
-                                                        textAlign: "left",
-                                                        borderBottom: "1px solid var(--glass-border-light)",
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className="premium-search-container md:w-80">
+                                <Search size={14} className="premium-search-icon" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="premium-input w-full"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6">
+                        {(!selectedCategory && !searchTerm) ? (
+                            /* Categorías del equipo */
+                            <div className="category-grid">
+                                {categoriesForTeam.map((cat) => (
+                                    <div key={cat} onClick={() => setSelectedCategory(cat)} className="team-card">
+                                        <div className="hexagon-container team-card-content">
+                                            <div className="text-xl font-bold text-primary transition-colors text-center mt-2 group-hover:text-white">{cat}</div>
+                                            <div className="stat-label-muted mt-1 mb-6">
+                                                {users.filter(u => u.team === selectedTeam && (u.categories?.includes(cat) || u.category === cat)).length} Jugadores
+                                            </div>
+                                            {userRole !== 'usuario' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenQuickRegister(selectedTeam || "", cat);
                                                     }}
+                                                    className="btn-quick-add"
+                                                    title="Registrar en esta categoría"
                                                 >
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        JUGADOR
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        EQUIPO
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        NO.
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        DNI
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        CATEGORÍAS
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        ESTADO
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                            textAlign: "right",
-                                                        }}
-                                                    >
-                                                        ACCIONES
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredUsers.map((u) => (
-                                                    <tr
-                                                        key={u.id}
-                                                        style={{
-                                                            borderBottom:
-                                                                "1px solid var(--glass-border-light)",
-                                                        }}
-                                                    >
-                                                        <td style={{ padding: "10px" }}>
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    gap: "12px",
-                                                                }}
-                                                            >
-                                                                {u.photo ? (
-                                                                    <div
-                                                                        onClick={() => setPreviewImage(u.photo)}
-                                                                        style={{
-                                                                            width: "42px",
-                                                                            height: "42px",
-                                                                            borderRadius: "10px",
-                                                                            overflow: "hidden",
-                                                                            border:
-                                                                                "1px solid var(--glass-border-light)",
-                                                                            background: "var(--header-bg)",
-                                                                            cursor: "pointer",
-                                                                        }}
-                                                                    >
-                                                                        <img
-                                                                            src={u.photo}
-                                                                            alt=""
-                                                                            style={{
-                                                                                width: "100%",
-                                                                                height: "100%",
-                                                                                objectFit: "cover",
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                ) : (
-                                                                    <div
-                                                                        style={{
-                                                                            width: "42px",
-                                                                            height: "42px",
-                                                                            borderRadius: "10px",
-                                                                            background: "var(--header-bg)",
-                                                                            display: "flex",
-                                                                            alignItems: "center",
-                                                                            justifyContent: "center",
-                                                                            border:
-                                                                                "1px dashed var(--glass-border-light)",
-                                                                        }}
-                                                                    >
-                                                                        <UserCircle size={22} opacity={0.2} />
-                                                                    </div>
-                                                                )}
-                                                                <div
-                                                                    style={{
-                                                                        fontWeight: "700",
-                                                                        fontSize: "0.9rem",
-                                                                        color: "var(--text-main)",
-                                                                    }}
-                                                                >
-                                                                    {u.name}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td
-                                                            style={{
-                                                                padding: "10px",
-                                                                fontSize: "0.85rem",
-                                                                fontWeight: "800",
-                                                                color: "var(--primary)",
-                                                            }}
-                                                        >
-                                                            {u.team?.toUpperCase()}
-                                                        </td>
-                                                        <td style={{ padding: "10px" }}>
-                                                            <input
-                                                                type="text"
-                                                                defaultValue={u.number || ""}
-                                                                placeholder="--"
-                                                                onBlur={async (e) => {
-                                                                    const newNum = e.target.value;
-                                                                    if (newNum !== u.number) {
-                                                                        await updateUser(u.id, { number: newNum });
-                                                                    }
-                                                                }}
-                                                                style={{
-                                                                    width: "40px",
-                                                                    background: "var(--header-bg)",
-                                                                    border: "1px solid var(--glass-border-light)",
-                                                                    borderRadius: "5px",
-                                                                    color: "var(--primary)",
-                                                                    textAlign: "center",
-                                                                    fontSize: "0.85rem",
-                                                                    fontWeight: "800",
-                                                                    padding: "4px",
-                                                                }}
-                                                            />
-                                                        </td>
-                                                        <td
-                                                            style={{
-                                                                padding: "10px",
-                                                                fontSize: "0.85rem",
-                                                                opacity: 0.7,
-                                                            }}
-                                                        >
-                                                            {u.dni}
-                                                        </td>
-                                                        <td style={{ padding: "10px" }}>
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    flexWrap: "wrap",
-                                                                    gap: "4px",
-                                                                }}
-                                                            >
-                                                                {(Array.isArray(u.categories) &&
-                                                                    u.categories.length > 0
-                                                                    ? u.categories
-                                                                    : [u.category]
-                                                                ).map((c) => {
-                                                                    const catStatus =
-                                                                        (u.categoryStatuses &&
-                                                                            u.categoryStatuses[c]) ||
-                                                                        u.status ||
-                                                                        "habilitado";
-                                                                    const isDeshabilitado =
-                                                                        catStatus === "deshabilitado";
-                                                                    return (
-                                                                        <span
-                                                                            key={c}
-                                                                            onClick={() => handleToggleStatus(u, c)}
-                                                                            style={{
-                                                                                fontSize: "0.65rem",
-                                                                                background: isDeshabilitado
-                                                                                    ? "rgba(239, 68, 68, 0.1)"
-                                                                                    : "rgba(59, 130, 246, 0.1)",
-                                                                                color: isDeshabilitado
-                                                                                    ? "#f87171"
-                                                                                    : "#60a5fa",
-                                                                                padding: "2px 6px",
-                                                                                borderRadius: "4px",
-                                                                                border: `1px solid ${isDeshabilitado ? "rgba(239, 68, 68, 0.3)" : "rgba(59, 130, 246, 0.2)"}`,
-                                                                                cursor: "pointer",
-                                                                                display: "flex",
-                                                                                alignItems: "center",
-                                                                                gap: "4px",
-                                                                            }}
-                                                                        >
-                                                                            <div
-                                                                                style={{
-                                                                                    width: "4px",
-                                                                                    height: "4px",
-                                                                                    borderRadius: "50%",
-                                                                                    background: isDeshabilitado
-                                                                                        ? "#ef4444"
-                                                                                        : "#60a5fa",
-                                                                                }}
-                                                                            ></div>
-                                                                            {c}
-                                                                        </span>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: "10px" }}>
-                                                            <StatusBadge
-                                                                status={
-                                                                    selectedCategory
-                                                                        ? (u.categoryStatuses &&
-                                                                            u.categoryStatuses[selectedCategory]) ||
-                                                                        u.status ||
-                                                                        "habilitado"
-                                                                        : u.status || "habilitado"
-                                                                }
-                                                                onClick={() => handleToggleStatus(u)}
-                                                            />
-                                                        </td>
-                                                        <td style={{ padding: "10px", textAlign: "right" }}>
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    gap: "5px",
-                                                                    justifyContent: "flex-end",
-                                                                }}
-                                                            >
-                                                                <button
-                                                                    onClick={() =>
-                                                                        setCategoryControl({
-                                                                            open: true,
-                                                                            user: u,
-                                                                            currentCat: selectedCategory,
-                                                                        })
-                                                                    }
-                                                                    className="category-manage-btn"
-                                                                    title="Mover o añadir categoría"
-                                                                >
-                                                                    <ArrowRightLeft size={16} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        setDeleteModal({
-                                                                            open: true,
-                                                                            userId: u.id,
-                                                                            userName: u.name,
-                                                                        })
-                                                                    }
-                                                                    className="delete-row-btn"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                    Registrar
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    {filteredUsers.length === 0 && (
-                                        <div
-                                            style={{
-                                                textAlign: "center",
-                                                padding: "40px",
-                                                color: "var(--text-muted)",
-                                            }}
-                                        >
-                                            No se encontraron resultados para "{searchTerm}"
-                                        </div>
-                                    )}
-                                </div>
-                            ) : !selectedTeam ? (
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns:
-                                            "repeat(auto-fill, minmax(150px, 1fr))",
-                                        gap: "12px",
-                                    }}
-                                >
-                                    {teams.map((team) => (
-                                        <div
-                                            key={team}
-                                            className="admin-nav-item"
-                                            style={{ position: "relative" }}
-                                        >
-                                            <div onClick={() => setSelectedTeam(team)}>
-                                                <UsersIcon size={20} color="var(--primary)" />
-                                                <div
-                                                    style={{
-                                                        marginTop: "8px",
-                                                        fontWeight: "800",
-                                                        fontSize: "0.85rem",
-                                                        lineHeight: "1.2",
-                                                    }}
-                                                >
-                                                    {team.toUpperCase()}
-                                                </div>
-                                                <div style={{ fontSize: "0.65rem", opacity: 0.5 }}>
-                                                    {users.filter((u) => u.team === team).length}{" "}
-                                                    Jugadores
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setModalInput("");
-                                                    setShowCategoryModal({ open: true, team });
-                                                }}
-                                                style={{
-                                                    marginTop: "12px",
-                                                    width: "100%",
-                                                    background: "rgba(59, 130, 246, 0.1)",
-                                                    border: "1px solid var(--primary)",
-                                                    borderRadius: "8px",
-                                                    padding: "4px",
-                                                    color: "var(--primary)",
-                                                    fontSize: "0.6rem",
-                                                    fontWeight: "700",
-                                                    cursor: "pointer",
-                                                }}
-                                            >
-                                                + CATEGORÍA
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {teams.length === 0 && (
-                                        <p
-                                            style={{
-                                                gridColumn: "1/-1",
-                                                textAlign: "center",
-                                                padding: "40px",
-                                                color: "var(--text-muted)",
-                                            }}
-                                        >
-                                            No hay datos registrados aún.
-                                        </p>
-                                    )}
-                                </div>
-                            ) : !selectedCategory ? (
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns:
-                                            "repeat(auto-fill, minmax(150px, 1fr))",
-                                        gap: "15px",
-                                    }}
-                                >
-                                    {categoriesForTeam.map((cat) => (
-                                        <div
-                                            key={cat}
-                                            className="admin-nav-item"
-                                            style={{
-                                                borderColor: "var(--primary)",
-                                                background: "rgba(59, 130, 246, 0.03)",
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                justifyContent: "center",
-                                            }}
-                                        >
-                                            <div
-                                                onClick={() => setSelectedCategory(cat)}
-                                                style={{ cursor: "pointer" }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        fontSize: "1.8rem",
-                                                        fontWeight: "900",
-                                                        color: "var(--primary)",
-                                                    }}
-                                                >
-                                                    {cat}
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        fontSize: "0.7rem",
-                                                        opacity: 0.5,
-                                                        marginTop: "5px",
-                                                    }}
-                                                >
-                                                    CATEGORÍA
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() =>
-                                                    handleOpenQuickRegister(selectedTeam, cat)
-                                                }
-                                                style={{
-                                                    marginTop: "15px",
-                                                    background: "var(--success)",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "8px",
-                                                    padding: "8px",
-                                                    fontSize: "0.7rem",
-                                                    fontWeight: "700",
-                                                    cursor: "pointer",
-                                                }}
-                                            >
-                                                + JUGADOR
-                                            </button>
-                                        </div>
-                                    ))}
+                                ))}
+                                {userRole !== 'usuario' && (
                                     <div
-                                        className="admin-nav-item"
-                                        style={{
-                                            borderStyle: "dashed",
-                                            opacity: 0.6,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                        }}
                                         onClick={() => {
                                             setModalInput("");
-                                            setShowCategoryModal({ open: true, team: selectedTeam });
+                                            setShowCategoryModal({ open: true, team: selectedTeam || "" });
                                         }}
+                                        className="team-card"
                                     >
-                                        <Plus size={24} />
-                                        <div
-                                            style={{
-                                                fontSize: "0.7rem",
-                                                fontWeight: "700",
-                                                marginTop: "5px",
-                                            }}
-                                        >
-                                            NUEVA CATEGORÍA
+                                        <div className="hexagon-container team-card-content" style={{ opacity: 0.5 }}>
+                                            <Plus size={24} className="team-icon" />
+                                            <div className="team-name" style={{ fontSize: '10px' }}>
+                                                Nueva Categoría
+                                            </div>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setSelectedTeam(null)}
-                                        className="glass-button"
-                                        style={{ gridColumn: "1/-1", marginTop: "10px" }}
-                                    >
-                                        <ArrowLeft size={14} /> VOLVER A EQUIPOS
-                                    </button>
-                                </div>
-                            ) : (
-                                <div>
-                                    <div style={{ overflowX: "auto" }}>
-                                        <table
-                                            style={{ width: "100%", borderCollapse: "collapse" }}
-                                        >
-                                            <thead>
-                                                <tr
-                                                    style={{
-                                                        textAlign: "left",
-                                                        borderBottom: "1px solid var(--glass-border-light)",
-                                                    }}
-                                                >
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        JUGADOR
-                                                    </th>
-                                                    {searchTerm && (
-                                                        <th
-                                                            style={{
-                                                                padding: "10px",
-                                                                fontSize: "0.7rem",
-                                                                opacity: 0.5,
-                                                            }}
-                                                        >
-                                                            EQUIPO
-                                                        </th>
-                                                    )}
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        NO.
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        DNI
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        CATEGORÍAS
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                        }}
-                                                    >
-                                                        ESTADO
-                                                    </th>
-                                                    <th
-                                                        style={{
-                                                            padding: "10px",
-                                                            fontSize: "0.7rem",
-                                                            opacity: 0.5,
-                                                            textAlign: "right",
-                                                        }}
-                                                    >
-                                                        ACCIONES
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredUsers.map((u) => (
-                                                    <tr
-                                                        key={u.id}
-                                                        style={{
-                                                            borderBottom:
-                                                                "1px solid var(--glass-border-light)",
-                                                        }}
-                                                    >
-                                                        <td style={{ padding: "10px" }}>
+                                )}
+                            </div>
+                        ) : (
+                            /* Lista de usuarios (Tabla) */
+                            <div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th className="table-premium-header-cell">Jugador</th>
+                                                {searchTerm && <th className="table-premium-header-cell">Equipo</th>}
+                                                <th className="table-premium-header-cell text-center">No.</th>
+                                                <th className="table-premium-header-cell">DNI</th>
+                                                <th className="table-premium-header-cell">Categorías</th>
+                                                <th className="table-premium-header-cell">Rol</th>
+                                                <th className="table-premium-header-cell">Estado</th>
+                                                <th className="table-premium-header-cell text-right">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredUsers.map((u) => (
+                                                <tr key={u.id} className="table-premium-row">
+                                                    <td className="table-premium-cell">
+                                                        <div className="flex items-center gap-3">
                                                             <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    gap: "12px",
-                                                                }}
+                                                                className="user-avatar-small cursor-pointer"
+                                                                onClick={() => u.photo && setPreviewImage(u.photo)}
                                                             >
                                                                 {u.photo ? (
-                                                                    <div
-                                                                        onClick={() => setPreviewImage(u.photo)}
-                                                                        style={{
-                                                                            width: "42px",
-                                                                            height: "42px",
-                                                                            borderRadius: "10px",
-                                                                            overflow: "hidden",
-                                                                            border:
-                                                                                "1px solid var(--glass-border-light)",
-                                                                            background: "var(--header-bg)",
-                                                                            cursor: "pointer",
-                                                                        }}
-                                                                    >
-                                                                        <img
-                                                                            src={u.photo}
-                                                                            alt=""
-                                                                            style={{
-                                                                                width: "100%",
-                                                                                height: "100%",
-                                                                                objectFit: "cover",
-                                                                            }}
-                                                                        />
-                                                                    </div>
+                                                                    <img src={u.photo} alt="" className="w-full h-full object-cover" />
                                                                 ) : (
-                                                                    <div
-                                                                        style={{
-                                                                            width: "42px",
-                                                                            height: "42px",
-                                                                            borderRadius: "10px",
-                                                                            background: "var(--header-bg)",
-                                                                            display: "flex",
-                                                                            alignItems: "center",
-                                                                            justifyContent: "center",
-                                                                            border:
-                                                                                "1px dashed var(--glass-border-light)",
-                                                                        }}
-                                                                    >
-                                                                        <UserCircle size={22} opacity={0.2} />
+                                                                    <div className="w-full h-full flex items-center justify-center opacity-20">
+                                                                        <UserCircle size={20} />
                                                                     </div>
                                                                 )}
-                                                                <div
-                                                                    style={{
-                                                                        fontWeight: "700",
-                                                                        fontSize: "0.9rem",
-                                                                        color: "var(--text-main)",
-                                                                    }}
-                                                                >
-                                                                    {u.name}
-                                                                </div>
                                                             </div>
+                                                            <div className="font-bold text-sm text-slate-200">{u.name}</div>
+                                                        </div>
+                                                    </td>
+                                                    {searchTerm && (
+                                                        <td className="table-premium-cell">
+                                                            <span className="stat-label-muted text-primary">{u.team}</span>
                                                         </td>
-                                                        {searchTerm && (
-                                                            <td
-                                                                style={{
-                                                                    padding: "10px",
-                                                                    fontSize: "0.85rem",
-                                                                    fontWeight: "800",
-                                                                    color: "var(--primary)",
-                                                                }}
-                                                            >
-                                                                {u.team?.toUpperCase()}
-                                                            </td>
-                                                        )}
-                                                        <td style={{ padding: "10px" }}>
-                                                            <input
-                                                                type="text"
-                                                                defaultValue={u.number || ""}
-                                                                placeholder="--"
-                                                                onBlur={async (e) => {
-                                                                    const newNum = e.target.value;
-                                                                    if (newNum !== u.number) {
-                                                                        await updateUser(u.id, { number: newNum });
-                                                                    }
-                                                                }}
-                                                                style={{
-                                                                    width: "40px",
-                                                                    background: "var(--header-bg)",
-                                                                    border: "1px solid var(--glass-border-light)",
-                                                                    borderRadius: "5px",
-                                                                    color: "var(--primary)",
-                                                                    textAlign: "center",
-                                                                    fontSize: "0.85rem",
-                                                                    fontWeight: "800",
-                                                                    padding: "4px",
-                                                                }}
-                                                            />
-                                                        </td>
-                                                        <td
-                                                            style={{
-                                                                padding: "10px",
-                                                                fontSize: "0.85rem",
-                                                                opacity: 0.7,
-                                                            }}
-                                                        >
-                                                            {u.dni}
-                                                        </td>
-                                                        <td style={{ padding: "10px" }}>
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    flexWrap: "wrap",
-                                                                    gap: "4px",
-                                                                }}
-                                                            >
-                                                                {(Array.isArray(u.categories) &&
-                                                                    u.categories.length > 0
-                                                                    ? u.categories
-                                                                    : [u.category]
-                                                                ).map((c) => {
-                                                                    const catStatus =
-                                                                        (u.categoryStatuses &&
-                                                                            u.categoryStatuses[c]) ||
-                                                                        u.status ||
-                                                                        "habilitado";
-                                                                    const isDeshabilitado =
-                                                                        catStatus === "deshabilitado";
-                                                                    return (
-                                                                        <span
-                                                                            key={c}
-                                                                            onClick={() => handleToggleStatus(u, c)}
-                                                                            style={{
-                                                                                fontSize: "0.65rem",
-                                                                                background: isDeshabilitado
-                                                                                    ? "rgba(239, 68, 68, 0.1)"
-                                                                                    : "rgba(59, 130, 246, 0.1)",
-                                                                                color: isDeshabilitado
-                                                                                    ? "#f87171"
-                                                                                    : "#60a5fa",
-                                                                                padding: "2px 6px",
-                                                                                borderRadius: "4px",
-                                                                                border: `1px solid ${isDeshabilitado ? "rgba(239, 68, 68, 0.3)" : "rgba(59, 130, 246, 0.2)"}`,
-                                                                                cursor: "pointer",
-                                                                                display: "flex",
-                                                                                alignItems: "center",
-                                                                                gap: "4px",
-                                                                            }}
-                                                                        >
-                                                                            <div
-                                                                                style={{
-                                                                                    width: "4px",
-                                                                                    height: "4px",
-                                                                                    borderRadius: "50%",
-                                                                                    background: isDeshabilitado
-                                                                                        ? "#ef4444"
-                                                                                        : "#60a5fa",
-                                                                                }}
-                                                                            ></div>
-                                                                            {c}
-                                                                        </span>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: "10px" }}>
-                                                            <StatusBadge
-                                                                status={
-                                                                    selectedCategory
-                                                                        ? (u.categoryStatuses &&
-                                                                            u.categoryStatuses[selectedCategory]) ||
-                                                                        u.status ||
-                                                                        "habilitado"
-                                                                        : u.status || "habilitado"
+                                                    )}
+                                                    <td className="table-premium-cell text-center">
+                                                        <input
+                                                            type="text"
+                                                            defaultValue={u.number || ""}
+                                                            onBlur={async (e) => {
+                                                                if (e.target.value !== u.number) {
+                                                                    await updateUser(u.id, { number: e.target.value });
                                                                 }
-                                                                onClick={() => handleToggleStatus(u)}
-                                                            />
-                                                        </td>
-                                                        <td style={{ padding: "10px", textAlign: "right" }}>
-                                                            <div
-                                                                style={{
-                                                                    display: "flex",
-                                                                    gap: "5px",
-                                                                    justifyContent: "flex-end",
+                                                            }}
+                                                            className="input-premium-small"
+                                                        />
+                                                    </td>
+                                                    <td className="table-premium-cell text-xs text-slate-400 font-mono">{userRole === 'usuario' ? '********' : u.dni}</td>
+                                                    <td className="table-premium-cell">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {(Array.isArray(u.categories) ? u.categories : [u.category || '']).filter(Boolean).map((c: string) => (
+                                                                <span key={c} className="badge-premium-category">
+                                                                    {c}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="table-premium-cell">
+                                                        {userRole !== 'usuario' ? (
+                                                            <select
+                                                                value={u.role || 'usuario'}
+                                                                onChange={async (e) => {
+                                                                    await updateUser(u.id, { role: e.target.value });
                                                                 }}
+                                                                className="select-premium-small"
                                                             >
-                                                                <button
-                                                                    onClick={() =>
-                                                                        setCategoryControl({
-                                                                            open: true,
-                                                                            user: u,
-                                                                            currentCat: selectedCategory,
-                                                                        })
-                                                                    }
-                                                                    className="category-manage-btn"
-                                                                    title="Mover o añadir categoría"
-                                                                >
-                                                                    <ArrowRightLeft size={16} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        setDeleteModal({
-                                                                            open: true,
-                                                                            userId: u.id,
-                                                                            userName: u.name,
-                                                                        })
-                                                                    }
-                                                                    className="delete-row-btn"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <button
-                                        onClick={() => setSelectedCategory(null)}
-                                        className="glass-button"
-                                        style={{ marginTop: "20px", width: "100%" }}
-                                    >
-                                        <ArrowLeft size={14} /> VOLVER A CATEGORÍAS
-                                    </button>
+                                                                <option value="usuario">Usuario</option>
+                                                                <option value="admin">Admin</option>
+                                                                <option value="referee">Árbitro</option>
+                                                                <option value="dev">Dev</option>
+                                                            </select>
+                                                        ) : (
+                                                            <span className="stat-label-muted opacity-40">{u.role || 'usuario'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="table-premium-cell text-center">
+                                                        <StatusBadge
+                                                            status={selectedCategory ? (u.categoryStatuses?.[selectedCategory] || u.status) : u.status}
+                                                            onClick={() => userRole !== 'usuario' && handleToggleStatus(u, selectedCategory)}
+                                                        />
+                                                    </td>
+                                                    <td className="table-premium-cell text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            {userRole !== 'usuario' && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => setCategoryControl({ open: true, user: u, currentCat: selectedCategory || "" })}
+                                                                        className="btn-action-warning"
+                                                                        title="Gestión de Categorías"
+                                                                    >
+                                                                        <ArrowRightLeft size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setDeleteModal({ open: true, userId: u.id, userName: u.name })}
+                                                                        className="btn-action-danger"
+                                                                        title="Eliminar Jugador"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Modales Profesionales */}
-            {deleteModal.open && (
-                <div className="modal-overlay">
-                    <div className="modal-card">
-                        <WarningIcon
-                            size={32}
-                            color="#f87171"
-                            style={{ marginBottom: "15px" }}
-                        />
-                        <h3 style={{ margin: "0 0 10px 0" }}>Eliminar Jugador</h3>
-                        <p
-                            style={{
-                                fontSize: "0.85rem",
-                                opacity: 0.7,
-                                marginBottom: "20px",
-                            }}
-                        >
-                            ¿Deseas eliminar a <strong>{deleteModal.userName}</strong>?
-                        </p>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                            <button
-                                onClick={() =>
-                                    setDeleteModal({ open: false, userId: null, userName: "" })
-                                }
-                                className="glass-button"
-                                style={{ flex: 1, background: "rgba(255,255,255,0.05)" }}
-                            >
-                                CANCELAR
-                            </button>
-                            <button
-                                onClick={execDelete}
-                                className="glass-button"
-                                style={{ flex: 1, background: "#ef4444" }}
-                            >
-                                ELIMINAR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modales de Gestión Rápida */}
-            {showTeamModal && (
-                <div className="modal-overlay" style={{ zIndex: 4000 }}>
-                    <div
-                        className="modal-card"
-                        style={{ borderTop: "2px solid var(--primary)" }}
-                    >
-                        <h3 style={{ marginBottom: "20px" }}>Nuevo Equipo</h3>
-                        <input
-                            autoFocus
-                            className="premium-input"
-                            placeholder="Nombre"
-                            value={modalInput}
-                            onChange={(e) => setModalInput(e.target.value)}
-                        />
-                        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                            <button
-                                onClick={() => setShowTeamModal(false)}
-                                className="glass-button button-secondary"
-                                style={{ flex: 1 }}
-                            >
-                                Cerrar
-                            </button>
-                            <button
-                                onClick={handleConfirmAddTeam}
-                                className="glass-button"
-                                style={{ flex: 1 }}
-                            >
-                                Agregar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showCategoryModal.open && (
-                <div className="modal-overlay" style={{ zIndex: 4000 }}>
-                    <div
-                        className="modal-card"
-                        style={{ borderTop: "2px solid var(--primary)" }}
-                    >
-                        <h3 style={{ marginBottom: "5px" }}>Nueva Categoría</h3>
-                        <p
-                            style={{ fontSize: "0.7rem", opacity: 0.5, marginBottom: "15px" }}
-                        >
-                            Equipo: {showCategoryModal.team}
-                        </p>
-                        <input
-                            autoFocus
-                            className="premium-input"
-                            placeholder="Nombre (ej: Libre)"
-                            value={modalInput}
-                            onChange={(e) => setModalInput(e.target.value)}
-                        />
-                        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                            <button
-                                onClick={() => setShowCategoryModal({ open: false, team: "" })}
-                                className="glass-button button-secondary"
-                                style={{ flex: 1 }}
-                            >
-                                Cerrar
-                            </button>
-                            <button
-                                onClick={handleConfirmAddCategory}
-                                className="glass-button"
-                                style={{ flex: 1 }}
-                            >
-                                Agregar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showQuickRegister && (
-                <QuickRegisterModal
-                    data={quickRegisterData}
-                    onClose={() => setShowQuickRegister(false)}
-                />
-            )}
-
-            {/* Modal de Previsualización de Imagen */}
-            {previewImage && (
-                <div
-                    className="modal-overlay"
-                    style={{ zIndex: 6000, background: "rgba(0,0,0,0.95)" }}
-                    onClick={() => setPreviewImage(null)}
-                >
-                    <div
-                        style={{
-                            position: "relative",
-                            maxWidth: "90vw",
-                            maxHeight: "80vh",
-                            border: "1px solid rgba(255,255,255,0.2)",
-                            borderRadius: "20px",
-                            overflow: "hidden",
-                            background: "#000",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button
-                            onClick={() => setPreviewImage(null)}
-                            style={{
-                                position: "absolute",
-                                top: "15px",
-                                right: "15px",
-                                background: "rgba(0,0,0,0.5)",
-                                border: "none",
-                                color: "white",
-                                borderRadius: "50%",
-                                width: "35px",
-                                height: "35px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                            }}
-                        >
-                            <CloseIcon size={20} />
-                        </button>
-                        <img
-                            src={previewImage}
-                            alt="Preview"
-                            style={{
-                                display: "block",
-                                width: "100%",
-                                height: "auto",
-                                maxHeight: "80vh",
-                                objectFit: "contain",
-                            }}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* Modal de Control de Categorías */}
-            {categoryControl.open && (
-                <div className="modal-overlay" style={{ zIndex: 7000 }}>
-                    <div
-                        className="modal-card"
-                        style={{ maxWidth: "400px", borderTop: "3px solid var(--primary)" }}
-                    >
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: "20px",
-                            }}
-                        >
-                            <h3 style={{ margin: 0 }}>Gestionar Categorías</h3>
-                            <button
-                                onClick={() =>
-                                    setCategoryControl({
-                                        open: false,
-                                        user: null,
-                                        currentCat: "",
-                                    })
-                                }
-                                style={{
-                                    background: "none",
-                                    border: "none",
-                                    color: "white",
-                                    opacity: 0.5,
-                                    cursor: "pointer",
-                                }}
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div style={{ textAlign: "left", marginBottom: "20px" }}>
-                            <p
-                                style={{
-                                    margin: "0 0 5px 0",
-                                    fontSize: "0.8rem",
-                                    opacity: 0.7,
-                                }}
-                            >
-                                Jugador:
-                            </p>
-                            <div
-                                style={{
-                                    fontWeight: "bold",
-                                    fontSize: "1.1rem",
-                                    color: "var(--primary)",
-                                }}
-                            >
-                                {categoryControl.user?.name}
-                            </div>
-                            <div style={{ fontSize: "0.75rem", opacity: 0.5 }}>
-                                DNI: {categoryControl.user?.dni}
-                            </div>
-                        </div>
-
-                        <div className="category-control-section">
-                            <h4
-                                style={{
-                                    fontSize: "0.8rem",
-                                    margin: "0 0 10px 0",
-                                    color: "#60a5fa",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                }}
-                            >
-                                <ArrowRightLeft size={14} /> MOVER CATEGORÍA
-                            </h4>
-                            <p
-                                style={{
-                                    fontSize: "0.7rem",
-                                    opacity: 0.5,
-                                    marginBottom: "10px",
-                                }}
-                            >
-                                Cambiar "{categoryControl.currentCat}" por:
-                            </p>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                {categoriesForTeam
-                                    .filter((c) => c !== categoryControl.currentCat)
-                                    .map((cat) => (
-                                        <button
-                                            key={cat}
-                                            className="cat-pill-btn move"
-                                            onClick={async () => {
-                                                try {
-                                                    await updateUserCategories(
-                                                        categoryControl.user.id,
-                                                        categoryControl.currentCat,
-                                                        cat,
-                                                        "move",
-                                                    );
-                                                    setCategoryControl({
-                                                        open: false,
-                                                        user: null,
-                                                        currentCat: "",
-                                                    });
-                                                } catch (error) {
-                                                    alert("Error al mover categoría: " + error.message);
-                                                }
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
-                            </div>
-                        </div>
-
-                        <div
-                            className="category-control-section"
-                            style={{
-                                marginTop: "25px",
-                                paddingTop: "20px",
-                                borderTop: "1px solid rgba(255,255,255,0.05)",
-                            }}
-                        >
-                            <h4
-                                style={{
-                                    fontSize: "0.8rem",
-                                    margin: "0 0 10px 0",
-                                    color: "#10b981",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                }}
-                            >
-                                <UserPlus size={14} /> AÑADIR A OTRA CATEGORÍA
-                            </h4>
-                            <p
-                                style={{
-                                    fontSize: "0.7rem",
-                                    opacity: 0.5,
-                                    marginBottom: "10px",
-                                }}
-                            >
-                                Mantener actual y agregar:
-                            </p>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                {categoriesForTeam
-                                    .filter((c) => {
-                                        const userCats = Array.isArray(
-                                            categoryControl.user?.categories,
-                                        )
-                                            ? categoryControl.user.categories
-                                            : [categoryControl.user?.category];
-                                        return !userCats.includes(c);
-                                    })
-                                    .map((cat) => (
-                                        <button
-                                            key={cat}
-                                            className="cat-pill-btn add"
-                                            onClick={async () => {
-                                                try {
-                                                    await updateUserCategories(
-                                                        categoryControl.user.id,
-                                                        null,
-                                                        cat,
-                                                        "add",
-                                                    );
-                                                    setCategoryControl({
-                                                        open: false,
-                                                        user: null,
-                                                        currentCat: "",
-                                                    });
-                                                } catch (error) {
-                                                    alert("Error al añadir categoría: " + error.message);
-                                                }
-                                            }}
-                                        >
-                                            <Plus size={12} /> {cat}
-                                        </button>
-                                    ))}
-                            </div>
-                        </div>
-
-                        <div
-                            className="category-control-section"
-                            style={{
-                                marginTop: "25px",
-                                paddingTop: "20px",
-                                borderTop: "1px solid rgba(255,255,255,0.05)",
-                            }}
-                        >
-                            <h4
-                                style={{
-                                    fontSize: "0.8rem",
-                                    margin: "0 0 10px 0",
-                                    color: "#f87171",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                }}
-                            >
-                                <Trash2 size={14} /> ELIMINAR DE ESTA CATEGORÍA
-                            </h4>
-                            <p
-                                style={{
-                                    fontSize: "0.7rem",
-                                    opacity: 0.5,
-                                    marginBottom: "10px",
-                                }}
-                            >
-                                Quitar a este jugador de "{categoryControl.currentCat}":
-                            </p>
-                            <button
-                                className="cat-pill-btn remove-current"
-                                onClick={async () => {
-                                    if (
-                                        window.confirm(
-                                            `¿Seguro que quieres quitar a este jugador de la categoría ${categoryControl.currentCat}?`,
-                                        )
-                                    ) {
-                                        try {
-                                            await updateUserCategories(
-                                                categoryControl.user.id,
-                                                categoryControl.currentCat,
-                                                null,
-                                                "remove",
-                                            );
-                                            setCategoryControl({
-                                                open: false,
-                                                user: null,
-                                                currentCat: "",
-                                            });
-                                        } catch (error) {
-                                            alert("Error al eliminar categoría: " + error.message);
-                                        }
-                                    }
-                                }}
-                            >
-                                <X size={12} /> QUITAR DE{" "}
-                                {categoryControl.currentCat.toUpperCase()}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <style>{`
-                 .admin-nav-item {
-                    padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
-                    background: rgba(255,255,255,0.02); text-align: center; cursor: pointer; transition: none;
-                }
-                .admin-nav-item:hover { border-color: var(--primary); background: rgba(59, 130, 246, 0.05); }
-
-                @media (max-width: 900px) {
-                    .home-content-layout { flex-direction: column !important; }
-                    .home-content-layout > div { width: 100% !important; }
-                    .hide-mobile { display: none !important; }
-                }
-                
-                .delete-row-btn {
-                    padding: 8px; border-radius: 8px; border: none; background: rgba(239, 68, 68, 0.1); color: #f87171; cursor: pointer; transition: none;
-                }
-                .category-manage-btn {
-                    padding: 8px; border-radius: 8px; border: none; background: rgba(59, 130, 246, 0.1); color: #60a5fa; cursor: pointer; transition: none;
-                }
-                .category-manage-btn:hover { background: rgba(59, 130, 246, 0.2); }
-                
-                .cat-pill-btn {
-                    padding: 6px 12px; border-radius: 20px; border: 1px solid var(--glass-border-light); background: var(--header-bg);
-                    color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
-                    display: flex; alignItems: center; gap: 5px;
-                }
-                .cat-pill-btn.move:hover { border-color: #60a5fa; background: rgba(96, 165, 250, 0.1); color: #60a5fa; }
-                .cat-pill-btn.add:hover { border-color: #10b981; background: rgba(16, 185, 129, 0.1); color: #10b981; }
-                .cat-pill-btn.remove-current { border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); color: #f87171; width: 100%; justify-content: center; }
-                .cat-pill-btn.remove-current:hover { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-
-                .modal-overlay {
-                    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(2, 6, 23, 0.85);
-                    display: flex; align-items: center; justify-content: center; z-index: 2000;
-                }
-                .modal-card {
-                    background: var(--card-bg); border: 1px solid var(--glass-border); padding: 25px; border-radius: 20px; text-align: center; width: 90%; max-width: 320px;
-                    color: var(--text-main);
-                }
-                
-                .animate-fade-in { animation: none; opacity: 1; }
-                @keyframes spin { 100% { transform: rotate(360deg); } }
-                .animate-spin { animation: spin 2s linear infinite; }
-            `}</style>
-        </div>
-    );
-};
-
-const StatBadgeMinimal = ({ title, value, color, icon }) => (
-    <div
-        style={{
-            background: "var(--glass-bg)",
-            border: `1px solid var(--glass-border)`,
-            borderLeft: `3px solid ${color}`,
-            padding: "6px 12px",
-            borderRadius: "10px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            fontSize: "0.8rem",
-        }}
-    >
-        <div style={{ color, opacity: 0.8 }}>{icon}</div>
-        <div style={{ fontWeight: "500", color: "var(--text-muted)" }}>
-            {title}:
-        </div>
-        <div style={{ fontWeight: "800", color: "var(--text-main)" }}>{value}</div>
-    </div>
-);
-
-/**
- * Modal de Registro Rápido.
- * Maneja la cámara web, detección de rostro con MediaPipe e integración con el servicio de base de datos.
- */
-const QuickRegisterModal = ({ data, onClose }) => {
-    const webcamRef = useRef(null);
-    const [formData, setFormData] = useState(data);
-    const [step, setStep] = useState(1); // 1: Form, 2: Camera
-    const [status, setStatus] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [modelsReady, setModelsReady] = useState(false);
-    const [qualityError, setQualityError] = useState("");
-    const [qualityCode, setQualityCode] = useState("");
-    const [faceBox, setFaceBox] = useState(null);
-    const [facingMode, setFacingMode] = useState("user");
-    const [cameraKey, setCameraKey] = useState(0);
-    const [isTorchOn, setIsTorchOn] = useState(false);
-    const [torchAvailable, setTorchAvailable] = useState(false);
-    const [uploadedImage, setUploadedImage] = useState(null);
-    const fileInputRef = useRef(null);
-
-    const toggleCamera = () => {
-        setIsTorchOn(false);
-        setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
-        setCameraKey((prev) => prev + 1);
-    };
-
-    const toggleTorch = async () => {
-        try {
-            const videoTrack = webcamRef.current?.video?.srcObject?.getVideoTracks()[0];
-            if (videoTrack) {
-                const newTorchState = !isTorchOn;
-                await videoTrack.applyConstraints({
-                    advanced: [{ torch: newTorchState }],
-                });
-                setIsTorchOn(newTorchState);
-            }
-        } catch (err) {
-            console.warn("Flashlight not supported", err);
-        }
-    };
-
-    const onUserMedia = (stream) => {
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-            const capabilities = videoTrack.getCapabilities?.() || {};
-            setTorchAvailable(!!capabilities.torch);
-        }
-    };
-
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setLoading(true);
-        setStatus("Cargando imagen...");
-
-        try {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const img = new Image();
-                img.onload = async () => {
-                    setStatus("Analizando foto...");
-                    setUploadedImage(event.target.result);
-
-                    // Extraer descriptor de la imagen cargada
-                    const { getFaceDataFromImage } = await import("../services/faceServiceLocal");
-                    const data = await getFaceDataFromImage(img);
-
-                    if (data) {
-                        setStatus("¡Rostro detectado!");
-                        setQualityCode("OK");
-                        setQualityError("¡Foto lista!");
-                        setLoading(false);
-                    } else {
-                        alert("No se detectó un rostro claro en la foto.");
-                        setUploadedImage(null);
-                        setLoading(false);
-                        setStatus("Error en foto");
-                    }
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        } catch (err) {
-            console.error(err);
-            alert("Error al procesar la imagen");
-            setLoading(false);
-        }
-    };
-
-    const initModels = async () => {
-        setStatus("Iniciando IA...");
-        const res = await initHybridEngine();
-        if (res.success) {
-            setModelsReady(true);
-            setStatus("Sistema listo");
-        } else {
-            setStatus("Error: " + res.error);
-        }
-    };
-
-    const handleCapture = async () => {
-        if (!webcamRef.current && !uploadedImage) return;
-
-        if (!formData.name || !formData.dni) {
-            alert("Completa nombre y DNI");
-            return;
-        }
-
-        const dniExists = await checkDniExists(formData.dni);
-        if (dniExists) {
-            alert(`El DNI ${formData.dni} ya está registrado.`);
-            return;
-        }
-
-        setLoading(true);
-        setStatus("Procesando...");
-
-        try {
-            let imageSrc;
-            let videoElement = null;
-
-            if (uploadedImage) {
-                imageSrc = uploadedImage;
-            } else {
-                imageSrc = webcamRef.current.getScreenshot();
-                videoElement = webcamRef.current.video;
-            }
-
-            if (!imageSrc) throw new Error("No hay imagen");
-
-            const img = new Image();
-            img.src = imageSrc;
-            await new Promise((res) => (img.onload = res));
-
-            const canvas = document.createElement("canvas");
-            canvas.width = 400;
-            canvas.height = 400;
-            const ctx = canvas.getContext("2d");
-            const size = Math.min(img.width, img.height);
-            ctx.drawImage(
-                img,
-                (img.width - size) / 2,
-                (img.height - size) / 2,
-                size,
-                size,
-                0,
-                0,
-                400,
-                400,
-            );
-            const photoUrl = canvas.toDataURL("image/jpeg", 0.8);
-
-            const { getFaceDataLocal, getFaceDataFromImage } = await import("../services/faceServiceLocal");
-
-            let faceData;
-            if (uploadedImage) {
-                faceData = await getFaceDataFromImage(img);
-            } else {
-                faceData = await getFaceDataLocal(videoElement);
-            }
-
-            if (!faceData) throw new Error("No se detecta rostro claramente");
-
-            const allUsers = await getUsers(true);
-            if (allUsers.length > 0) {
-                const matcher = createMatcher(allUsers);
-                if (matcher) {
-                    const bestMatch = matcher.findBestMatch(
-                        new Float32Array(faceData.descriptor),
-                    );
-                    if (bestMatch.label !== "unknown") {
-                        const matched = allUsers.find((u) => u.id === bestMatch.label);
-                        throw new Error(`Ya registrado como: ${matched.name}`);
-                    }
-                }
-            }
-
-            await saveUser({
-                ...formData,
-                descriptor: Array.from(faceData.descriptor),
-                photo: photoUrl,
-                status: "habilitado",
-                categoryStatuses: { [formData.category]: "habilitado" },
-                createdAt: new Date().toISOString(),
-            });
-
-            setStatus("¡Registrado con éxito!");
-            setTimeout(onClose, 1200);
-        } catch (error) {
-            alert(error.message);
-            setStatus("Error");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        let interval;
-        if (step === 2) {
-            if (!modelsReady) initModels();
-            interval = setInterval(async () => {
-                if (!webcamRef.current?.video || !modelsReady) return;
-                const video = webcamRef.current.video;
-                if (video.readyState !== 4) return;
-
-                try {
-                    const mp = await detectFaceMediaPipe(video);
-                    if (!mp) {
-                        setQualityError("Buscando rostro...");
-                        setQualityCode("NO_FACE");
-                        setFaceBox(null);
-                    } else {
-                        const quality = checkFaceQuality(mp, video);
-                        setQualityError(quality.ok ? "¡Rostro listo!" : quality.reason);
-                        setQualityCode(quality.ok ? "OK" : quality.code);
-
-                        const { originX, originY, width, height } = mp.boundingBox;
-                        setFaceBox({
-                            x: (originX / video.videoWidth) * 100,
-                            y: (originY / video.videoHeight) * 100,
-                            w: (width / video.videoWidth) * 100,
-                            h: (height / video.videoHeight) * 100,
-                        });
-                    }
-                } catch (e) {
-                    console.error("Error en loop de detección:", e);
-                }
-            }, 200);
-        }
-        return () => clearInterval(interval);
-    }, [step, modelsReady]);
-
-    return (
-        <div
-            className="modal-overlay"
-            style={{ background: "rgba(0,0,0,0.92)", zIndex: 5000, padding: "10px" }}
-        >
-            <div
-                className="modal-card"
-                style={{
-                    maxWidth: "400px",
-                    width: "100%",
-                    position: "relative",
-                    padding: "25px",
-                }}
-            >
-                <button
-                    onClick={onClose}
-                    style={{
-                        position: "absolute",
-                        top: "15px",
-                        right: "15px",
-                        background: "none",
-                        border: "none",
-                        color: "var(--text-main)",
-                        opacity: 0.5,
-                    }}
-                >
-                    <X size={24} />
-                </button>
-
-                <h2 style={{ marginBottom: "10px", fontSize: "1.2rem" }}>
-                    Registro Rápido
-                </h2>
-                <p
-                    style={{
-                        fontSize: "0.75rem",
-                        color: "var(--text-muted)",
-                        marginBottom: "20px",
-                    }}
-                >
-                    {formData.team} |{" "}
-                    <span style={{ color: "var(--primary)" }}>{formData.category}</span>
-                </p>
-
-                {step === 1 ? (
-                    <div
-                        style={{ display: "flex", flexDirection: "column", gap: "15px" }}
-                    >
-                        <input
-                            className="premium-input"
-                            placeholder="Nombre y Apellido"
-                            value={formData.name}
-                            onChange={(e) =>
-                                setFormData({ ...formData, name: e.target.value })
-                            }
-                        />
-                        <input
-                            className="premium-input"
-                            type="number"
-                            placeholder="DNI"
-                            value={formData.dni}
-                            onChange={(e) =>
-                                setFormData({ ...formData, dni: e.target.value })
-                            }
-                        />
-                        <button
-                            className="glass-button"
-                            style={{ background: "var(--primary)" }}
-                            onClick={() => setStep(2)}
-                            disabled={!formData.name || !formData.dni}
-                        >
-                            CONTINUAR
-                        </button>
-                    </div>
-                ) : (
-                    <div style={{ textAlign: "center" }}>
-                        <div
-                            style={{
-                                position: "relative",
-                                width: "100%",
-                                aspectRatio: "1/1",
-                                borderRadius: "15px",
-                                overflow: "hidden",
-                                background: "#000",
-                                marginBottom: "15px",
-                                border: `2px solid ${qualityCode === "OK" ? "#22c55e" : qualityCode === "NO_FACE" ? "rgba(255,255,255,0.1)" : "#f59e0b"}`,
-                            }}
-                        >
-                            {uploadedImage ? (
-                                <img
-                                    src={uploadedImage}
-                                    alt="Uploaded"
-                                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
-                                />
-                            ) : (
-                                <Webcam
-                                    key={cameraKey}
-                                    audio={false}
-                                    ref={webcamRef}
-                                    screenshotFormat="image/jpeg"
-                                    width="100%"
-                                    height="100%"
-                                    videoConstraints={{ facingMode: { ideal: facingMode } }}
-                                    onUserMedia={onUserMedia}
-                                    style={{ objectFit: "cover" }}
-                                />
-                            )}
-
-                            {!uploadedImage && (
-                                <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', gap: '10px', zIndex: 100 }}>
-                                    {torchAvailable && facingMode === 'environment' && (
-                                        <button
-                                            onClick={toggleTorch}
-                                            className="glass-button"
-                                            style={{
-                                                padding: '12px',
-                                                borderRadius: '50%',
-                                                width: '50px',
-                                                height: '50px',
-                                                minWidth: '50px',
-                                                background: isTorchOn ? '#fbbf24' : 'rgba(0,0,0,0.5)',
-                                                border: '2px solid rgba(255,255,255,0.5)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}
-                                        >
-                                            <Lightbulb style={{ width: '22px', height: '22px' }} color={isTorchOn ? "black" : "white"} />
-                                        </button>
-                                    )}
-
-                                    <button
-                                        onClick={toggleCamera}
-                                        className="glass-button"
-                                        style={{
-                                            padding: '12px',
-                                            borderRadius: '50%',
-                                            width: '50px',
-                                            height: '50px',
-                                            minWidth: '50px',
-                                            background: 'rgba(59, 130, 246, 0.9)',
-                                            border: '2px solid rgba(255,255,255,0.5)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
-                                    >
-                                        <SwitchCamera style={{ width: '22px', height: '22px' }} color="white" />
-                                    </button>
-                                </div>
-                            )}
-
-                            <div style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 100 }}>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                    ref={fileInputRef}
-                                    onChange={handleFileUpload}
-                                />
                                 <button
-                                    onClick={() => uploadedImage ? setUploadedImage(null) : fileInputRef.current.click()}
-                                    className="glass-button"
-                                    style={{
-                                        padding: '10px 15px',
-                                        borderRadius: '12px',
-                                        background: uploadedImage ? 'rgba(239, 68, 68, 0.8)' : 'rgba(16, 185, 129, 0.8)',
-                                        border: '1px solid rgba(255,255,255,0.2)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        fontSize: '0.7rem'
-                                    }}
+                                    onClick={() => { setSelectedCategory(null); if (!selectedTeam) setSearchTerm(""); }}
+                                    className="glass-button w-full mt-8"
                                 >
-                                    {uploadedImage ? <X size={14} /> : <Upload size={14} />}
-                                    {uploadedImage ? 'CANCELAR FOTO' : 'SUBIR FOTO'}
+                                    <ArrowLeft size={14} /> {searchTerm ? 'VOLVER A RESULTADOS' : 'VOLVER A CATEGORÍAS'}
                                 </button>
                             </div>
-                            {faceBox && (
-                                <div className="face-box-overlay">
-                                    <div
-                                        className={`face-box ${qualityCode !== "OK" ? "invalid" : ""} ${loading ? "processing" : ""}`}
-                                        style={{
-                                            left: `${faceBox.x}%`,
-                                            top: `${faceBox.y}%`,
-                                            width: `${faceBox.w}%`,
-                                            height: `${faceBox.h}%`,
-                                        }}
-                                    >
-                                        <div className="face-box-corner tl"></div>
-                                        <div className="face-box-corner tr"></div>
-                                        <div className="face-box-corner bl"></div>
-                                        <div className="face-box-corner br"></div>
-                                        {qualityCode === "OK" && !loading && (
-                                            <div className="face-box-scan-line"></div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                            {loading && (
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        inset: 0,
-                                        background: "rgba(0,0,0,0.5)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        zIndex: 100,
-                                    }}
-                                >
-                                    <RefreshCw className="animate-spin" size={32} />
-                                </div>
-                            )}
-                        </div>
-                        <div
-                            style={{
-                                padding: "12px",
-                                borderRadius: "12px",
-                                background:
-                                    qualityCode === "OK"
-                                        ? "rgba(34, 197, 94, 0.15)"
-                                        : qualityCode === "NO_FACE"
-                                            ? "rgba(255,255,255,0.05)"
-                                            : "rgba(245, 158, 11, 0.15)",
-                                color:
-                                    qualityCode === "OK"
-                                        ? "#4ade80"
-                                        : qualityCode === "NO_FACE"
-                                            ? "#94a3b8"
-                                            : "#fbbf24",
-                                fontSize: "0.85rem",
-                                fontWeight: "700",
-                                marginBottom: "15px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "8px",
-                                border: `1px solid ${qualityCode === "OK" ? "rgba(34, 197, 94, 0.2)" : "rgba(255,255,255,0.1)"}`,
-                            }}
+                        )}
+                        <button
+                            onClick={() => setSelectedTeam(null)}
+                            className="glass-button col-span-full mt-8"
                         >
-                            {qualityCode === "OK" && <SuccessIcon size={16} />}
-                            {qualityCode === "DISTANCE_TOO_FAR" && <Zap size={16} />}
-                            {qualityCode === "DISTANCE_TOO_CLOSE" && (
-                                <AlertCircle size={16} />
-                            )}
-                            {status === "¡Registrado con éxito!"
-                                ? status
-                                : qualityCode === "DISTANCE_TOO_FAR"
-                                    ? "Acércate más a la cámara"
-                                    : qualityError}
-                        </div>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                            <button
-                                className="glass-button button-secondary"
-                                style={{ flex: 1 }}
-                                onClick={() => setStep(1)}
-                            >
-                                ATRÁS
-                            </button>
-                            <button
-                                className="glass-button"
+                            <ArrowLeft size={14} /> VOLVER A EQUIPOS
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modales Profesionales */}
+            {
+                deleteModal.open && (
+                    <div className="modal-overlay">
+                        <div className="modal-card">
+                            <AlertCircle
+                                size={32}
+                                color="#f87171"
+                                style={{ marginBottom: "15px" }}
+                            />
+                            <h3 style={{ margin: "0 0 10px 0" }}>Eliminar Jugador</h3>
+                            <p
                                 style={{
-                                    flex: 2,
-                                    background:
-                                        qualityCode === "OK"
-                                            ? "var(--success)"
-                                            : "rgba(255,255,255,0.05)",
-                                    borderColor:
-                                        qualityCode === "OK"
-                                            ? "var(--success)"
-                                            : "rgba(255,255,255,0.1)",
-                                    color:
-                                        qualityCode === "OK" ? "white" : "rgba(255,255,255,0.3)",
-                                    opacity: qualityCode === "OK" ? 1 : 0.6,
+                                    fontSize: "1rem",
+                                    opacity: 0.7,
+                                    marginBottom: "20px",
                                 }}
-                                onClick={handleCapture}
-                                disabled={loading || qualityCode !== "OK"}
                             >
-                                {loading ? "PROCESANDO..." : "REGISTRAR"}
-                            </button>
+                                ¿Deseas eliminar a <strong>{deleteModal.userName}</strong>?
+                            </p>
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                <button
+                                    onClick={() =>
+                                        setDeleteModal({ open: false, userId: null, userName: "" })
+                                    }
+                                    className="glass-button"
+                                    style={{ flex: 1, background: "rgba(255,255,255,0.05)" }}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button
+                                    onClick={execDelete}
+                                    className="glass-button"
+                                    style={{ flex: 1, background: "#ef4444" }}
+                                >
+                                    ELIMINAR
+                                </button>
+                            </div>
                         </div>
                     </div>
-                )}
-            </div>
-        </div>
+                )
+            }
+
+            {/* Modales de Gestión Rápida */}
+            {
+                showTeamModal && (
+                    <div className="modal-overlay" style={{ zIndex: 4000 }}>
+                        <div
+                            className="modal-card"
+                            style={{ borderTop: "2px solid var(--primary)" }}
+                        >
+                            <h3 style={{ marginBottom: "20px" }}>Nuevo Equipo</h3>
+                            <input
+                                autoFocus
+                                className="premium-input"
+                                placeholder="Nombre"
+                                value={modalInput}
+                                onChange={(e) => setModalInput(e.target.value)}
+                            />
+                            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                                <button
+                                    onClick={() => setShowTeamModal(false)}
+                                    className="glass-button button-secondary"
+                                    style={{ flex: 1 }}
+                                >
+                                    Cerrar
+                                </button>
+                                <button
+                                    onClick={handleConfirmAddTeam}
+                                    className="glass-button"
+                                    style={{ flex: 1 }}
+                                >
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                showCategoryModal.open && (
+                    <div className="modal-premium-overlay" onClick={() => setShowCategoryModal({ open: false, team: "" })}>
+                        <div className="modal-premium-card" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-premium-header">
+                                <h3 className="modal-premium-title">Nueva Categoría</h3>
+                                <button className="btn-close-modal" onClick={() => setShowCategoryModal({ open: false, team: "" })}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <p className="modal-premium-subtitle">Equipo: {showCategoryModal.team}</p>
+                            <input
+                                autoFocus
+                                className="premium-input-full"
+                                placeholder="Nombre (ej: Libre)"
+                                value={modalInput}
+                                onChange={(e) => setModalInput(e.target.value)}
+                            />
+                            <div className="btn-group-modal">
+                                <button
+                                    onClick={() => setShowCategoryModal({ open: false, team: "" })}
+                                    className="glass-button button-secondary flex-1"
+                                >
+                                    Cerrar
+                                </button>
+                                <button
+                                    onClick={handleConfirmAddCategory}
+                                    className="glass-button flex-1"
+                                >
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                showQuickRegister && (
+                    <QuickRegisterModal
+                        data={quickRegisterData}
+                        onClose={() => setShowQuickRegister(false)}
+                    />
+                )
+            }
+
+            {
+                previewImage && (
+                    <div className="modal-premium-overlay overlay-dark" onClick={() => setPreviewImage(null)}>
+                        <div className="modal-preview-card" onClick={(e) => e.stopPropagation()}>
+                            <button className="btn-close-modal-overlap" onClick={() => setPreviewImage(null)}>
+                                <X size={20} />
+                            </button>
+                            <img
+                                src={previewImage || ""}
+                                alt="Preview"
+                                className="img-preview"
+                            />
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal de Control de Categorías */}
+            {
+                categoryControl.open && (
+                    <div className="modal-premium-overlay" style={{ zIndex: 7000 }}>
+                        <div className="modal-premium-card" style={{ maxWidth: "450px" }}>
+                            <div className="modal-premium-header">
+                                <h3 className="modal-premium-title uppercase">Gestionar Categorías</h3>
+                                <button
+                                    className="btn-close-modal"
+                                    onClick={() =>
+                                        setCategoryControl({
+                                            open: false,
+                                            user: null,
+                                            currentCat: "",
+                                        })
+                                    }
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="modal-user-info">
+                                <p className="modal-user-label">Jugador</p>
+                                <div className="modal-user-name">
+                                    {(categoryControl.user as any)?.name}
+                                </div>
+                                <div className="modal-user-dni">
+                                    DNI: {(categoryControl.user as any)?.dni}
+                                </div>
+                            </div>
+
+                            <div className="management-section">
+                                <h4 className="management-label management-label-blue">
+                                    <ArrowRightLeft size={14} /> MOVER CATEGORÍA
+                                </h4>
+                                <p className="management-action-subtitle">
+                                    Cambiar "{categoryControl.currentCat}" por:
+                                </p>
+                                <div className="flex-gap-2">
+                                    {categoriesForTeam
+                                        .filter((c) => c !== categoryControl.currentCat)
+                                        .map((cat) => (
+                                            <button
+                                                key={cat}
+                                                className="category-pill category-pill-move"
+                                                onClick={async () => {
+                                                    try {
+                                                        if (!categoryControl.user) return;
+                                                        await updateUserCategories(
+                                                            (categoryControl.user as any).id,
+                                                            categoryControl.currentCat,
+                                                            cat,
+                                                            "move",
+                                                        );
+                                                        setCategoryControl({
+                                                            open: false,
+                                                            user: null,
+                                                            currentCat: "",
+                                                        });
+                                                    } catch (error: any) {
+                                                        alert("Error al mover categoría: " + error.message);
+                                                    }
+                                                }}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                </div>
+                            </div>
+
+                            <div className="management-section">
+                                <h4 className="management-label management-label-emerald">
+                                    <UserPlus size={14} /> AÑADIR A OTRA CATEGORÍA
+                                </h4>
+                                <p className="management-action-subtitle">
+                                    Mantener actual y agregar:
+                                </p>
+                                <div className="flex-gap-2">
+                                    {categoriesForTeam
+                                        .filter((c) => {
+                                            const userCats = Array.isArray((categoryControl.user as any)?.categories)
+                                                ? (categoryControl.user as any).categories
+                                                : [(categoryControl.user as any)?.category];
+                                            return !userCats.includes(c);
+                                        })
+                                        .map((cat) => (
+                                            <button
+                                                key={cat}
+                                                className="category-pill category-pill-add"
+                                                onClick={async () => {
+                                                    try {
+                                                        if (!categoryControl.user) return;
+                                                        await updateUserCategories(
+                                                            (categoryControl.user as any).id,
+                                                            "",
+                                                            cat,
+                                                            "add",
+                                                        );
+                                                        setCategoryControl({
+                                                            open: false,
+                                                            user: null,
+                                                            currentCat: "",
+                                                        });
+                                                    } catch (error: any) {
+                                                        alert("Error al añadir categoría: " + (error?.message || "Error desconocido"));
+                                                    }
+                                                }}
+                                            >
+                                                <Plus size={12} /> {cat}
+                                            </button>
+                                        ))}
+                                </div>
+                            </div>
+
+                            <div className="management-section">
+                                <h4 className="management-label management-label-red">
+                                    <Trash2 size={14} /> ELIMINAR DE ESTA CATEGORÍA
+                                </h4>
+                                <p className="management-action-subtitle">
+                                    Quitar a este jugador de "{categoryControl.currentCat}":
+                                </p>
+                                <button
+                                    className="category-pill category-pill-remove"
+                                    onClick={async () => {
+                                        if (
+                                            window.confirm(
+                                                `¿Seguro que quieres quitar a este jugador de la categoría ${categoryControl.currentCat}?`,
+                                            )
+                                        ) {
+                                            try {
+                                                if (!categoryControl.user) return;
+                                                await updateUserCategories(
+                                                    (categoryControl.user as any).id,
+                                                    categoryControl.currentCat || "",
+                                                    "",
+                                                    "remove",
+                                                );
+                                                setCategoryControl({
+                                                    open: false,
+                                                    user: null,
+                                                    currentCat: "",
+                                                });
+                                            } catch (error: any) {
+                                                alert("Error al eliminar categoría: " + (error?.message || "Error desconocido"));
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <X size={12} /> QUITAR DE{" "}
+                                    {categoryControl.currentCat?.toUpperCase() || ""}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+        </div >
     );
 };
-
-const StatusBadge = ({ status, onClick }) => (
-    <span
-        onClick={onClick}
-        style={{
-            padding: "3px 8px",
-            borderRadius: "20px",
-            fontSize: "0.6rem",
-            fontWeight: "800",
-            background:
-                status === "habilitado"
-                    ? "rgba(16, 185, 129, 0.1)"
-                    : "rgba(239, 68, 68, 0.1)",
-            color: status === "habilitado" ? "#10b981" : "#f87171",
-            border: `1px solid ${status === "habilitado" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "4px",
-            textTransform: "uppercase",
-        }}
-    >
-        <div
-            style={{
-                width: "5px",
-                height: "5px",
-                borderRadius: "50%",
-                background: status === "habilitado" ? "#10b981" : "#f87171",
-            }}
-        ></div>
-        {status}
-    </span>
-);
 
 export default Home;

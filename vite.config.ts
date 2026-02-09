@@ -12,6 +12,7 @@ export default defineConfig({
   },
   server: {
     host: true, // Listen on all addresses (0.0.0.0)
-    allowedHosts: true // Allow any host (needed for tunneling)
+    allowedHosts: true, // Allow any host (needed for tunneling)
+    port: 3000
   }
 })

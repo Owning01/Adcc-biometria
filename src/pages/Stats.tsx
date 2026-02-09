@@ -1,33 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { calculateAllStats, calculateTeamStats } from '../services/statsService';
-import { getUsers, updateUser } from '../services/db';
-import { LayoutGrid, Users, Trophy, Search, Activity, Calendar, Clock, BarChart2, ChevronRight, User, Edit2, Save, X } from 'lucide-react';
+import { getUsers, updateUser, User } from '../services/db';
+import { LayoutGrid, Users, Trophy, Search, Activity, Calendar, Clock, BarChart2, ChevronRight, User as UserIcon, Edit2, Save, X } from 'lucide-react';
+
+interface PlayerStats {
+    totalGoals: number;
+    totalAssists: number;
+    timeInLeague: string;
+    seasons: Record<string, { goals: number; assists: number }>;
+    clubs: string[];
+}
+
+interface TeamStats {
+    championshipsTotal: number;
+    yearsInLeague: number;
+    championshipsByCat: Record<string, number>;
+}
 
 const Stats = () => {
     const [activeTab, setActiveTab] = useState('players'); // 'players', 'teams'
     const [loading, setLoading] = useState(true);
-    const [playerStats, setPlayerStats] = useState({});
-    const [teamStats, setTeamStats] = useState({});
-    const [users, setUsers] = useState([]);
+    const [playerStats, setPlayerStats] = useState<Record<string, PlayerStats>>({});
+    const [teamStats, setTeamStats] = useState<Record<string, TeamStats>>({});
+    const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedPlayer, setSelectedPlayer] = useState(null);
+    const [selectedPlayer, setSelectedPlayer] = useState<User | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
-            const allUsers = await getUsers();
+            const allUsers: User[] = await getUsers();
             const pStats = await calculateAllStats(allUsers);
             const tStats = await calculateTeamStats();
-            setPlayerStats(pStats);
-            setTeamStats(tStats);
+            setPlayerStats(pStats as any);
+            setTeamStats(tStats as any);
             setUsers(allUsers);
             setLoading(false);
         };
         loadData();
     }, []);
 
-    const handleManualStatsUpdate = async (userId, field, value) => {
+    const handleManualStatsUpdate = async (userId: string, field: string, value: any) => {
         try {
             const user = users.find(u => u.id === userId);
+            if (!user) return;
             const newManualStats = { ...(user.manualStats || {}), [field]: value };
             await updateUser(userId, { manualStats: newManualStats });
 
@@ -35,15 +50,15 @@ const Stats = () => {
             const updatedUsers = users.map(u => u.id === userId ? { ...u, manualStats: newManualStats } : u);
             setUsers(updatedUsers);
             const newPStats = await calculateAllStats(updatedUsers);
-            setPlayerStats(newPStats);
-        } catch (error) {
-            alert("Error al actualizar estadísticas: " + error.message);
+            setPlayerStats(newPStats as any);
+        } catch (error: any) {
+            alert("Error al actualizar estadísticas: " + (error?.message || "Error desconocido"));
         }
     };
 
     const filteredUsers = users.filter(u =>
         (u.name || (u.nombre + ' ' + (u.apellido || '')) || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.team?.toLowerCase().includes(searchTerm.toLowerCase())
+        (u.team || '').toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => {
         const statsA = playerStats[a.id]?.totalGoals || 0;
         const statsB = playerStats[b.id]?.totalGoals || 0;
@@ -54,35 +69,33 @@ const Stats = () => {
 
     return (
         <div className="animate-fade-in">
-            <div style={{ marginBottom: '30px', textAlign: 'center' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: '800', margin: 0 }}>
-                    ESTADÍSTICAS <span style={{ color: 'var(--primary)' }}>ADCC</span>
-                </h1>
-                <p style={{ color: 'var(--text-muted)' }}>Métricas históricas de jugadores y equipos</p>
-            </div>
+            <header className="stats-header">
+                <h1 className="list-title">ESTADÍSTICAS <span className="text-highlight">ADCC</span></h1>
+                <p className="list-subtitle">Métricas históricas de jugadores y equipos</p>
+            </header>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '30px' }}>
+            <div className="stats-tab-group">
                 <button
                     onClick={() => setActiveTab('players')}
                     className={`glass-button ${activeTab === 'players' ? 'active' : ''}`}
-                    style={{ background: activeTab === 'players' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: activeTab === 'players' ? 'black' : 'white' }}
+                    style={{ minWidth: '140px' }}
                 >
                     <Users size={18} /> JUGADORES
                 </button>
                 <button
                     onClick={() => setActiveTab('teams')}
                     className={`glass-button ${activeTab === 'teams' ? 'active' : ''}`}
-                    style={{ background: activeTab === 'teams' ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: activeTab === 'teams' ? 'black' : 'white' }}
+                    style={{ minWidth: '140px' }}
                 >
                     <Trophy size={18} /> EQUIPOS
                 </button>
             </div>
 
             {activeTab === 'players' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth > 992 ? '350px 1fr' : '1fr', gap: '25px' }}>
+                <div className="stats-grid-container" style={{ gridTemplateColumns: window.innerWidth > 992 ? '350px 1fr' : '1fr' }}>
                     {/* Lista de Jugadores */}
-                    <div className="glass-panel" style={{ padding: '20px', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ position: 'relative', marginBottom: '15px' }}>
+                    <div className="glass-panel player-list-panel">
+                        <div className="player-search-wrapper">
                             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
                             <input
                                 className="premium-input"
@@ -99,19 +112,9 @@ const Stats = () => {
                                     <div
                                         key={u.id}
                                         onClick={() => setSelectedPlayer(u)}
-                                        style={{
-                                            padding: '12px',
-                                            borderRadius: '12px',
-                                            background: selectedPlayer?.id === u.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            marginBottom: '5px',
-                                            border: selectedPlayer?.id === u.id ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent'
-                                        }}
+                                        className={`player-item ${selectedPlayer?.id === u.id ? 'active' : ''}`}
                                     >
-                                        <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden' }}>
+                                        <div className="player-item-avatar">
                                             <img src={u.photos?.[0] || u.photo || 'https://via.placeholder.com/40'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         </div>
                                         <div style={{ flex: 1 }}>
@@ -129,32 +132,32 @@ const Stats = () => {
                     </div>
 
                     {/* Perfil del Jugador */}
-                    <div className="glass-panel" style={{ padding: '30px' }}>
+                    <div className="glass-panel player-profile-panel">
                         {selectedPlayer ? (
                             <div className="animate-fade-in">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '25px', marginBottom: '40px' }}>
-                                    <div style={{ width: '100px', height: '100px', borderRadius: '24px', background: '#1e293b', overflow: 'hidden', border: '3px solid var(--primary)', boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}>
+                                <div className="player-profile-header">
+                                    <div className="player-profile-avatar-large">
                                         <img src={selectedPlayer.photos?.[0] || selectedPlayer.photo || 'https://via.placeholder.com/100'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     </div>
-                                    <div>
-                                        <h2 style={{ fontSize: '1.8rem', margin: 0 }}>{selectedPlayer.name || (selectedPlayer.nombre + ' ' + (selectedPlayer.apellido || ''))}</h2>
-                                        <p style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '1rem', margin: '5px 0' }}>{selectedPlayer.team}</p>
-                                        <div style={{ display: 'flex', gap: '15px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: '800' }}>{selectedPlayer.name || (selectedPlayer.nombre + ' ' + (selectedPlayer.apellido || ''))}</h2>
+                                        <p style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '1.1rem', margin: '5px 0' }}>{selectedPlayer.team}</p>
+                                        <div style={{ display: 'flex', gap: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', flexWrap: 'wrap' }}>
                                             <span>DNI: {selectedPlayer.dni}</span>
-                                            <span>•</span>
+                                            <span style={{ opacity: 0.3 }}>•</span>
                                             <EditableStat
                                                 label="Ajuste Años"
                                                 value={selectedPlayer.manualStats?.yearsAdjustment || 0}
                                                 onSave={(v) => handleManualStatsUpdate(selectedPlayer.id, 'yearsAdjustment', v)}
                                                 suffix=" años extra"
                                             />
-                                            <span>•</span>
+                                            <span style={{ opacity: 0.3 }}>•</span>
                                             <span>{playerStats[selectedPlayer.id]?.timeInLeague || 'Nuevo'} en ADCC</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+                                <div className="stat-card-grid">
                                     <StatCard
                                         label="GOLES TOTALES"
                                         value={playerStats[selectedPlayer.id]?.totalGoals || 0}
@@ -174,14 +177,14 @@ const Stats = () => {
                                     <StatCard label="TEMPORADAS" value={Object.keys(playerStats[selectedPlayer.id]?.seasons || {}).length} icon={<Calendar color="#3b82f6" />} />
                                 </div>
 
-                                <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Historial por Temporada</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <h3 className="section-title-small" style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>Historial por Temporada</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
                                     {Object.entries(playerStats[selectedPlayer.id]?.seasons || {}).map(([season, data]) => (
-                                        <div key={season} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                                        <div key={season} className="stat-season-row">
                                             <div style={{ fontWeight: '700' }}>Temporada {season}</div>
                                             <div style={{ display: 'flex', gap: '20px' }}>
-                                                <span><span style={{ color: 'var(--primary)' }}>{data.goals}</span> Goles</span>
-                                                <span><span style={{ color: 'var(--primary)' }}>{data.assists}</span> Asist.</span>
+                                                <span><span className="text-highlight">{data.goals}</span> Goles</span>
+                                                <span><span className="text-highlight">{data.assists}</span> Asist.</span>
                                             </div>
                                         </div>
                                     ))}
@@ -198,38 +201,38 @@ const Stats = () => {
                             </div>
                         ) : (
                             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}>
-                                <User size={64} />
+                                <UserIcon size={64} />
                                 <p>Selecciona un jugador para ver su perfil estadístico</p>
                             </div>
                         )}
                     </div>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
+                <div className="stats-grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
                     {Object.entries(teamStats).length === 0 ? (
-                        <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', opacity: 0.3 }}>
+                        <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', opacity: 0.3 }}>
                             No hay datos de campeonatos registrados aún.
                         </div>
                     ) : (
                         Object.entries(teamStats).map(([team, stats]) => (
-                            <div key={team} className="glass-panel" style={{ padding: '25px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                            <div key={team} className="glass-panel" style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                                     <div>
-                                        <h2 style={{ fontSize: '1.4rem', margin: 0 }}>{team}</h2>
+                                        <h2 style={{ fontSize: '1.4rem', margin: 0, fontWeight: '800' }}>{team}</h2>
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
-                                            <p style={{ color: 'var(--primary)', fontWeight: '700', margin: 0 }}>{stats.championshipsTotal} Campeonatos</p>
+                                            <p className="text-highlight" style={{ fontWeight: '700', margin: 0 }}>{stats.championshipsTotal} Campeonatos</p>
                                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>• {stats.yearsInLeague} años en ADCC</span>
                                         </div>
                                     </div>
-                                    <div style={{ width: '50px', height: '50px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '50px', height: '50px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
                                         <Trophy size={28} color="#f59e0b" />
                                     </div>
                                 </div>
 
-                                <div style={{ marginBottom: '20px' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>LOGROS POR CATEGORÍA</div>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: '700', letterSpacing: '0.5px' }}>LOGROS POR CATEGORÍA</div>
                                     {Object.entries(stats.championshipsByCat).map(([cat, count]) => (
-                                        <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.9rem' }}>
+                                        <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
                                             <span>{cat}</span>
                                             <span style={{ fontWeight: '800' }}>x{count}</span>
                                         </div>
@@ -244,25 +247,25 @@ const Stats = () => {
     );
 };
 
-const StatCard = ({ label, value, icon, editable, baseValue, onSave }) => {
+const StatCard = ({ label, value, icon, editable = false, baseValue = 0, onSave }: { label: string, value: any, icon: any, editable?: boolean, baseValue?: any, onSave?: (v: any) => void }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [val, setVal] = useState(baseValue || 0);
 
     return (
-        <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '16px', position: 'relative' }}>
+        <div className="stat-card-premium">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{label}</span>
                 {icon}
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                 <div style={{ fontSize: '1.8rem', fontWeight: '900' }}>{value}</div>
-                {editable && !isEditing && (
+                {editable && !isEditing && onSave && (
                     <button onClick={() => { setVal(baseValue); setIsEditing(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, opacity: 0.5 }}>
                         <Edit2 size={12} />
                     </button>
                 )}
             </div>
-            {isEditing && (
+            {isEditing && onSave && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.95)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px', zIndex: 10 }}>
                     <input
                         type="number"
@@ -283,7 +286,7 @@ const StatCard = ({ label, value, icon, editable, baseValue, onSave }) => {
     );
 };
 
-const EditableStat = ({ label, value, onSave, suffix = "" }) => {
+const EditableStat = ({ label, value, onSave, suffix = "" }: { label: string, value: any, onSave: (v: any) => void, suffix?: string }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [val, setVal] = useState(value);
 

@@ -154,12 +154,6 @@ class VoiceRefereeService {
         if (results.length > 0 && results[0].score < 0.4) {
             const commandId = results[0].item.id;
 
-            // Seguridad para Iniciar/Finalizar: Si el score es dudoso (>0.2) pedimos hotword
-            if (!foundHotword && (commandId === 'start_match' || commandId === 'finish_match') && results[0].score > 0.2) {
-                console.log("Comando crítico ignorado por falta de hotword y score bajo.");
-                return;
-            }
-
             const numbers = (commandText.match(/\d+/g) || []).map(n => parseInt(n));
             const dorsal = numbers.length > 0 ? numbers[0] : null;
             const dorsal2 = numbers.length > 1 ? numbers[1] : null;

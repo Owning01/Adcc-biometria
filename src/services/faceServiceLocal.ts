@@ -14,55 +14,63 @@ export const loadModelsLocal = async () => {
     if (modelsLoaded) return { success: true };
 
     try {
-        console.log("🚀 Forzando motor GPU (WebGL) para Face-API...");
-        // Configura el backend de TensorFlow para usar aceleración por hardware (WebGL)
-        await faceapi.tf.setBackend('webgl');
-        await faceapi.tf.ready();
-        console.log("✅ Motor GPU activo:", faceapi.tf.getBackend());
-    } catch (e) {
-        console.warn("⚠️ No se pudo activar WebGL, usando motor por defecto (CPU o WASM):", e.message);
+        console.log("🚀 Iniciando carga de modelos Face-API...");
+
+        // Intentar activar WebGL si está disponible para aceleración
+        try {
+            await faceapi.tf.setBackend('webgl');
+            await faceapi.tf.ready();
+            console.log("✅ Motor GPU (WebGL) activo:", faceapi.tf.getBackend());
+        } catch (e: any) {
+            console.warn("⚠️ WebGL no disponible, usando CPU:", e.message);
+            await faceapi.tf.setBackend('cpu');
+        }
+    } catch (e: any) {
+        console.warn("⚠️ Error configurando backend:", e.message);
     }
 
     /**
-     * Función auxiliar para verificar si existe el archivo de modelos via HTTP antes de intentar cargarlo.
-     * Esto evita errores internos de Face-API difíciles de capturar.
+     * Función auxiliar para verificar y cargar.
      */
-    const verifyAndLoad = async (baseUrl) => {
-        const manifestUrl = `${baseUrl}/tiny_face_detector_model-weights_manifest.json`;
-        console.log(`🔍 Verificando modelos en: ${manifestUrl}`);
+    const verifyAndLoad = async (baseUrl: string) => {
+        // Normalizar URL (quitar barra al final si existe)
+        const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+        const manifestUrl = `${cleanBase}/tiny_face_detector_model-weights_manifest.json`;
+
+        console.log(`🔍 Intentando desde: ${cleanBase}`);
 
         try {
-            // 1. Diagnóstico de Red
-            const response = await fetch(manifestUrl, { method: 'HEAD' });
+            // 1. Pre-vuelo con tiempo de espera corto
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-            if (!response.ok) {
-                throw new Error(`[HTTP ${response.status}] No accesible`);
+            const response = await fetch(manifestUrl, {
+                method: 'HEAD',
+                signal: controller.signal
+            }).catch(() => null);
+
+            clearTimeout(timeoutId);
+
+            if (response && !response.ok && response.status !== 405) { // 405 Method Not Allowed es aceptable para HEAD
+                throw new Error(`[HTTP ${response.status}]`);
             }
 
-            const contentType = response.headers.get('content-type');
-            const contentLength = response.headers.get('content-length');
-
-            if (contentType && contentType.includes('text/html')) {
-                throw new Error(`[MIME Error] Se recibió HTML en lugar de JSON. Posible 404 SPA.`);
-            }
-
-            // 2. Carga real
-            console.log(`✅ Pre-check OK (${contentLength || '?'} bytes). Cargando...`);
-
+            // 2. Carga real de redes
+            // Cargamos tanto Tiny como SSD para tener opciones
             await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri(baseUrl),
-                faceapi.nets.faceLandmark68Net.loadFromUri(baseUrl),
-                faceapi.nets.faceRecognitionNet.loadFromUri(baseUrl)
+                faceapi.nets.tinyFaceDetector.loadFromUri(cleanBase),
+                faceapi.nets.ssdMobilenetv1.loadFromUri(cleanBase),
+                faceapi.nets.faceLandmark68Net.loadFromUri(cleanBase),
+                faceapi.nets.faceRecognitionNet.loadFromUri(cleanBase)
             ]);
 
-            console.log(`🏆 CARGA EXITOSA desde: ${baseUrl}`);
-            return baseUrl;
+            console.log(`🏆 CARGA EXITOSA desde: ${cleanBase}`);
+            return cleanBase;
 
         } catch (error) {
-            // Error detallado para el reporte final
             const detail = error instanceof Error ? error.message : String(error);
-            console.warn(`⚠️ Fallo ${baseUrl}: ${detail}`);
-            throw new Error(`${baseUrl}: ${detail}`);
+            console.warn(`❌ Fallo en ${cleanBase}: ${detail}`);
+            throw new Error(`${cleanBase}: ${detail}`);
         }
     };
 
@@ -70,29 +78,20 @@ export const loadModelsLocal = async () => {
     const base = origin.endsWith('/') ? origin.slice(0, -1) : origin;
 
     try {
-        // Intentamos cargar desde múltiples fuentes en paralelo hasta que una funcione (Promise.any)
+        // Estrategia de carga multi-fuente
         await Promise.any([
-            // Estrategia de Cache Busting: Usamos 'ai_models' en lugar de 'models'
-            verifyAndLoad('https://adccbiometric.web.app/ai_models'),    // 1. Nube (URL Correcta)
-            verifyAndLoad(`${base}/ai_models`),                          // 2. Local App Absoluto
-            verifyAndLoad('/ai_models'),                                 // 3. Local Web Relativo
+            verifyAndLoad(`${base}/ai_models`),                          // 1. Local App Absoluto (Prioridad 1)
+            verifyAndLoad('/ai_models'),                                 // 2. Local Web Relativo
+            verifyAndLoad('https://adccbiometric.web.app/ai_models'),    // 3. Nube (Mirror)
             verifyAndLoad('ai_models')                                   // 4. Fallback final
         ]);
 
         modelsLoaded = true;
         return { success: true };
-    } catch (aggregateError) {
-        console.error("❌ TODOS LOS INTENTOS DE CARGA FALLARON", aggregateError);
+    } catch (aggregateError: any) {
+        console.error("❌ FALLARON TODOS LOS ORÍGENES DE MODELOS:", aggregateError);
 
-        // Generar reporte de error detallado
-        let errorMsg = "No se pudieron cargar los modelos de IA.\n";
-        if (aggregateError.errors) {
-            aggregateError.errors.forEach((e, i) => {
-                errorMsg += `\nFuente ${i + 1}: ${e.message}`;
-            });
-        } else {
-            errorMsg += aggregateError.message;
-        }
+        let errorMsg = "Error crítico: No se pudieron cargar los modelos de IA.\nVerifica tu conexión a internet o los archivos del servidor.";
 
         return {
             success: false,
@@ -107,17 +106,24 @@ export const loadModelsLocal = async () => {
  * @param {HTMLVideoElement} videoElement - Elemento de video HTML5.
  * @returns {Promise<Object|null>} - Objeto con { descriptor, detection } o null si no hay rostro.
  */
-export const getFaceDataLocal = async (videoElement) => {
+export const getFaceDataLocal = async (videoElement: HTMLVideoElement | HTMLImageElement) => {
     if (!videoElement) return null;
 
     try {
-        // Opciones optimizadas para velocidad: inputSize pequeño (320px)
-        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-
-        // Detección + Puntos Faciales + Descriptor (Vector de 128 floats)
-        const result = await faceapi.detectSingleFace(videoElement, options)
+        // 1. Intentar con SSD Mobilenet V1 (Máxima precisión para login)
+        const ssdOptions = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 });
+        let result = await faceapi.detectSingleFace(videoElement, ssdOptions)
             .withFaceLandmarks()
             .withFaceDescriptor();
+
+        // 2. Fallback a Tiny Face Detector si falla el primero
+        if (!result) {
+            console.log("🔄 Reintentando con TinyFaceDetector...");
+            const tinyOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 });
+            result = await faceapi.detectSingleFace(videoElement, tinyOptions)
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+        }
 
         if (result) {
             return {
@@ -135,7 +141,7 @@ export const getFaceDataLocal = async (videoElement) => {
 /**
  * Wrapper simplificado para obtener solo el descriptor.
  */
-export const getFaceDescriptorLocal = async (videoElement) => {
+export const getFaceDescriptorLocal = async (videoElement: HTMLVideoElement | HTMLImageElement) => {
     const data = await getFaceDataLocal(videoElement);
     return data ? data.descriptor : null;
 };
@@ -145,13 +151,20 @@ export const getFaceDescriptorLocal = async (videoElement) => {
  * @param {HTMLImageElement} imageElement 
  * @returns {Promise<Object|null>}
  */
-export const getFaceDataFromImage = async (imageElement) => {
+export const getFaceDataFromImage = async (imageElement: HTMLImageElement) => {
     if (!imageElement) return null;
     try {
-        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-        const result = await faceapi.detectSingleFace(imageElement, options)
+        const ssdOptions = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 });
+        let result = await faceapi.detectSingleFace(imageElement, ssdOptions)
             .withFaceLandmarks()
             .withFaceDescriptor();
+
+        if (!result) {
+            const tinyOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 });
+            result = await faceapi.detectSingleFace(imageElement, tinyOptions)
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+        }
 
         if (result) {
             return {

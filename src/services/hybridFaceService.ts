@@ -1,13 +1,23 @@
+/**
+ * @file hybridFaceService.ts
+ * @description ORQUESTADOR CENTRAL DE BIOMETRÍA
+ * Este servicio actúa como puente entre:
+ * 1. Detección Rápida (MediaPipe) - Para UI fluida y tracking.
+ * 2. Reconocimiento Profundo (Face-API) - Para extracción de descriptores y matching seguro.
+ */
 import { loadModelsLocal, getFaceDataLocal } from './faceServiceLocal';
 import { loadMediaPipeModels } from './mediapipeService';
 
 let isInitialized = false;
 
+// ============================================================================
+// 1. INICIALIZACIÓN DEL MOTOR (PARALELO)
+// ============================================================================
 /**
  * Inicializa el motor híbrido de reconocimiento facial.
  * Combina la velocidad de MediaPipe para detección con la precisión de Face-API/TensorFlow para descriptores.
  * Carga ambos conjuntos de modelos en paralelo para reducir el tiempo de inicio.
- * 
+ *
  * @returns {Promise<Object>} - Objeto con { success: true } o { success: false, error: string }
  */
 export const initHybridEngine = async () => {
@@ -35,10 +45,13 @@ export const initHybridEngine = async () => {
     }
 };
 
+// ============================================================================
+// 2. CONTROL DE CALIDAD Y DISTANCIA
+// ============================================================================
 /**
  * Evalúa la calidad de la detección facial en tiempo real para asegurar un buen registro/reconocimiento.
  * Verifica principalmente que el usuario esté a la distancia correcta.
- * 
+ *
  * @param {Object} detection - El resultado de la detección (MediaPipe o FaceAPI).
  * @param {HTMLVideoElement} video - El elemento de video source para calcular proporciones.
  * @returns {Object} - { ok: boolean, reason: string, code: string, ratio: number }

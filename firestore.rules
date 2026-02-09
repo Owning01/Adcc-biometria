@@ -2,9 +2,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Función auxiliar para verificar si es admin
+    function isAdmin() {
+       return request.auth != null && request.auth.uid == "kPkuIN4DxkTAvistlsAeoKjEFNx2";
+    }
+
     match /{document=**} {
-      // Bloqueamos acceso público. Solo usuarios autenticados pueden operar.
-      allow read, write: if request.auth != null;
+      // Por defecto bloqueamos todo acceso de escritura, excepto al Admin
+      allow read: if request.auth != null; // Lectura para autenticados (ajustar según necesidad)
+      allow write: if isAdmin();
     }
   }
 }

@@ -1,10 +1,32 @@
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, onSnapshot, deleteDoc, doc, updateDoc, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { logEvent, getCurrentUserAudit } from './auditService';
 import { v4 as uuidv4 } from 'uuid';
 
 // Nombres de las colecciones en Firestore
 const TOURNAMENTS_COLLECTION = 'tournaments';
 const MATCHES_COLLECTION = 'matches';
+
+export interface Tournament {
+    id: string;
+    name: string;
+    category: string;
+    createdAt?: any;
+    [key: string]: any;
+}
+
+export interface Match {
+    id: string;
+    tournamentId: string;
+    teamA: { name: string; logo?: string | null };
+    teamB: { name: string; logo?: string | null };
+    date: string;
+    time: string;
+    status: string;
+    category?: string;
+    events?: any[];
+    [key: string]: any;
+}
 
 // --- Torneos (Tournaments) ---
 
@@ -18,7 +40,7 @@ export const getTournaments = async (): Promise<any[]> => {
         const q = query(collection(db, TOURNAMENTS_COLLECTION), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
         // Mapped to include ID
-        return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        return querySnapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
     } catch (error) {
         console.error("Error getting tournaments: ", error);
         return [];
@@ -34,7 +56,7 @@ export const getTournaments = async (): Promise<any[]> => {
 export const subscribeToTournaments = (callback: (tournaments: any[]) => void) => {
     const q = query(collection(db, TOURNAMENTS_COLLECTION), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (querySnapshot) => {
-        const tournaments = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        const tournaments = querySnapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
         callback(tournaments);
     });
 };
@@ -68,6 +90,16 @@ export const saveTournament = async (tournament: any) => {
 export const deleteTournament = async (tournamentId: string) => {
     try {
         await deleteDoc(doc(db, TOURNAMENTS_COLLECTION, tournamentId));
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'deletion',
+            user: currentUser,
+            entity: 'tournament',
+            entityId: tournamentId,
+            description: `Torneo eliminado (ID: ${tournamentId})`
+        });
+
         return true;
     } catch (error) {
         console.error("Error deleting tournament: ", error);
@@ -94,7 +126,7 @@ export const getMatch = async (matchId: string) => {
         const { getDoc } = await import('firebase/firestore');
         const snap = await getDoc(docRef);
 
-        if (snap.exists()) return { ...snap.data(), id: snap.id };
+        if (snap.exists()) return { ...snap.data() as any, id: snap.id };
         return null;
     } catch (error) {
         console.error("Error getting match: ", error);
@@ -113,7 +145,7 @@ export const subscribeToMatch = (matchId: string, callback: (match: any) => void
     const matchRef = doc(db, MATCHES_COLLECTION, matchId);
     return onSnapshot(matchRef, (doc) => {
         if (doc.exists()) {
-            callback({ ...doc.data(), id: doc.id });
+            callback({ ...doc.data() as any, id: doc.id });
         }
     });
 };
@@ -131,7 +163,7 @@ export const getMatches = async (tournamentId: string | null = null) => {
             q = query(q, where('tournamentId', '==', tournamentId));
         }
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        return querySnapshot.docs.map(doc => ({ ...doc.data() as any, id: doc.id }));
     } catch (error) {
         console.error("Error getting matches: ", error);
         return [];
@@ -184,6 +216,16 @@ export const updateMatch = async (matchId: string, data: any): Promise<boolean> 
     try {
         const matchRef = doc(db, MATCHES_COLLECTION, matchId);
         await updateDoc(matchRef, data);
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'modification',
+            user: currentUser,
+            entity: 'match',
+            entityId: matchId,
+            description: `Partido actualizado: ${Object.keys(data).join(', ')}`
+        });
+
         return true;
     } catch (error) {
         console.error("Error updating match:", error);
@@ -202,6 +244,16 @@ export const updateTournament = async (tournamentId: string, data: any) => {
     try {
         const tournamentRef = doc(db, TOURNAMENTS_COLLECTION, tournamentId);
         await updateDoc(tournamentRef, data);
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'modification',
+            user: currentUser,
+            entity: 'tournament',
+            entityId: tournamentId,
+            description: `Torneo actualizado: ${Object.keys(data).join(', ')}`
+        });
+
         return true;
     } catch (error) {
         console.error("Error updating tournament:", error);
@@ -218,6 +270,16 @@ export const updateTournament = async (tournamentId: string, data: any) => {
 export const deleteMatch = async (matchId: string) => {
     try {
         await deleteDoc(doc(db, MATCHES_COLLECTION, matchId));
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'deletion',
+            user: currentUser,
+            entity: 'match',
+            entityId: matchId,
+            description: `Partido eliminado (ID: ${matchId})`
+        });
+
         return true;
     } catch (error) {
         console.error("Error deleting match:", error);
@@ -273,6 +335,24 @@ export const subscribeToMatchEvents = (matchId: string, callback: (events: any[]
             // Fallback para timestamp si aún no llega del servidor
             timestamp: doc.data().serverTimestamp?.toDate() || new Date(doc.data().localTimestamp)
         }));
-        callback(events);
     });
+};
+
+/**
+ * Obtiene solo los partidos que están EN VIVO actualmente.
+ * Útil para validaciones de jugadores duplicados.
+ * @returns {Promise<Array>}
+ */
+export const getActiveMatches = async () => {
+    try {
+        const q = query(
+            collection(db, MATCHES_COLLECTION),
+            where('status', '==', 'live')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    } catch (error) {
+        console.error("Error getting active matches:", error);
+        return [];
+    }
 };

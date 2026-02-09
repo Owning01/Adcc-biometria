@@ -1,3 +1,12 @@
+/**
+ * @file mediapipeService.ts
+ * @description SERVICIO DE VISIÓN RÁPIDA (CLIENT-SIDE)
+ * Implementa Google MediaPipe Tasks-Vision para:
+ * 1. Detección de rostros ultra-rápida (BlazeFace Short Range).
+ * 2. Cálculo de Embeddings ligeros (MobileNet V3) - Opcional, actualmente usamos Face-API para esto.
+ * 
+ * Este servicio corre 100% en el navegador usando WASM y WebGL/GPU.
+ */
 import { FilesetResolver, ImageEmbedder, FaceDetector } from '@mediapipe/tasks-vision';
 
 let faceEmbedder = null;

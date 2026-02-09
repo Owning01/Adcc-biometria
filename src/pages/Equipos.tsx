@@ -1,31 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { saveTournament, getTournaments, subscribeToTournaments, saveMatch, getMatches, deleteMatch, deleteTournament, updateTournament } from '../services/matchesService';
-import { Trophy, Plus, Calendar, Clock, Users, Trash2, ChevronRight, Edit2, Save, X, Settings2, RefreshCw, ShieldAlert, Square, ArrowRightLeft, UserPlus } from 'lucide-react';
-import { getUsers, subscribeToUsers, updateTeamName, updateTeamCategory, saveUser, checkDniExists, updateUser, updateUserCategories } from '../services/db';
+import { useNavigate } from 'react-router-dom';
+import { saveTournament, getTournaments, subscribeToTournaments, saveMatch, getMatches, deleteMatch, deleteTournament, updateTournament, Tournament, Match } from '../services/matchesService';
+import { Trophy, Plus, Calendar, Clock, Users, Trash2, ChevronRight, Edit2, Save, X, Settings2, RefreshCw, ShieldAlert, Square, ArrowRightLeft, UserPlus, ScanFace, Search } from 'lucide-react';
+import { getUsers, subscribeToUsers, updateTeamName, updateTeamCategory, saveUser, checkDniExists, updateUser, updateUserCategories, User } from '../services/db';
 import { useRef, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { initHybridEngine, checkFaceQuality } from '../services/hybridFaceService';
 import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { getFaceDataLocal } from '../services/faceServiceLocal';
 import { createMatcher } from '../services/faceService';
+import QuickRegisterModal from '../components/QuickRegisterModal';
 
 const Equipos = () => {
-    const [tournaments, setTournaments] = useState([]);
-    const [selectedTournament, setSelectedTournament] = useState(null);
+    const navigate = useNavigate();
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
     const [loading, setLoading] = useState(true);
     const [showNewTournament, setShowNewTournament] = useState(false);
     const [showNewMatch, setShowNewMatch] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
-    const [availableTeams, setAvailableTeams] = useState([]);
-    const [teamCategories, setTeamCategories] = useState({}); // { TeamName: [Cat1, Cat2] }
-    const [allUsers, setAllUsers] = useState([]);
+    const [availableTeams, setAvailableTeams] = useState<string[]>([]);
+    const [teamCategories, setTeamCategories] = useState<Record<string, string[]>>({}); // { TeamName: [Cat1, Cat2] }
+    const [allUsers, setAllUsers] = useState<User[]>([]);
     const [activeTab, setActiveTab] = useState('torneos'); // 'torneos' or 'equipos'
-    const [expandedCategory, setExpandedCategory] = useState(null); // { team, category }
-    const [editingTournament, setEditingTournament] = useState(null);
-    const [editingTeam, setEditingTeam] = useState(null);
-    const [editingCategory, setEditingCategory] = useState(null);
-    const [tempCategories, setTempCategories] = useState({}); // { TeamName: [NewCat1, NewCat2] }
-    const [tempTeams, setTempTeams] = useState([]); // [NewTeam1, NewTeam2]
+    const [expandedCategory, setExpandedCategory] = useState<{ team: string; category: string } | null>(null); // { team, category }
+    const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+    const [editingTeam, setEditingTeam] = useState<string | null>(null);
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [tempCategories, setTempCategories] = useState<Record<string, string[]>>({}); // { TeamName: [NewCat1, NewCat2] }
+    const [tempTeams, setTempTeams] = useState<string[]>([]); // [NewTeam1, NewTeam2]
     const [showQuickRegister, setShowQuickRegister] = useState(false);
     const [quickRegisterData, setQuickRegisterData] = useState({ name: '', dni: '', team: '', category: '' });
     const [isCreatingTournament, setIsCreatingTournament] = useState(false);
@@ -33,9 +36,9 @@ const Equipos = () => {
     // Modales modernos rápidos
     const [showTeamModal, setShowTeamModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState({ open: false, team: '' });
-    const [renameModal, setRenameModal] = useState({ open: false, type: '', oldName: '', teamName: '', newValue: '' });
+    const [renameModal, setRenameModal] = useState<{ open: boolean; type: string; oldName: string; teamName: string; newValue: string }>({ open: false, type: '', oldName: '', teamName: '', newValue: '' });
     const [modalInput, setModalInput] = useState('');
-    const [categoryControl, setCategoryControl] = useState({ open: false, user: null, currentCat: '' });
+    const [categoryControl, setCategoryControl] = useState<{ open: boolean; user: User | null; currentCat: string }>({ open: false, user: null, currentCat: '' });
 
     const [newTournament, setNewTournament] = useState({ name: '', category: '' });
     const [newMatch, setNewMatch] = useState({
@@ -63,17 +66,17 @@ const Equipos = () => {
             setAvailableTeams(teams);
 
             // Organizar categorías por equipo
-            const catMap = {};
+            const catMap: Record<string, Set<string>> = {};
             users.forEach(u => {
                 const cats = Array.isArray(u.categories) && u.categories.length > 0 ? u.categories : [u.category];
                 cats.forEach(c => {
                     if (u.team && c) {
-                        if (!catMap[u.team]) catMap[u.team] = new Set();
+                        if (!catMap[u.team]) catMap[u.team] = new Set<string>();
                         catMap[u.team].add(c);
                     }
                 });
             });
-            const finalMap = {};
+            const finalMap: Record<string, string[]> = {};
             Object.keys(catMap).forEach(team => {
                 finalMap[team] = [...catMap[team]].sort();
             });
@@ -99,21 +102,23 @@ const Equipos = () => {
         };
     }, []);
 
-    const handleUpdateTournament = async (e) => {
+    const handleUpdateTournament = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await updateTournament(editingTournament.id, {
-                name: editingTournament.name,
-                category: editingTournament.category
-            });
-            setEditingTournament(null);
-            alert("Torneo actualizado");
+            if (editingTournament) {
+                await updateTournament(editingTournament.id, {
+                    name: editingTournament.name,
+                    category: editingTournament.category
+                });
+                setEditingTournament(null);
+                alert("Torneo actualizado");
+            }
         } catch (error) {
             alert("Error al actualizar torneo");
         }
     };
 
-    const handleRenameTeam = (team) => {
+    const handleRenameTeam = (team: string) => {
         setRenameModal({
             open: true,
             type: 'team',
@@ -123,7 +128,7 @@ const Equipos = () => {
         });
     };
 
-    const handleRenameCategory = (team, oldCat) => {
+    const handleRenameCategory = (team: string, oldCat: string) => {
         setRenameModal({
             open: true,
             type: 'category',
@@ -151,13 +156,13 @@ const Equipos = () => {
                 alert("Categoría renombrada con éxito");
             }
             setRenameModal({ open: false, type: '', oldName: '', teamName: '', newValue: '' });
-        } catch (error) {
-            alert("Error al renombrar: " + error.message);
+        } catch (error: any) {
+            alert("Error al renombrar: " + (error?.message || "Error desconocido"));
             setLoading(false);
         }
     };
 
-    const handleAddCategory = (team) => {
+    const handleAddCategory = (team: string) => {
         setModalInput('');
         setShowCategoryModal({ open: true, team });
     };
@@ -181,7 +186,7 @@ const Equipos = () => {
         setShowCategoryModal({ open: false, team: '' });
     };
 
-    const handleOpenQuickRegister = (team, category) => {
+    const handleOpenQuickRegister = (team: string, category: string) => {
         setQuickRegisterData({ name: '', dni: '', team, category });
         setShowQuickRegister(true);
     };
@@ -206,7 +211,7 @@ const Equipos = () => {
         setShowTeamModal(false);
     };
 
-    const handleCreateTournament = async (e) => {
+    const handleCreateTournament = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             setIsCreatingTournament(true);
@@ -220,16 +225,19 @@ const Equipos = () => {
         }
     };
 
-    const handleCreateMatch = async (e) => {
+    const handleCreateMatch = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isCreating) return;
         setIsCreating(true);
+        if (!selectedTournament) return;
         try {
             await saveMatch({
                 ...newMatch,
                 tournamentId: selectedTournament.id,
                 teamA: { name: newMatch.teamA, logo: null },
                 teamB: { name: newMatch.teamB, logo: null },
+                status: 'programado',
+                createdAt: new Date().toISOString()
             });
             setNewMatch({ teamA: '', teamB: '', date: '', time: '', gameTime: '45', restTime: '15', category: '' });
             setShowNewMatch(false);
@@ -241,7 +249,7 @@ const Equipos = () => {
         }
     };
 
-    const handleDeleteTournament = async (e, id) => {
+    const handleDeleteTournament = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         const code = prompt("Ingrese el código 777 para eliminar el torneo y sus partidos:");
         if (code === '777') {
@@ -283,22 +291,36 @@ const Equipos = () => {
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '50px' }}>Cargando datos...</div>
             ) : activeTab === 'torneos' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                    {tournaments.map(t => (
-                        <div key={t.id} className="glass-panel" style={{ padding: '20px', cursor: 'pointer', border: selectedTournament?.id === t.id ? '2px solid var(--primary)' : '1px solid var(--glass-border-light)', background: 'var(--header-bg)' }} onClick={() => setSelectedTournament(t)}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
-                                <div style={{ width: '50px', height: '50px', borderRadius: '15px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--primary)' }}><Trophy size={28} /></div>
-                                <div style={{ flex: 1 }}>
-                                    <h3 style={{ margin: 0, fontSize: '1rem' }}>{t.name}</h3>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.category || 'Sin categoría'}</span>
-                                </div>
-                                <div style={{ display: 'flex', gap: '5px' }}>
-                                    <button onClick={(e) => { e.stopPropagation(); setEditingTournament(t); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', opacity: 0.6, padding: '5px' }}><Edit2 size={16} /></button>
-                                    <button onClick={(e) => handleDeleteTournament(e, t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.3, padding: '5px' }}><Trash2 size={16} /></button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Banners de Acciones Rápidas Biométricas */}
+                    <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexWrap: 'wrap', gap: '15px', background: 'rgba(212, 175, 55, 0.05)', borderColor: 'rgba(212, 175, 55, 0.1)' }}>
+                        <div style={{ flex: '1 1 300px' }}>
+                            <h4 style={{ margin: '0 0 5px 0', fontSize: '0.9rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><ScanFace size={18} /> ACCIONES DE BIOMETRÍA</h4>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Identifica jugadores o realiza registros rápidos con reconocimiento facial.</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <button onClick={() => navigate('/alta')} className="glass-button" style={{ background: 'var(--primary)', color: 'black', padding: '10px 20px', fontSize: '0.75rem' }}><Search size={16} /> RECONOCIMIENTO EN VIVO</button>
+                            <button onClick={() => { setQuickRegisterData({ name: '', dni: '', team: '', category: '' }); setShowQuickRegister(true); }} className="glass-button" style={{ padding: '10px 20px', fontSize: '0.75rem' }}><Plus size={16} /> REGISTRO RÁPIDO</button>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                        {tournaments.map(t => (
+                            <div key={t.id} className="glass-panel" style={{ padding: '20px', cursor: 'pointer', border: selectedTournament?.id === t.id ? '2px solid var(--primary)' : '1px solid var(--glass-border-light)', background: 'var(--header-bg)' }} onClick={() => setSelectedTournament(t)}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
+                                    <div style={{ width: '50px', height: '50px', borderRadius: '15px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--primary)' }}><Trophy size={28} /></div>
+                                    <div style={{ flex: 1 }}>
+                                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t.name}</h3>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.category || 'Sin categoría'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                        <button onClick={(e) => { e.stopPropagation(); setEditingTournament(t); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', opacity: 0.6, padding: '5px' }}><Edit2 size={16} /></button>
+                                        <button onClick={(e) => handleDeleteTournament(e, t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.3, padding: '5px' }}><Trash2 size={16} /></button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -308,10 +330,10 @@ const Equipos = () => {
                             <button onClick={handleCreateNewTeam} className="glass-button" style={{ margin: '0 auto' }}><Plus size={18} /> CREAR MI PRIMER EQUIPO</button>
                         </div>
                     ) : (
-                        [...availableTeams, ...tempTeams].map(team => (
+                        [...availableTeams, ...tempTeams].map((team: string) => (
                             <div key={team} className="glass-panel" style={{ padding: '20px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Users size={24} color="var(--primary)" /><h3 style={{ margin: 0, letterSpacing: '1px' }}>{team.toUpperCase()}</h3></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}><Users size={24} color="var(--primary)" /><h3 style={{ margin: 0, letterSpacing: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.toUpperCase()}</h3></div>
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <button onClick={() => handleAddCategory(team)} className="glass-button" style={{ padding: '5px 15px', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.1)', borderColor: 'var(--primary)' }}><Plus size={12} /> NUEVA CATEGORÍA</button>
                                         <button onClick={() => handleRenameTeam(team)} className="glass-button" style={{ padding: '5px 15px', fontSize: '0.7rem', opacity: 0.6 }}><Edit2 size={12} /></button>
@@ -321,7 +343,7 @@ const Equipos = () => {
                                     {[...new Set([...(teamCategories[team] || []), ...(tempCategories[team] || [])])].length === 0 ? (
                                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '5px 0' }}>Sin categorías. Agregue una para registrar jugadores.</p>
                                     ) : (
-                                        [...new Set([...(teamCategories[team] || []), ...(tempCategories[team] || [])])].map(cat => (
+                                        [...new Set([...(teamCategories[team] || []), ...(tempCategories[team] || [])])].map((cat: string) => (
                                             <div key={cat} style={{ position: 'relative' }}>
                                                 <div className="glass-panel" style={{ padding: '10px 15px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem', background: 'var(--header-bg)', border: '1px solid var(--glass-border-light)' }}>
                                                     <span style={{ fontWeight: '700', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setExpandedCategory(expandedCategory?.team === team && expandedCategory?.category === cat ? null : { team, category: cat })}>
@@ -337,10 +359,10 @@ const Equipos = () => {
                                                 {(expandedCategory?.team === team && expandedCategory?.category === cat) && (
                                                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.98)', border: '1px solid var(--primary)', borderRadius: '12px', padding: '15px', marginTop: '5px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', maxHeight: '300px', width: '250px', overflowY: 'auto' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                            <h4 style={{ fontSize: '0.8rem', color: 'var(--primary)', margin: 0 }}>Jugadores</h4>
-                                                            <button onClick={() => setExpandedCategory(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                                                            <h4 style={{ fontSize: '1rem', color: 'var(--primary)', margin: 0 }}>Jugadores</h4>
+                                                            <button onClick={() => setExpandedCategory(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.4rem' }}>&times;</button>
                                                         </div>
-                                                        <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                                        <table style={{ width: '100%', fontSize: '0.95rem', borderCollapse: 'collapse' }}>
                                                             <thead>
                                                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
                                                                     <th style={{ padding: '5px', opacity: 0.5 }}>NOMBRE</th>
@@ -356,7 +378,7 @@ const Equipos = () => {
                                                                         <td style={{ padding: '5px', fontWeight: 'bold' }}>{u.name}</td>
                                                                         <td style={{ padding: '5px' }}>
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                                                <input type="text" defaultValue={u.number || ''} onBlur={async (e) => { if (e.target.value !== u.number) await updateUser(u.id, { number: e.target.value }); }} style={{ width: '30px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--primary)', fontWeight: 'bold', textAlign: 'center', padding: '2px' }} />
+                                                                                <input type="text" defaultValue={u.number || ''} onBlur={async (e) => { if (e.target.value !== u.number) await updateUser(u.id, { number: e.target.value }); }} style={{ width: '45px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--primary)', fontWeight: 'bold', textAlign: 'center', padding: '2px' }} />
                                                                                 <button onClick={() => setCategoryControl({ open: true, user: u, currentCat: cat })} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', opacity: 0.7, padding: '2px' }} title="Mover/Añadir categoría"><ArrowRightLeft size={12} /></button>
                                                                             </div>
                                                                         </td>
@@ -366,7 +388,7 @@ const Equipos = () => {
                                                                     const cats = Array.isArray(u.categories) && u.categories.length > 0 ? u.categories : [u.category];
                                                                     return u.team === team && cats.includes(cat);
                                                                 }).length === 0 && (
-                                                                        <tr><td colSpan="2" style={{ padding: '10px', textAlign: 'center', opacity: 0.5 }}>No hay jugadores</td></tr>
+                                                                        <tr><td colSpan={2} style={{ padding: '10px', textAlign: 'center', opacity: 0.5 }}>No hay jugadores</td></tr>
                                                                     )}
                                                             </tbody>
                                                         </table>
@@ -389,8 +411,8 @@ const Equipos = () => {
                             <div>
                                 <h2 style={{ margin: 0 }}>Gestión de {selectedTournament.name}</h2>
                                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginTop: '5px' }}>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Administra partidos y registra jugadores directamente</p>
-                                    <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '5px', color: 'var(--primary)' }}>{selectedTournament.category}</span>
+                                    <p style={{ fontSize: '1rem', color: 'var(--text-muted)', margin: 0 }}>Administra partidos y registra jugadores directamente</p>
+                                    <span style={{ fontSize: '0.9rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '5px', color: 'var(--primary)' }}>{selectedTournament.category}</span>
                                 </div>
                                 {selectedTournament.winner ? (
                                     <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', color: '#fbbf24', fontWeight: 'bold' }}>
@@ -407,7 +429,7 @@ const Equipos = () => {
                                                     updateTournament(selectedTournament.id, { winner: e.target.value });
                                                 }
                                             }}
-                                            style={{ background: 'rgba(251, 191, 36, 0.1)', border: '1px solid #fbbf24', color: '#fbbf24', borderRadius: '8px', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                                            style={{ background: 'rgba(251, 191, 36, 0.1)', border: '1px solid #fbbf24', color: '#fbbf24', borderRadius: '8px', padding: '4px 10px', fontSize: '0.95rem', fontWeight: 'bold', cursor: 'pointer' }}
                                         >
                                             <option value="">+ ASIGNAR CAMPEÓN</option>
                                             {[...availableTeams, ...tempTeams].map(t => <option key={t} value={t}>{t}</option>)}
@@ -533,7 +555,7 @@ const Equipos = () => {
 
                         <div style={{ textAlign: 'left', marginBottom: '20px' }}>
                             <p style={{ margin: '0 0 5px 0', fontSize: '0.8rem', opacity: 0.7 }}>Jugador:</p>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--primary)' }}>{categoryControl.user?.name}</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--primary)' }}>{categoryControl.user?.name || 'Desconocido'}</div>
                         </div>
 
                         <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '15px', borderRadius: '12px', marginBottom: '15px' }}>
@@ -542,15 +564,17 @@ const Equipos = () => {
                             </h4>
                             <p style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '10px' }}>Cambiar "{categoryControl.currentCat}" por:</p>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {(teamCategories[categoryControl.user?.team] || []).filter(c => c !== categoryControl.currentCat).map(cat => (
+                                {(teamCategories[categoryControl.user?.team || ''] || []).filter(c => c !== categoryControl.currentCat).map(cat => (
                                     <button
                                         key={cat}
                                         onClick={async () => {
                                             try {
-                                                await updateUserCategories(categoryControl.user.id, categoryControl.currentCat, cat, 'move');
-                                                setCategoryControl({ open: false, user: null, currentCat: '' });
-                                            } catch (error) {
-                                                alert("Error al mover categoría: " + error.message);
+                                                if (categoryControl.user) {
+                                                    await updateUserCategories(categoryControl.user.id, categoryControl.currentCat, cat, 'move');
+                                                    setCategoryControl({ open: false, user: null, currentCat: '' });
+                                                }
+                                            } catch (error: any) {
+                                                alert("Error al mover categoría: " + (error?.message || "Error desconocido"));
                                             }
                                         }}
                                         style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(96, 165, 250, 0.3)', background: 'rgba(96, 165, 250, 0.1)', color: 'white', fontSize: '0.75rem', cursor: 'pointer' }}
@@ -567,7 +591,7 @@ const Equipos = () => {
                             </h4>
                             <p style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '10px' }}>Mantener actual y agregar:</p>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {(teamCategories[categoryControl.user?.team] || []).filter(c => {
+                                {(teamCategories[categoryControl.user?.team || ''] || []).filter(c => {
                                     const userCats = Array.isArray(categoryControl.user?.categories) ? categoryControl.user.categories : [categoryControl.user?.category];
                                     return !userCats.includes(c);
                                 }).map(cat => (
@@ -575,10 +599,12 @@ const Equipos = () => {
                                         key={cat}
                                         onClick={async () => {
                                             try {
-                                                await updateUserCategories(categoryControl.user.id, null, cat, 'add');
-                                                setCategoryControl({ open: false, user: null, currentCat: '' });
-                                            } catch (error) {
-                                                alert("Error al añadir categoría: " + error.message);
+                                                if (categoryControl.user) {
+                                                    await updateUserCategories(categoryControl.user.id, null, cat, 'add');
+                                                    setCategoryControl({ open: false, user: null, currentCat: '' });
+                                                }
+                                            } catch (error: any) {
+                                                alert("Error al añadir categoría: " + (error?.message || "Error desconocido"));
                                             }
                                         }}
                                         style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.1)', color: 'white', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -597,135 +623,43 @@ const Equipos = () => {
                                 onClick={async () => {
                                     if (window.confirm(`¿Seguro que quieres quitar a este jugador de la categoría ${categoryControl.currentCat}?`)) {
                                         try {
-                                            await updateUserCategories(categoryControl.user.id, categoryControl.currentCat, null, 'remove');
-                                            setCategoryControl({ open: false, user: null, currentCat: '' });
-                                        } catch (error) {
-                                            alert("Error al eliminar categoría: " + error.message);
+                                            if (categoryControl.user) {
+                                                await updateUserCategories(categoryControl.user.id, categoryControl.currentCat, null, 'remove');
+                                                setCategoryControl({ open: false, user: null, currentCat: '' });
+                                            }
+                                        } catch (error: any) {
+                                            alert("Error al eliminar categoría: " + (error?.message || "Error desconocido"));
                                         }
                                     }
                                 }}
                                 style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                             >
-                                <X size={14} /> QUITAR DE {categoryControl.currentCat.toUpperCase()}
+                                <X size={14} /> QUITAR DE {(categoryControl.currentCat || '').toUpperCase()}
                             </button>
                         </div>
                     </div>
-                </div>
+                </div >
             )}
-        </div>
+
+            {showQuickRegister && (
+                <QuickRegisterModal
+                    data={quickRegisterData}
+                    onClose={() => setShowQuickRegister(false)}
+                />
+            )}
+        </div >
     );
 };
 
-const QuickRegisterModal = ({ data, onClose }) => {
-    const webcamRef = useRef(null);
-    const [formData, setFormData] = useState(data);
-    const [step, setStep] = useState(1);
-    const [status, setStatus] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [modelsReady, setModelsReady] = useState(false);
-    const [qualityError, setQualityError] = useState('');
-    const [qualityCode, setQualityCode] = useState('');
-    const [faceBox, setFaceBox] = useState(null);
 
-    const initModels = async () => {
-        setStatus('Iniciando IA...');
-        const res = await initHybridEngine();
-        if (res.success) {
-            setModelsReady(true);
-            setStatus('Sistema listo');
-        } else {
-            setStatus('Error: ' + res.error);
-        }
-    };
 
-    const handleCapture = async () => {
-        if (!webcamRef.current && !uploadedImage) return;
-        setLoading(true);
-        setStatus('Procesando...');
-        try {
-            const imageSrc = webcamRef.current.getScreenshot();
-            const img = new Image();
-            img.src = imageSrc;
-            await new Promise((res) => img.onload = res);
-            const canvas = document.createElement('canvas');
-            canvas.width = 400; canvas.height = 400; // Calidad mejorada
-            const ctx = canvas.getContext('2d');
-            const size = Math.min(img.width, img.height);
-            ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 400, 400);
-            const photoUrl = canvas.toDataURL('image/jpeg', 0.8);
+interface MatchListProps {
+    tournamentId: string;
+    onQuickRegister: (team: string, category: string) => void;
+}
 
-            const faceData = await getFaceDataLocal(webcamRef.current.video);
-            if (!faceData) throw new Error("No se detecta rostro");
-
-            await saveUser({
-                ...formData,
-                descriptor: Array.from(faceData.descriptor),
-                photo: photoUrl,
-                status: 'habilitado',
-                createdAt: new Date().toISOString()
-            });
-            setStatus('¡Éxito!');
-            setTimeout(onClose, 1000);
-        } catch (error) {
-            alert(error.message);
-            setStatus('Error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        let interval;
-        if (step === 2) {
-            if (!modelsReady) initModels();
-            interval = setInterval(async () => {
-                if (!webcamRef.current?.video || !modelsReady) return;
-                const video = webcamRef.current.video;
-                try {
-                    const mp = await detectFaceMediaPipe(video);
-                    if (!mp) {
-                        setQualityError('Buscando rostro...');
-                        setFaceBox(null);
-                    } else {
-                        const quality = checkFaceQuality(mp, video);
-                        setQualityError(quality.ok ? '¡Listo!' : quality.reason);
-                        setQualityCode(quality.ok ? 'OK' : 'ERR');
-                        const { originX, originY, width, height } = mp.boundingBox;
-                        setFaceBox({ x: (originX / video.videoWidth) * 100, y: (originY / video.videoHeight) * 100, w: (width / video.videoWidth) * 100, h: (height / video.videoHeight) * 100 });
-                    }
-                } catch (e) { }
-            }, 200);
-        }
-        return () => clearInterval(interval);
-    }, [step, modelsReady]);
-
-    return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-            <div className="glass-panel" style={{ padding: '30px', maxWidth: '450px', width: '100%', position: 'relative' }}>
-                <h2>Registro Rápido</h2>
-                {step === 1 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <input className="premium-input" placeholder="Nombre" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                        <input className="premium-input" placeholder="DNI" value={formData.dni} onChange={e => setFormData({ ...formData, dni: e.target.value })} />
-                        <button className="glass-button" onClick={() => setStep(2)}>Siguiente</button>
-                    </div>
-                ) : (
-                    <div style={{ textAlign: 'center' }}>
-                        <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" width="100%" height="300px" style={{ borderRadius: '15px', objectFit: 'cover' }} />
-                        <p style={{ margin: '15px 0', color: qualityCode === 'OK' ? '#4ade80' : '#fbbf24' }}>{qualityError}</p>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button className="glass-button button-secondary" onClick={() => setStep(1)}>Atrás</button>
-                            <button className="glass-button" style={{ background: 'var(--success)' }} onClick={handleCapture} disabled={loading || qualityCode !== 'OK'}>Registrar</button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-const MatchList = ({ tournamentId, onQuickRegister }) => {
-    const [matches, setMatches] = useState([]);
+const MatchList = ({ tournamentId, onQuickRegister }: MatchListProps) => {
+    const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -737,7 +671,7 @@ const MatchList = ({ tournamentId, onQuickRegister }) => {
         load();
     }, [tournamentId]);
 
-    const calculateMinute = (match) => {
+    const calculateMinute = (match: Match) => {
         if (match.status !== 'live' || !match.liveStartTime) return null;
         const elapsed = Math.floor((Date.now() - match.liveStartTime) / 60000);
         return (match.accumulatedTime || 0) + elapsed;
@@ -756,7 +690,7 @@ const MatchList = ({ tournamentId, onQuickRegister }) => {
                     <div
                         key={m.id}
                         className="glass-panel"
-                        style={{ padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--glass-border-light)', background: 'var(--header-bg)' }}
+                        style={{ padding: '15px 20px', display: 'grid', gridTemplateColumns: 'minmax(100px, auto) 1fr minmax(120px, auto)', alignItems: 'center', gap: '20px', border: '1px solid var(--glass-border-light)', background: 'var(--header-bg)', overflowX: 'auto' }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                             <div style={{
@@ -776,22 +710,22 @@ const MatchList = ({ tournamentId, onQuickRegister }) => {
                                     <span>{m.time} HS</span>
                                 )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 }}>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{m.teamA?.name || 'Equipo A'}</div>
+                                    <div style={{ fontWeight: '700', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.teamA?.name || 'Equipo A'}</div>
                                     <button
                                         onClick={() => onQuickRegister(m.teamA?.name, m.category || 'Principal')}
-                                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.65rem', cursor: 'pointer', padding: 0 }}
+                                        style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: 'var(--primary)', fontSize: '0.65rem', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', marginTop: '4px' }}
                                     >
                                         + REGISTRAR JUGADOR
                                     </button>
                                 </div>
-                                <span style={{ opacity: 0.2, fontWeight: '900', fontSize: '1.2rem' }}>VS</span>
-                                <div>
-                                    <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{m.teamB?.name || 'Equipo B'}</div>
+                                <span style={{ opacity: 0.2, fontWeight: '900', fontSize: '1rem', padding: '0 10px' }}>VS</span>
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ fontWeight: '700', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.teamB?.name || 'Equipo B'}</div>
                                     <button
                                         onClick={() => onQuickRegister(m.teamB?.name, m.category || 'Principal')}
-                                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.65rem', cursor: 'pointer', padding: 0 }}
+                                        style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: 'var(--primary)', fontSize: '0.65rem', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', marginTop: '4px' }}
                                     >
                                         + REGISTRAR JUGADOR
                                     </button>
@@ -802,13 +736,13 @@ const MatchList = ({ tournamentId, onQuickRegister }) => {
                         {/* Event Summary */}
                         <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '0.65rem', opacity: 0.5 }}>
                             <div style={{ flex: 1, textAlign: 'right' }}>
-                                {(m.events || []).filter(e => e.teamSide === 'A' && (e.type === 'goal' || e.type.includes('card'))).map(e => (
+                                {(m.events || []).filter((e: any) => e.teamSide === 'A' && (e.type === 'goal' || e.type.includes('card'))).map((e: any) => (
                                     <span key={e.id} style={{ marginLeft: '8px' }}>{e.player} ({e.time})</span>
                                 ))}
                             </div>
                             <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
                             <div style={{ flex: 1 }}>
-                                {(m.events || []).filter(e => e.teamSide === 'B' && (e.type === 'goal' || e.type.includes('card'))).map(e => (
+                                {(m.events || []).filter((e: any) => e.teamSide === 'B' && (e.type === 'goal' || e.type.includes('card'))).map((e: any) => (
                                     <span key={e.id} style={{ marginRight: '8px' }}>{e.player} ({e.time})</span>
                                 ))}
                             </div>

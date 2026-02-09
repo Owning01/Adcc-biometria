@@ -1,6 +1,6 @@
 import * as faceapi from 'face-api.js';
 
-const MODEL_URL = 'https://recofacial-7cea1.web.app/models';
+const MODEL_URL = 'https://adccbiometric.web.app/models';
 
 // Configuración del Worker
 self.onmessage = async (e) => {

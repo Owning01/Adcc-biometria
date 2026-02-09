@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, onSnapshot, deleteDoc, doc, updateDoc, writeBatch, query, where, getDoc } from 'firebase/firestore';
+import { logEvent, getCurrentUserAudit } from './auditService';
 
 // Nombres de las colecciones en Firestore
 const USERS_COLLECTION = 'users'; // Colección principal de usuarios
@@ -135,6 +136,15 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
     try {
         await deleteDoc(doc(db, USERS_COLLECTION, userId));
 
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'deletion',
+            user: currentUser,
+            entity: 'user',
+            entityId: userId,
+            description: `Usuario eliminado (ID: ${userId})`
+        });
+
         // Invalidar caché tras eliminación
         localStorage.removeItem('users_cache');
         return true;
@@ -198,6 +208,16 @@ export const updateUserStatus = async (userId: string, newStatus: string, catego
 
         // Invalidamos caché para reflejar cambios
         localStorage.removeItem('users_cache');
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'modification',
+            user: currentUser,
+            entity: 'user',
+            entityId: userId,
+            description: `Estado actualizado a ${newStatus} ${category ? `en categoría ${category}` : 'global'}`
+        });
+
         return true;
     } catch (error) {
         console.error("Error updating user status:", error);
@@ -252,6 +272,16 @@ export const updateTeamName = async (oldName: string, newName: string): Promise<
         await batch.commit();
 
         localStorage.removeItem('users_cache');
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'modification',
+            user: currentUser,
+            entity: 'team',
+            entityId: oldName,
+            description: `Equipo renombrado de ${oldName} a ${newName}`
+        });
+
         return true;
     } catch (error) {
         console.error("Error updating team name:", error);
@@ -337,6 +367,16 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<b
         const userRef = doc(db, USERS_COLLECTION, userId);
         await updateDoc(userRef, data);
         localStorage.removeItem('users_cache');
+
+        const currentUser = getCurrentUserAudit();
+        await logEvent({
+            type: 'modification',
+            user: currentUser,
+            entity: 'user',
+            entityId: userId,
+            description: `Campos actualizados: ${Object.keys(data).join(', ')}`
+        });
+
         return true;
     } catch (error) {
         console.error("Error updating user:", error);
@@ -353,7 +393,7 @@ export const updateUser = async (userId: string, data: Partial<User>): Promise<b
  * @param {string} newCat - Categoría de destino.
  * @param {string} mode - 'move' (reemplazar), 'add' (agregar), 'remove' (quitar).
  */
-export const updateUserCategories = async (userId: string, oldCat: string | null, newCat: string, mode: 'move' | 'add' | 'remove'): Promise<boolean> => {
+export const updateUserCategories = async (userId: string, oldCat: string | null, newCat: string | null, mode: 'move' | 'add' | 'remove'): Promise<boolean> => {
     try {
         const userRef = doc(db, USERS_COLLECTION, userId);
         const userSnap = await getDoc(userRef);

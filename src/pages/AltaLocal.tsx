@@ -1,3 +1,6 @@
+// ============================================================================
+// 1. IMPORTS
+// ============================================================================
 import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Webcam from 'react-webcam';
@@ -11,6 +14,9 @@ import { ShieldCheck, Search, RefreshCw, BadgeInfo, Cpu, Zap, ShieldAlert, XCirc
 import adccLogo from '../Applogo.png';
 
 const AltaLocal = () => {
+    // ============================================================================
+    // 2. STATE & CONFIG
+    // ============================================================================
     const webcamRef = useRef(null);
     const [matchResult, setMatchResult] = useState(null);
     const [matcher, setMatcher] = useState(null);
@@ -47,6 +53,9 @@ const AltaLocal = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // ============================================================================
+    // 3. CAMERA CONTROLS
+    // ============================================================================
     const toggleCamera = () => {
         setIsTorchOn(false); // Reset torch when switching
         setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
@@ -85,6 +94,9 @@ const AltaLocal = () => {
         setIsVideoReady(true);
     };
 
+    // ============================================================================
+    // 4. INITIALIZATION (DB & AI MODELS)
+    // ============================================================================
     useEffect(() => {
         let unsubscribe;
         const init = async () => {
@@ -111,6 +123,9 @@ const AltaLocal = () => {
         return () => unsubscribe && unsubscribe();
     }, [cameraKey]);
 
+    // ============================================================================
+    // 5. DETECTION LOOP (HYBRID ENGINE)
+    // ============================================================================
     useEffect(() => {
         let interval;
 
@@ -158,6 +173,9 @@ const AltaLocal = () => {
             });
         };
 
+        // ============================================================================
+        // 6. DEEP RECOGNITION (SLOW & ACCURATE)
+        // ============================================================================
         const performDeepRecognition = async (video) => {
             setIsProcessing(true);
             setStatusText('Reconociendo...');
@@ -198,6 +216,9 @@ const AltaLocal = () => {
         return () => clearInterval(interval);
     }, [matcher, isProcessing, matchResult, users, isModelsLoading]);
 
+    // ============================================================================
+    // 7. RENDER UI
+    // ============================================================================
     if (loadError) {
         return (
             <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
