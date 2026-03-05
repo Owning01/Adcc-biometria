@@ -165,14 +165,14 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-body::after {
+body::before {
   content: '';
   position: fixed;
   inset: 0;
   background-color: var(--bg-main);
   opacity: 0.85;
   /* Overlay so text is clearly readable */
-  z-index: -2;
+  z-index: -1;
   pointer-events: none;
 }
 

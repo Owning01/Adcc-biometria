@@ -15,6 +15,7 @@ import Register from './pages/Register';
 import AltaLocal from './pages/AltaLocal';
 import Config from './pages/Config';
 import DevTools from './pages/DevTools';
+import Novedades from './pages/Novedades';
 import Webcam from 'react-webcam';
 import { getUsers, User } from './services/db';
 import { createMatcher } from './services/faceService';
@@ -30,6 +31,7 @@ import Equipos from './pages/Equipos';
 import Partidos from './pages/Partidos';
 import MatchDetail from './pages/MatchDetail';
 import NotFound from './pages/NotFound';
+import RefereeGuide from './pages/RefereeGuide';
 import { LazyMotion, domAnimation, m, motion, AnimatePresence } from 'framer-motion';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -717,6 +719,51 @@ function App() {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
+        {/* Botón Paleta de Colores */}
+        <button
+          onClick={() => setShowPaletteMenu(!showPaletteMenu)}
+          className="glass-button floating-palette-toggle"
+        >
+          <Palette size={20} />
+        </button>
+
+        {showPaletteMenu && (
+          <div className="glass-panel palette-menu-panel">
+            <div className="panel-header" style={{ marginBottom: '0' }}>
+              <span className="panel-label">🎨 Estilo Visual</span>
+              <X size={16} style={{ cursor: 'pointer' }} onClick={() => setShowPaletteMenu(false)} />
+            </div>
+            {[
+
+              { id: 'default', name: 'ADCC (Navy y Green)', color: '#008751' },
+              { id: 'violet', name: 'Violeta Cyber', color: '#8b5cf6' },
+              { id: 'rose', name: 'Rosa Intenso', color: '#f43f5e' },
+              { id: 'cyan', name: 'Cian Futuro', color: '#06b6d4' },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => { setPalette(p.id); setShowPaletteMenu(false); }}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${palette === p.id ? p.color : 'transparent'}`,
+                  padding: '10px',
+                  borderRadius: '10px',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.8rem'
+                }}
+              >
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: p.color }}></div>
+                {p.name}
+                {palette === p.id && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>ACTIVO</span>}
+              </button>
+            ))}
+          </div>
+        )}
 
         <Navigation userRole={userRole} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
         <BatchProcessorOverlay />
@@ -804,7 +851,12 @@ function App() {
             <Route path="/equipos" element={<Equipos userRole={userRole} />} />
             <Route path="/partidos" element={<Partidos userRole={userRole} />} />
             <Route path="/partido/:id" element={<MatchDetail userRole={userRole} />} />
-            {/* Rutas de Desarrollador */}
+            <Route path="/novedades" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><Novedades /></ProtectedRoute>} />
+            <Route path="/estadisticas" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Stats userRole={userRole} /></ProtectedRoute>} />
+            <Route path="/guia-arbitro" element={<ProtectedRoute isAllowed={userRole === 'referee' || userRole === 'admin' || userRole === 'dev'}><RefereeGuide /></ProtectedRoute>} />
+
+            {/* Rutas de Desarrollador / Admin */}
+            <Route path="/config" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev'}><Config /></ProtectedRoute>} />
             <Route path="/dev" element={<ProtectedRoute isAllowed={userRole === 'dev'}><DevTools /></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute isAllowed={isAdminOrDev}><AuditLogs /></ProtectedRoute>} />
 
@@ -1132,8 +1184,12 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
             <>
               {userRole !== 'usuario' && <NavItem to="/alta" label="Reconocimiento" active={location.pathname === "/alta"} />}
               {(userRole === 'admin' || userRole === 'dev' || userRole === 'referee') && <NavItem to="/register" label="Registro" active={location.pathname === "/register"} />}
-              {userRole === 'dev' && (
-                <NavItem to="/dev" label="Dev" active={location.pathname === "/dev"} />
+              {userRole !== 'usuario' && <NavItem to="/novedades" label="Novedades" active={location.pathname === "/novedades"} />}
+              {(userRole === 'referee' || userRole === 'admin' || userRole === 'dev') && (
+                <NavItem to="/guia-arbitro" label="Voz Árbitro" active={location.pathname === "/guia-arbitro"} />
+              )}
+              {(userRole === 'admin' || userRole === 'dev') && (
+                <NavItem to="/config" label="Ajustes" active={location.pathname === "/config"} />
               )}
             </>
           )}
@@ -1189,7 +1245,7 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
       {/* Mobile Drawer Overlay */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: '100%' }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: '100%' }}
@@ -1210,8 +1266,16 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
                 <Link to="/register" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><UserRoundPlus size={22} /> Registro Facial</Link>
               )}
 
-              {userRole === 'dev' && (
-                <Link to="/dev" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Terminal size={22} /> Dev</Link>
+              {userRole !== 'public' && userRole !== 'usuario' && (
+                <Link to="/novedades" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Bell size={22} /> Novedades</Link>
+              )}
+
+              {userRole !== 'public' && (userRole === 'referee' || userRole === 'admin' || userRole === 'dev') && (
+                <Link to="/guia-arbitro" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Mic size={22} /> Voz Árbitro</Link>
+              )}
+
+              {userRole !== 'public' && (userRole === 'admin' || userRole === 'dev') && (
+                <Link to="/config" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Sliders size={22} /> Ajustes</Link>
               )}
 
               {userRole !== 'public' && (
@@ -1224,7 +1288,7 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
                 </button>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>

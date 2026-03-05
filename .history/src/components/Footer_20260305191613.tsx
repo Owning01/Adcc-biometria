@@ -83,6 +83,7 @@ const Footer = () => {
                     <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: 0 }}>
                         © 2025 ADCC CANNING. Todos los derechos reservados.
                     </p>
+                    
                 </div>
             </div>
         </footer>

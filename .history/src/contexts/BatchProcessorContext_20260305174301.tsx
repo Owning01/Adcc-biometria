@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import { playerRegistrationService, RegistrationResult } from '../services/playerRegistrationService';
-import { loadModelsLocal } from '../services/faceServiceLocal';
 
 interface Progress {
     processed: number;
@@ -106,25 +105,6 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
         setStatus('processing');
         isPausedRef.current = false;
         log('▶️ Iniciando procesamiento masivo...');
-
-        // 1. Asegurar carga de Modelos IA antes de correr el bucle principal.
-        setCurrentStep('Cargando modelos IA...');
-        try {
-            const loadRes = await loadModelsLocal();
-            if (!loadRes.success) {
-                setStatus('error');
-                setErrorMsg(loadRes.error || 'No se pudieron inicializar modelos IA');
-                isProcessingRef.current = false;
-                log('❌ ' + (loadRes.error || 'Fallo al cargar modelos de IA'));
-                return;
-            }
-        } catch (mErr) {
-            setStatus('error');
-            setErrorMsg('Excepción al cargar modelos IA');
-            isProcessingRef.current = false;
-            log('❌ Excepción cargando IA');
-            return;
-        }
 
         const playersToProcess = [...players];
         let currentProgress = { ...progress };

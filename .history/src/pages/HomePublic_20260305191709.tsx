@@ -14,12 +14,11 @@ const HomePublic = () => {
 
     return (
         <LazyMotion features={domAnimation}>
-            <div className="home-public-immersive" style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
+            <div className="home-public-immersive full-bleed" style={{
                 height: '100vh',
+                width: '100%',
+                marginTop: '-40px',
+                marginBottom: '-120px',
                 backgroundColor: '#020617',
                 backgroundImage: `url(${EstadioBg})`,
                 backgroundSize: 'cover',
@@ -27,13 +26,12 @@ const HomePublic = () => {
                 backgroundAttachment: 'fixed',
                 color: '#fff',
                 fontFamily: "'Outfit', sans-serif",
+                position: 'relative',
+                overflow: 'hidden',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                paddingTop: '80px', // Espacio para navbar
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                zIndex: 0
+                justifyContent: 'center',
+                paddingTop: '80px' // Espacio para navbar
             }}>
 
                 {/* Overlay Oscuro para legibilidad */}
@@ -44,6 +42,21 @@ const HomePublic = () => {
                     zIndex: 0
                 }} />
 
+                {/* Pelota animada flotando en el fondo */}
+                <m.img
+                    src={PelotaImg}
+                    style={{
+                        position: 'absolute',
+                        top: '15%',
+                        right: '5%',
+                        width: '180px',
+                        opacity: 0.15,
+                        filter: 'blur(3px)',
+                        zIndex: 0
+                    }}
+                    animate={{ y: [0, 40, 0], rotate: [0, 10, 0], scale: [1, 1.05, 1] }}
+                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                />
 
                 {/* Contenedor Principal a Dos Columnas */}
                 <div style={{
@@ -52,7 +65,6 @@ const HomePublic = () => {
                     width: '100%',
                     maxWidth: '1400px',
                     display: 'flex',
-                    flex: 1,
                     flexWrap: 'wrap',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -188,8 +200,8 @@ const HomePublic = () => {
 
                 </div>
 
-                {/* Footer Abajo */}
-                <div style={{ width: '100%', zIndex: 10, marginTop: 'auto', flexShrink: 0 }}>
+                {/* Footer Flotante Abajo */}
+                <div style={{ position: 'absolute', bottom: '0', width: '100%', zIndex: 10, alignSelf: 'flex-end' }}>
                     <div style={{ transform: 'scale(0.8)', opacity: 0.8, transformOrigin: 'bottom center' }}>
                         <Footer />
                     </div>

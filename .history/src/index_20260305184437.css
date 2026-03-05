@@ -154,26 +154,11 @@
 body {
   font-family: 'Outfit', sans-serif;
   background-color: var(--bg-main);
-  background-image: url('./img/1_abstracto_geomtrico.webp');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
   color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-color: var(--bg-main);
-  opacity: 0.85;
-  /* Overlay so text is clearly readable */
-  z-index: -2;
-  pointer-events: none;
 }
 
 /* Background animated glow */

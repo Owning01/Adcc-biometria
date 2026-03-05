@@ -153,7 +153,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                         </select>
                         <input
                             type="text"
-                            placeholder="Buscar por equipo..."
+                            placeholder="Buscar por equipo o ID..."
                             className="premium-input search-input-large"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}

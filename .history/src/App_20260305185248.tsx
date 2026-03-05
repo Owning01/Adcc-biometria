@@ -30,6 +30,7 @@ import Equipos from './pages/Equipos';
 import Partidos from './pages/Partidos';
 import MatchDetail from './pages/MatchDetail';
 import NotFound from './pages/NotFound';
+import NotFound from './pages/NotFound';
 import { LazyMotion, domAnimation, m, motion, AnimatePresence } from 'framer-motion';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -717,6 +718,51 @@ function App() {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
+        {/* Botón Paleta de Colores */}
+        <button
+          onClick={() => setShowPaletteMenu(!showPaletteMenu)}
+          className="glass-button floating-palette-toggle"
+        >
+          <Palette size={20} />
+        </button>
+
+        {showPaletteMenu && (
+          <div className="glass-panel palette-menu-panel">
+            <div className="panel-header" style={{ marginBottom: '0' }}>
+              <span className="panel-label">🎨 Estilo Visual</span>
+              <X size={16} style={{ cursor: 'pointer' }} onClick={() => setShowPaletteMenu(false)} />
+            </div>
+            {[
+
+              { id: 'default', name: 'ADCC (Navy y Green)', color: '#008751' },
+              { id: 'violet', name: 'Violeta Cyber', color: '#8b5cf6' },
+              { id: 'rose', name: 'Rosa Intenso', color: '#f43f5e' },
+              { id: 'cyan', name: 'Cian Futuro', color: '#06b6d4' },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => { setPalette(p.id); setShowPaletteMenu(false); }}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${palette === p.id ? p.color : 'transparent'}`,
+                  padding: '10px',
+                  borderRadius: '10px',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '0.8rem'
+                }}
+              >
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: p.color }}></div>
+                {p.name}
+                {palette === p.id && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>ACTIVO</span>}
+              </button>
+            ))}
+          </div>
+        )}
 
         <Navigation userRole={userRole} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
         <BatchProcessorOverlay />

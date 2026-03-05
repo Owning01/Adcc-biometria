@@ -83,6 +83,10 @@ const Footer = () => {
                     <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', margin: 0 }}>
                         © 2025 ADCC CANNING. Todos los derechos reservados.
                     </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.2 }}>
+                        <Globe size={12} />
+                        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', fontWeight: '800', textTransform: 'uppercase' }}>Elite Biometric Systems</span>
+                    </div>
                 </div>
             </div>
         </footer>

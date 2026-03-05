@@ -14,12 +14,11 @@ const HomePublic = () => {
 
     return (
         <LazyMotion features={domAnimation}>
-            <div className="home-public-immersive" style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
+            <div className="home-public-immersive full-bleed" style={{
                 height: '100vh',
+                width: '100%',
+                marginTop: '-40px',
+                marginBottom: '-120px',
                 backgroundColor: '#020617',
                 backgroundImage: `url(${EstadioBg})`,
                 backgroundSize: 'cover',
@@ -27,13 +26,12 @@ const HomePublic = () => {
                 backgroundAttachment: 'fixed',
                 color: '#fff',
                 fontFamily: "'Outfit', sans-serif",
+                position: 'relative',
+                overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                paddingTop: '80px', // Espacio para navbar
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                zIndex: 0
+                paddingTop: '80px' // Espacio para navbar
             }}>
 
                 {/* Overlay Oscuro para legibilidad */}

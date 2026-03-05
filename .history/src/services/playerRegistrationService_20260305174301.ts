@@ -3,7 +3,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import * as faceapi from 'face-api.js';
 import { registerPlayerBiometrics } from './adccService';
-import { getAdccImageUrl } from '../utils/imageUtils';
 
 export interface RegistrationResult {
     success: boolean;
@@ -28,22 +27,8 @@ export const playerRegistrationService = {
         foto: string;
     }): Promise<RegistrationResult> {
         try {
-            // 1. Cargar imagen con URL segura (Proxy CORS) y extraer descriptor
-            const safeUrl = getAdccImageUrl(player.foto);
-
-            let img: HTMLImageElement;
-            try {
-                img = await faceapi.fetchImage(safeUrl);
-            } catch (fetchErr) {
-                // Fallback robusto usando Image DOM element si fetch falla
-                img = await new Promise((resolve, reject) => {
-                    const image = new Image();
-                    image.crossOrigin = 'anonymous';
-                    image.onload = () => resolve(image);
-                    image.onerror = () => reject(new Error('No se pudo descargar la imagen proxy'));
-                    image.src = safeUrl;
-                });
-            }
+            // 1. Cargar imagen y extraer descriptor
+            const img = await faceapi.fetchImage(player.foto);
             const detection = await faceapi.detectSingleFace(img)
                 .withFaceLandmarks()
                 .withFaceDescriptor();
