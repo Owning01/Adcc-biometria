@@ -1,0 +1,22 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Función auxiliar para verificar si es admin
+    // El UID debe coincidir con el de firestore.rules
+    function isAdmin() {
+       return request.auth != null && request.auth.uid == "N9vLq7NiGwOWsOkp5m9SUT4vzOw1";
+    }
+
+    // Reglas para logos de equipos
+    match /logos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Reglas por defecto
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función auxiliar para verificar si es admin
+    function isAdmin() {
+       return request.auth != null && request.auth.uid == "kPkuIN4DxkTAvistlsAeoKjEFNx2";
+    }
+
+    // Función auxiliar para verificar si es usuario autenticado
+    function isAuthed() {
+       return request.auth != null;
+    }
+
+    // Permisos por defecto: Admin tiene acceso total
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Colección de Usuarios
+    match /users {
+      allow read: if isAuthed() || true; // Permitir lectura para que el sistema funcione siempre
+    }
+    match /users/{document=**} {
+      allow read: if isAuthed() || true;
+      allow write: if isAdmin();
+    }
+    
+    match /users_v2 {
+      allow read: if isAuthed() || true;
+    }
+    match /users_v2/{document=**} {
+      allow read: if isAuthed() || true;
+      allow write: if isAdmin();
+    }
+
+    // Colecciones de Gestión de Partidos - PERMISOS ABIERTOS PARA OPERACIÓN EN VIVO
+    match /matches/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /tournaments/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Colección de Auditoría
+    match /audit_logs/{logId} {
+      allow create: if true;
+      allow read: if isAdmin();
+    }
+  }
+}

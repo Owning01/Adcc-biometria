@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API - Planilla de Partido</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 40px;
+            background: #f7f9fc;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+        h1, h2, h3 {
+            color: #111827;
+        }
+        h1 {
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        code, pre {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 12px;
+            border-radius: 6px;
+            display: block;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #e5e7eb;
+            padding: 10px;
+            text-align: left;
+        }
+        table th {
+            background: #f3f4f6;
+        }
+        .endpoint {
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 12px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📘 API — Carga de Planilla de Partido</h1>
+        <p>Permite registrar el resultado de un partido junto con las estadísticas de jugadores de ambos equipos.</p>
+
+        <h2>🔗 Endpoint</h2>
+        <div class="endpoint">POST /api/cargaPlanillaPartido</div>
+
+        <h2>📥 Body (JSON)</h2>
+        <pre>{
+  "partido_id": 31832,
+  "res_local": 1,
+  "res_local_p": 0,
+  "res_visitante": 2,
+  "res_visitante_p": 0,
+  "arbitro1": "jose luis",
+  "arbitro2": null,
+  "arbitro3": null,
+  "informearbitro": "Partido finalizado con resultado 1-2 a favor del equipo visitante. El jugador con camiseta número 10 del equipo local recibió una doble amarilla y fue expulsado. El jugador con camiseta número 9 del equipo visitante anotó dos goles y recibió una amarilla.",
+  "equipo_local": [
+    {
+      "jleid": 153518,
+      "camiseta": 10,
+      "gf": 1,
+      "gc": 0,
+      "amarilla": 0,
+      "dobleamarilla": 1,
+      "roja": 0,
+      "jugo": 1
+    },
+    {
+      "jleid": 153519,
+      "camiseta": null,
+      "gf": 0,
+      "gc": 0,
+      "amarilla": 0,
+      "dobleamarilla": 0,
+      "roja": 0,
+      "jugo": 0
+    }
+  ],
+  "equipo_visitante": [
+    {
+      "jleid": 153734,
+      "camiseta": 9,
+      "gf": 2,
+      "gc": 0,
+      "amarilla": 1,
+      "dobleamarilla": 0,
+      "roja": 0,
+      "jugo": 1
+    },
+    {
+      "jleid": 153735,
+      "camiseta": null,
+      "gf": 0,
+      "gc": 0,
+      "amarilla": 0,
+      "dobleamarilla": 0,
+      "roja": 0,
+      "jugo": 0
+    }
+  ]
+}</pre>
+
+        <h2>✅ Validaciones</h2>
+
+        <h3>🎯 Datos del partido</h3>
+        <table>
+            <tr><th>Campo</th><th>Tipo</th><th>Requerido</th><th>Descripción</th></tr>
+            <tr><td>partido_id</td><td>integer</td><td>✅</td><td>ID del partido existente</td></tr>
+            <tr><td>res_local</td><td>integer ≥ 0</td><td>✅</td><td>Goles equipo local</td></tr>
+            <tr><td>res_local_p</td><td>integer ≥ 0</td><td>⚠️ nullable</td><td>Penales local</td></tr>
+            <tr><td>res_visitante</td><td>integer ≥ 0</td><td>✅</td><td>Goles visitante</td></tr>
+            <tr><td>res_visitante_p</td><td>integer ≥ 0</td><td>⚠️ nullable</td><td>Penales visitante</td></tr>
+        </table>
+
+        <h3>🧑‍⚖️ Árbitros</h3>
+        <table>
+            <tr><th>Campo</th><th>Tipo</th><th>Requerido</th></tr>
+            <tr><td>arbitro1</td><td>string max 255</td><td>✅</td></tr>
+            <tr><td>arbitro2</td><td>string max 255</td><td>⚠️ nullable</td></tr>
+            <tr><td>arbitro3</td><td>string max 255</td><td>⚠️ nullable</td></tr>
+            <tr><td>informearbitro</td><td>string</td><td>⚠️ nullable</td></tr>
+        </table>
+
+        <h3>🏠 Equipo Local</h3>
+        <p><strong>equipo_local</strong> debe ser un array de jugadores.</p>
+        <table>
+            <tr><th>Campo</th><th>Tipo</th><th>Requerido</th><th>Validación</th></tr>
+            <tr><td>jleid</td><td>integer</td><td>✅</td><td>Debe pertenecer al equipo local</td></tr>
+            <tr><td>camiseta</td><td>integer 0-9999</td><td>⚠️ nullable</td></tr>
+            <tr><td>gf</td><td>integer ≥ 0</td><td>✅</td></tr>
+            <tr><td>gc</td><td>integer ≥ 0</td><td>✅</td></tr>
+            <tr><td>amarilla</td><td>0 o 1</td><td>✅</td></tr>
+            <tr><td>dobleamarilla</td><td>0 o 1</td><td>✅</td></tr>
+            <tr><td>roja</td><td>0 o 1</td><td>✅</td></tr>
+            <tr><td>jugo</td><td>0 o 1</td><td>✅</td></tr>
+        </table>
+
+        <h3>🚗 Equipo Visitante</h3>
+        <p><strong>equipo_visitante</strong> debe ser un array de jugadores.</p>
+        <table>
+            <tr><th>Campo</th><th>Tipo</th><th>Requerido</th><th>Validación</th></tr>
+            <tr><td>jleid</td><td>integer</td><td>✅</td><td>Debe pertenecer al equipo visitante</td></tr>
+            <tr><td>camiseta</td><td>integer 1-9999</td><td>⚠️ nullable</td></tr>
+            <tr><td>gf</td><td>integer ≥ 0</td><td>✅</td></tr>
+            <tr><td>gc</td><td>integer ≥ 0</td><td>✅</td></tr>
+            <tr><td>amarilla</td><td>0 o 1</td><td>✅</td></tr>
+            <tr><td>dobleamarilla</td><td>0 o 1</td><td>✅</td></tr>
+            <tr><td>roja</td><td>0 o 1</td><td>✅</td></tr>
+            <tr><td>jugo</td><td>0 o 1</td><td>✅</td></tr>
+        </table>
+
+        <h2>📤 Respuesta exitosa</h2>
+        <pre>{
+  "message": "Datos validados correctamente",
+  "data": { ... }
+}</pre>
+
+        <h2>❌ Error de validación</h2>
+        <pre>{
+  "message": "The given data was invalid.",
+  "errors": {
+    "partido_id": [
+      "El partido seleccionado no existe."
+    ]
+  }
+}</pre>
+
+        <div class="note">
+            <strong>Notas:</strong>
+            <ul>
+                <li>partido_id debe existir en la tabla partidos.</li>
+                <li>Cada jugador debe pertenecer al equipo correcto.</li>
+                <li>Los flags disciplinarios son binarios (0 o 1).</li>
+                <li>Todos los campos deben existir en el json.</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

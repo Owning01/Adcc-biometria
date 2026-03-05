@@ -1,0 +1,880 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { saveTournament, getTournaments, subscribeToTournaments, saveMatch, getMatches, deleteMatch, deleteTournament, updateTournament, Tournament, Match } from '../services/matchesService';
+import { Trophy, Plus, Calendar, Clock, Users, Trash2, ChevronRight, Edit2, Save, X, Settings2, RefreshCw, ShieldAlert, Square, ArrowRightLeft, UserPlus, ScanFace, Search, Image as ImageIcon } from 'lucide-react';
+import { getUsers, subscribeToUsers, updateTeamName, updateTeamCategory, saveUser, checkDniExists, updateUser, updateUserCategories, User } from '../services/db';
+import { subscribeToTeams, Team } from '../services/teamsService';
+import { getAdccImageUrl } from '../utils/imageUtils';
+import { useRef, useCallback } from 'react';
+import Webcam from 'react-webcam';
+import { initHybridEngine, checkFaceQuality } from '../services/hybridFaceService';
+import { detectFaceMediaPipe } from '../services/mediapipeService';
+import { getFaceDataLocal } from '../services/faceServiceLocal';
+import { createMatcher } from '../services/faceService';
+import QuickRegisterModal from '../components/QuickRegisterModal';
+import { syncADCCData } from '../services/syncService';
+
+interface EquiposProps {
+    userRole?: string;
+}
+
+const Equipos: React.FC<EquiposProps> = ({ userRole }) => {
+    const isAdmin = userRole === 'admin' || userRole === 'dev';
+    const isUsuario = userRole === 'usuario';
+
+    const navigate = useNavigate();
+    const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [showNewTournament, setShowNewTournament] = useState(false);
+    const [showNewMatch, setShowNewMatch] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [availableTeams, setAvailableTeams] = useState<string[]>([]);
+    const [teamCategories, setTeamCategories] = useState<Record<string, string[]>>({}); // { TeamName: [Cat1, Cat2] }
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [activeTab, setActiveTab] = useState('torneos'); // 'torneos' or 'equipos'
+    const [expandedCategory, setExpandedCategory] = useState<{ team: string; category: string } | null>(null); // { team, category }
+    const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+    const [editingTeam, setEditingTeam] = useState<string | null>(null);
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [tempCategories, setTempCategories] = useState<Record<string, string[]>>({}); // { TeamName: [NewCat1, NewCat2] }
+    const [tempTeams, setTempTeams] = useState<string[]>([]); // [NewTeam1, NewTeam2]
+    const [showQuickRegister, setShowQuickRegister] = useState(false);
+    const [quickRegisterData, setQuickRegisterData] = useState({ name: '', dni: '', team: '', category: '' });
+    const [isCreatingTournament, setIsCreatingTournament] = useState(false);
+
+    // Modales modernos rápidos
+    const [showTeamModal, setShowTeamModal] = useState(false);
+    const [showCategoryModal, setShowCategoryModal] = useState({ open: false, team: '' });
+    const [renameModal, setRenameModal] = useState<{ open: boolean; type: string; oldName: string; teamName: string; newValue: string }>({ open: false, type: '', oldName: '', teamName: '', newValue: '' });
+    const [modalInput, setModalInput] = useState('');
+    const [categoryControl, setCategoryControl] = useState<{ open: boolean; user: User | null; currentCat: string }>({ open: false, user: null, currentCat: '' });
+    const [teamsMetadata, setTeamsMetadata] = useState<Team[]>([]);
+    const [teamSearch, setTeamSearch] = useState('');
+    const [syncingAll, setSyncingAll] = useState(false);
+
+    const handleFullSync = async () => {
+        if (!confirm("Esto sincronizará TODOS los partidos y torneos de la API. Puede tardar unos minutos. ¿Continuar?")) return;
+        setSyncingAll(true);
+        try {
+            await syncADCCData({ syncAll: true });
+            alert("Sincronización completa finalizada.");
+        } catch (error) {
+            console.error("Sync error:", error);
+            alert("Error en sincronización completa");
+        } finally {
+            setSyncingAll(false);
+        }
+    };
+
+    const [newTournament, setNewTournament] = useState({ name: '', category: '' });
+    const [newMatch, setNewMatch] = useState({
+        teamA: '',
+        teamB: '',
+        date: '',
+        time: '',
+        gameTime: '45',
+        restTime: '15',
+        category: ''
+    });
+
+    useEffect(() => {
+        setLoading(true);
+        // 1. Suscripción a Torneos
+        const unsubTournaments = subscribeToTournaments((data) => {
+            setTournaments(data);
+            setLoading(false);
+        });
+
+        // 2. Suscripción a Usuarios (para Equipos y Categorías)
+        const unsubUsers = subscribeToUsers((users) => {
+            setAllUsers(users);
+            const teams = [...new Set(users.map(u => u.team))].filter(Boolean).sort();
+            setAvailableTeams(teams);
+
+            // Organizar categorías por equipo
+            const catMap: Record<string, Set<string>> = {};
+            users.forEach(u => {
+                const cats = Array.isArray(u.categories) && u.categories.length > 0 ? u.categories : [u.category];
+                cats.forEach(c => {
+                    if (u.team && c) {
+                        if (!catMap[u.team]) catMap[u.team] = new Set<string>();
+                        catMap[u.team].add(c);
+                    }
+                });
+            });
+            const finalMap: Record<string, string[]> = {};
+            Object.keys(catMap).forEach(team => {
+                finalMap[team] = [...catMap[team]].sort();
+            });
+            setTeamCategories(finalMap);
+
+            // AUTO-CLEAN temporales
+            setTempTeams(prev => prev.filter(t => !teams.includes(t)));
+            setTempCategories(prev => {
+                const next = { ...prev };
+                Object.keys(next).forEach(team => {
+                    if (finalMap[team]) {
+                        next[team] = next[team].filter(c => !finalMap[team].includes(c));
+                        if (next[team].length === 0) delete next[team];
+                    }
+                });
+                return next;
+            });
+        });
+
+        // 3. Suscripción a Metadata de Equipos (Logos y otros)
+        const unsubTeams = subscribeToTeams((data) => {
+            setTeamsMetadata(data);
+            // Actualizar availableTeams cuando llega metadata nueva
+            setAvailableTeams(prev => {
+                const metadataTeams = data.map(t => t.name);
+                return [...new Set([...prev, ...metadataTeams])].sort();
+            });
+        });
+
+        return () => {
+            unsubTournaments();
+            unsubUsers();
+            unsubTeams();
+        };
+    }, []);
+
+    const handleUpdateTournament = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingTournament) {
+                await updateTournament(editingTournament.id, {
+                    name: editingTournament.name,
+                    category: editingTournament.category
+                });
+                setEditingTournament(null);
+                alert("Torneo actualizado");
+            }
+        } catch (error) {
+            alert("Error al actualizar torneo");
+        }
+    };
+
+    const handleRenameTeam = (team: string) => {
+        setRenameModal({
+            open: true,
+            type: 'team',
+            oldName: team,
+            teamName: '',
+            newValue: team
+        });
+    };
+
+    const handleRenameCategory = (team: string, oldCat: string) => {
+        setRenameModal({
+            open: true,
+            type: 'category',
+            oldName: oldCat,
+            teamName: team,
+            newValue: oldCat
+        });
+    };
+
+    const confirmRename = async () => {
+        const { type, oldName, teamName, newValue } = renameModal;
+        const normalized = newValue.trim();
+        if (!normalized || normalized === oldName) {
+            setRenameModal({ open: false, type: '', oldName: '', teamName: '', newValue: '' });
+            return;
+        }
+
+        try {
+            setLoading(true);
+            if (type === 'team') {
+                await updateTeamName(oldName, normalized);
+                alert("Equipo renombrado con éxito");
+            } else {
+                await updateTeamCategory(teamName, oldName, normalized);
+                alert("Categoría renombrada con éxito");
+            }
+            setRenameModal({ open: false, type: '', oldName: '', teamName: '', newValue: '' });
+        } catch (error: any) {
+            alert("Error al renombrar: " + (error?.message || "Error desconocido"));
+            setLoading(false);
+        }
+    };
+
+    const handleAddCategory = (team: string) => {
+        setModalInput('');
+        setShowCategoryModal({ open: true, team });
+    };
+
+    const handleConfirmAddCategory = () => {
+        const newCat = modalInput.trim();
+        if (!newCat) return;
+        const team = showCategoryModal.team;
+
+        // Verificar si ya existe
+        const existing = [...(teamCategories[team] || []), ...(tempCategories[team] || [])];
+        if (existing.includes(newCat)) {
+            alert("La categoría ya existe");
+            return;
+        }
+
+        setTempCategories(prev => ({
+            ...prev,
+            [team]: [...new Set([...(prev[team] || []), newCat])]
+        }));
+        setShowCategoryModal({ open: false, team: '' });
+    };
+
+    const handleOpenQuickRegister = (team: string, category: string) => {
+        setQuickRegisterData({ name: '', dni: '', team, category });
+        setShowQuickRegister(true);
+    };
+
+    const handleCreateNewTeam = () => {
+        setModalInput('');
+        setShowTeamModal(true);
+    };
+
+    const handleConfirmAddTeam = () => {
+        const normalized = modalInput.trim();
+        if (!normalized) return;
+
+        const allTeams = [...availableTeams, ...tempTeams];
+        if (allTeams.some(t => t.toLowerCase() === normalized.toLowerCase())) {
+            alert("El equipo ya existe");
+            return;
+        }
+
+        setTempTeams(prev => [...prev, normalized]);
+        setActiveTab('equipos');
+        setShowTeamModal(false);
+    };
+
+    const handleCreateTournament = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsCreatingTournament(true);
+            await saveTournament(newTournament);
+            setNewTournament({ name: '', category: '' });
+            setShowNewTournament(false);
+        } catch (error) {
+            alert("Error al crear torneo");
+        } finally {
+            setIsCreatingTournament(false);
+        }
+    };
+
+    const handleCreateMatch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isCreating) return;
+        setIsCreating(true);
+        if (!selectedTournament) return;
+        try {
+            await saveMatch({
+                ...newMatch,
+                tournamentId: selectedTournament.id,
+                teamA: { name: newMatch.teamA, logo: null },
+                teamB: { name: newMatch.teamB, logo: null },
+                status: 'programado',
+                createdAt: new Date().toISOString()
+            });
+            setNewMatch({ teamA: '', teamB: '', date: '', time: '', gameTime: '45', restTime: '15', category: '' });
+            setShowNewMatch(false);
+            alert("Partido creado con éxito");
+        } catch (error) {
+            alert("Error al crear partido");
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleDeleteTournament = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        const code = prompt("Ingrese el código 777 para eliminar el torneo y sus partidos:");
+        if (code === '777') {
+            if (confirm("¿Seguro? Se borrarán todos los partidos de este torneo.")) {
+                try {
+                    const matchesToDel = await getMatches(id);
+                    for (const m of matchesToDel) {
+                        await deleteMatch(m.id);
+                    }
+                    await deleteTournament(id);
+                    if (selectedTournament?.id === id) setSelectedTournament(null);
+                } catch (error) {
+                    alert("Error al eliminar torneo");
+                }
+            }
+        }
+    };
+
+    return (
+        <div className="animate-fade-in">
+            <header style={{ marginBottom: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div>
+                        <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '5px' }}>Gestión de <span style={{ color: 'var(--primary)' }}>Torneos</span></h1>
+                        <p style={{ color: 'var(--text-muted)' }}>Crea y gestiona tus torneos, equipos y categorías</p>
+                    </div>
+                    {!isUsuario && (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={() => setShowNewTournament(true)} className="glass-button btn-primary" style={{ padding: '10px 20px' }}><Plus size={20} /> Nuevo Torneo</button>
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <button onClick={() => setActiveTab('torneos')} className={`tab-button ${activeTab === 'torneos' ? 'active' : ''}`}><Trophy size={18} /> TORNEOS</button>
+                    <button onClick={() => setActiveTab('equipos')} className={`tab-button ${activeTab === 'equipos' ? 'active' : ''}`}><Users size={18} /> EQUIPOS Y JUGADORES</button>
+                    {!isUsuario && (
+                        <>
+                            <button onClick={handleCreateNewTeam} className="glass-button" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'var(--success)', color: 'var(--success)', padding: '10px 15px', flex: '0 0 auto' }}><Plus size={18} /> <span style={{ fontSize: '0.7rem' }}>EQUIPO</span></button>
+                            <button
+                                onClick={handleFullSync}
+                                disabled={syncingAll}
+                                className="glass-button"
+                                style={{ marginLeft: 'auto', background: 'rgba(56, 189, 248, 0.1)', borderColor: 'rgb(56, 189, 248)', color: 'rgb(56, 189, 248)', padding: '10px 15px' }}
+                            >
+                                <RefreshCw size={18} className={syncingAll ? 'animate-spin' : ''} /> {syncingAll ? 'SINCRONIZANDO...' : 'TRAER TODO'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            </header>
+
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '50px' }}>Cargando datos...</div>
+            ) : activeTab === 'torneos' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Banners de Acciones Rápidas Biométricas */}
+                    {!isUsuario && (
+                        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexWrap: 'wrap', gap: '15px', background: 'rgba(212, 175, 55, 0.05)', borderColor: 'rgba(212, 175, 55, 0.1)' }}>
+                            <div style={{ flex: '1 1 300px' }}>
+                                <h4 style={{ margin: '0 0 5px 0', fontSize: '0.9rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><ScanFace size={18} /> ACCIONES DE BIOMETRIC</h4>
+                                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Identifica jugadores o realiza registros rápidos con reconocimiento facial.</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <button onClick={() => navigate('/alta')} className="glass-button" style={{ background: 'var(--primary)', color: 'black', padding: '10px 20px', fontSize: '0.75rem' }}><Search size={16} /> RECONOCIMIENTO EN VIVO</button>
+                                <button onClick={() => { setQuickRegisterData({ name: '', dni: '', team: '', category: '' }); setShowQuickRegister(true); }} className="glass-button" style={{ padding: '10px 20px', fontSize: '0.75rem' }}><Plus size={16} /> REGISTRO RÁPIDO</button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                        {tournaments.map(t => (
+                            <div key={t.id} className="glass-panel" style={{ padding: '20px', cursor: 'pointer', border: selectedTournament?.id === t.id ? '2px solid var(--primary)' : '1px solid var(--glass-border-light)', background: 'var(--header-bg)' }} onClick={() => setSelectedTournament(t)}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
+                                    <div style={{ width: '50px', height: '50px', borderRadius: '15px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--primary)' }}><Trophy size={28} /></div>
+                                    <div style={{ flex: 1 }}>
+                                        <h3 style={{ margin: 0, fontSize: '1rem' }}>{t.name}</h3>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.category || 'Sin categoría'}</span>
+                                    </div>
+                                    {!isUsuario && (
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            <button onClick={(e) => { e.stopPropagation(); setEditingTournament(t); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', opacity: 0.6, padding: '5px' }}><Edit2 size={16} /></button>
+                                            <button onClick={(e) => handleDeleteTournament(e, t.id)} style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.3, padding: '5px' }}><Trash2 size={16} /></button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ position: 'relative', marginBottom: '10px' }}>
+                        <Search style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} size={20} />
+                        <input
+                            type="text"
+                            placeholder="Buscar equipo..."
+                            value={teamSearch}
+                            onChange={(e) => setTeamSearch(e.target.value)}
+                            style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border-light)', borderRadius: '12px', padding: '12px 12px 12px 45px', color: 'white' }}
+                        />
+                    </div>
+                    {[...availableTeams, ...tempTeams].filter(t => t.toLowerCase().includes(teamSearch.toLowerCase())).length === 0 ? (
+                        <div className="glass-panel" style={{ padding: '60px', textAlign: 'center' }}>
+                            <Users size={48} style={{ opacity: 0.1, marginBottom: '20px' }} /><p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>No hay equipos registrados aún.</p>
+                            <button onClick={handleCreateNewTeam} className="glass-button" style={{ margin: '0 auto' }}><Plus size={18} /> CREAR MI PRIMER EQUIPO</button>
+                        </div>
+                    ) : (
+                        [...availableTeams, ...tempTeams]
+                            .filter(t => t.toLowerCase().includes(teamSearch.toLowerCase()))
+                            .map((team: string) => (
+                                <div key={team} className="glass-panel" style={{ padding: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                            <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid var(--glass-border-light)' }}>
+                                                {(() => {
+                                                    const teamData = teamsMetadata.find(t => t.name === team);
+                                                    return teamData?.logoUrl ? (
+                                                        <img src={teamData.logoUrl} alt={team} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '3px' }} />
+                                                    ) : <Users size={20} color="var(--primary)" />;
+                                                })()}
+                                            </div>
+                                            <h3 style={{ margin: 0, letterSpacing: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.toUpperCase()}</h3>
+                                        </div>
+                                        {!isUsuario && (
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <button onClick={() => handleAddCategory(team)} className="glass-button" style={{ padding: '5px 15px', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.1)', borderColor: 'var(--primary)' }}><Plus size={12} /> NUEVA CATEGORÍA</button>
+                                                <button onClick={() => handleRenameTeam(team)} className="glass-button" style={{ padding: '5px 15px', fontSize: '0.7rem', opacity: 0.6 }}><Edit2 size={12} /></button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                        {[...new Set([...(teamCategories[team] || []), ...(tempCategories[team] || [])])].length === 0 ? (
+                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '5px 0' }}>Sin categorías. Agregue una para registrar jugadores.</p>
+                                        ) : (
+                                            [...new Set([...(teamCategories[team] || []), ...(tempCategories[team] || [])])].map((cat: string) => (
+                                                <div key={cat} style={{ position: 'relative' }}>
+                                                    <div className="glass-panel" style={{ padding: '10px 15px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem', background: 'var(--header-bg)', border: '1px solid var(--glass-border-light)' }}>
+                                                        <span style={{ fontWeight: '700', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => setExpandedCategory(expandedCategory?.team === team && expandedCategory?.category === cat ? null : { team, category: cat })}>
+                                                            {cat} {expandedCategory?.team === team && expandedCategory?.category === cat ? '▾' : '▸'}
+                                                        </span>
+                                                        {!isUsuario && (
+                                                            <div style={{ display: 'flex', gap: '10px', marginLeft: '5px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '12px' }}>
+                                                                <button onClick={() => handleOpenQuickRegister(team, cat)} className="status-badge" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid rgba(34, 197, 94, 0.2)', padding: '4px 10px' }}><Plus size={14} /> JUGADOR</button>
+                                                                <button onClick={() => handleRenameCategory(team, cat)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0, opacity: 0.3 }}><Edit2 size={12} /></button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Player List Inline */}
+                                                    {(expandedCategory?.team === team && expandedCategory?.category === cat) && (
+                                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.98)', border: '1px solid var(--primary)', borderRadius: '12px', padding: '15px', marginTop: '5px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', maxHeight: '300px', width: '250px', overflowY: 'auto' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                                <h4 style={{ fontSize: '1rem', color: 'var(--primary)', margin: 0 }}>Jugadores</h4>
+                                                                <button onClick={() => setExpandedCategory(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.4rem' }}>&times;</button>
+                                                            </div>
+                                                            <table style={{ width: '100%', fontSize: '0.95rem', borderCollapse: 'collapse' }}>
+                                                                <thead>
+                                                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                                                                        <th style={{ padding: '5px', opacity: 0.5 }}>NOMBRE</th>
+                                                                        <th style={{ padding: '5px', opacity: 0.5 }}>NUM</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {allUsers.filter(u => {
+                                                                        const cats = Array.isArray(u.categories) && u.categories.length > 0 ? u.categories : [u.category];
+                                                                        return u.team === team && cats.includes(cat);
+                                                                    }).map(u => (
+                                                                        <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                                                            <td style={{ padding: '5px', fontWeight: 'bold' }}>{u.name}</td>
+                                                                            <td style={{ padding: '5px' }}>
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                                                    {isAdmin ? (
+                                                                                        <>
+                                                                                            <input type="text" defaultValue={u.number || ''} onBlur={async (e) => { if (e.target.value !== u.number) await updateUser(u.id, { number: e.target.value }); }} style={{ width: '45px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--primary)', fontWeight: 'bold', textAlign: 'center', padding: '2px' }} />
+                                                                                            <button onClick={() => setCategoryControl({ open: true, user: u, currentCat: cat })} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', opacity: 0.7, padding: '2px' }} title="Mover/Añadir categoría"><ArrowRightLeft size={12} /></button>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{u.number || '-'}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                    {allUsers.filter(u => {
+                                                                        const cats = Array.isArray(u.categories) && u.categories.length > 0 ? u.categories : [u.category];
+                                                                        return u.team === team && cats.includes(cat);
+                                                                    }).length === 0 && (
+                                                                            <tr><td colSpan={2} style={{ padding: '10px', textAlign: 'center', opacity: 0.5 }}>No hay jugadores</td></tr>
+                                                                        )}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                    )}
+                </div>
+            )}
+
+            {selectedTournament && (
+                <div style={{ marginTop: '30px' }}>
+                    <div className="glass-panel" style={{ padding: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+                            <div>
+                                <h2 style={{ margin: 0 }}>Gestión de {selectedTournament.name}</h2>
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginTop: '5px' }}>
+                                    <p style={{ fontSize: '1rem', color: 'var(--text-muted)', margin: 0 }}>Administra partidos y registra jugadores directamente</p>
+                                    <span style={{ fontSize: '0.9rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '5px', color: 'var(--primary)' }}>{selectedTournament.category}</span>
+                                </div>
+                                {selectedTournament.winner ? (
+                                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', color: '#fbbf24', fontWeight: 'bold' }}>
+                                        <Trophy size={16} /> CAMPEÓN: {selectedTournament.winner.toUpperCase()}
+                                        <button onClick={() => {
+                                            if (confirm("¿Quitar campeón?")) updateTournament(selectedTournament.id, { winner: null });
+                                        }} style={{ background: 'none', border: 'none', color: '#f87171', fontSize: '0.6rem', cursor: 'pointer' }}>[X]</button>
+                                    </div>
+                                ) : (
+                                    <div style={{ marginTop: '10px' }}>
+                                        <select
+                                            onChange={(e) => {
+                                                if (e.target.value && confirm(`¿Confirmar a ${e.target.value} como campeón?`)) {
+                                                    updateTournament(selectedTournament.id, { winner: e.target.value });
+                                                }
+                                            }}
+                                            style={{ background: 'rgba(251, 191, 36, 0.1)', border: '1px solid #fbbf24', color: '#fbbf24', borderRadius: '8px', padding: '4px 10px', fontSize: '0.95rem', fontWeight: 'bold', cursor: 'pointer' }}
+                                        >
+                                            <option value="">+ ASIGNAR CAMPEÓN</option>
+                                            {[...availableTeams, ...tempTeams].map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+                            {!isUsuario && (
+                                <button onClick={() => setShowNewMatch(true)} className="glass-button" style={{ background: 'var(--success)', fontSize: '0.8rem' }}><Plus size={18} /> Agregar Encuentro</button>
+                            )}
+                        </div>
+                        <MatchList tournamentId={selectedTournament.id} onQuickRegister={handleOpenQuickRegister} userRole={userRole} />
+                    </div>
+                </div>
+            )}
+
+            {/* Modales */}
+            {showNewTournament && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '500px', width: '100%', borderRadius: '24px', border: '1px solid var(--glass-border)' }}>
+                        <h2>Nuevo Torneo</h2>
+                        <form onSubmit={handleCreateTournament} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+                            <input className="premium-input" placeholder="Nombre del Torneo" value={newTournament.name} onChange={e => setNewTournament({ ...newTournament, name: e.target.value })} required />
+                            <input className="premium-input" placeholder="Categoría (ej: Masculino A)" value={newTournament.category} onChange={e => setNewTournament({ ...newTournament, category: e.target.value })} />
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setShowNewTournament(false)} className="glass-button button-secondary" style={{ flex: 1 }}>Cancelar</button>
+                                <button type="submit" disabled={isCreatingTournament} className="glass-button" style={{ flex: 1 }}>{isCreatingTournament ? 'Creando...' : 'Crear'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showNewMatch && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', border: '1px solid var(--glass-border)' }}>
+                        <h2>Nuevo Partido</h2>
+                        <form onSubmit={handleCreateMatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                <select className="premium-input" value={newMatch.teamA} onChange={e => setNewMatch({ ...newMatch, teamA: e.target.value })} required>
+                                    <option value="" disabled>Equipo Local</option>
+                                    {availableTeams.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                <select className="premium-input" value={newMatch.teamB} onChange={e => setNewMatch({ ...newMatch, teamB: e.target.value })} required>
+                                    <option value="" disabled>Equipo Visitante</option>
+                                    {availableTeams.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                <input type="date" className="premium-input" value={newMatch.date} onChange={e => setNewMatch({ ...newMatch, date: e.target.value })} required />
+                                <input type="time" className="premium-input" value={newMatch.time} onChange={e => setNewMatch({ ...newMatch, time: e.target.value })} required />
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                                <button type="button" onClick={() => setShowNewMatch(false)} className="glass-button button-secondary" style={{ flex: 1 }}>Cancelar</button>
+                                <button type="submit" disabled={isCreating} className="glass-button" style={{ flex: 1 }}>{isCreating ? 'Creando...' : 'Crear Partido'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {editingTournament && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div className="glass-panel" style={{ padding: '30px', maxWidth: '500px', width: '100%' }}>
+                        <h2>Editar Torneo</h2>
+                        <form onSubmit={handleUpdateTournament} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+                            <input className="premium-input" value={editingTournament.name} onChange={e => setEditingTournament({ ...editingTournament, name: e.target.value })} required />
+                            <input className="premium-input" value={editingTournament.category || ''} onChange={e => setEditingTournament({ ...editingTournament, category: e.target.value })} />
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setEditingTournament(null)} className="glass-button button-secondary" style={{ flex: 1 }}>Cancelar</button>
+                                <button type="submit" className="glass-button" style={{ flex: 1 }}>Guardar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showTeamModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid var(--primary)', borderRadius: '24px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
+                        <h3>Nuevo Equipo</h3>
+                        <input autoFocus className="premium-input" placeholder="Nombre" value={modalInput} onChange={e => setModalInput(e.target.value)} />
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                            <button onClick={() => setShowTeamModal(false)} className="glass-button button-secondary" style={{ flex: 1 }}>Cerrar</button>
+                            <button onClick={handleConfirmAddTeam} className="glass-button" style={{ flex: 1 }}>Agregar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showCategoryModal.open && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid var(--primary)', borderRadius: '24px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
+                        <h3>Nueva Categoría</h3>
+                        <input autoFocus className="premium-input" placeholder="Ej: Libre" value={modalInput} onChange={e => setModalInput(e.target.value)} />
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                            <button onClick={() => setShowCategoryModal({ open: false, team: '' })} className="glass-button button-secondary" style={{ flex: 1 }}>Cerrar</button>
+                            <button onClick={handleConfirmAddCategory} className="glass-button" style={{ flex: 1 }}>Agregar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {renameModal.open && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div className="glass-panel" style={{ padding: '30px', maxWidth: '400px', width: '100%', borderTop: '2px solid #fbbf24' }}>
+                        <h3>Renombrar</h3>
+                        <input autoFocus className="premium-input" value={renameModal.newValue} onChange={e => setRenameModal({ ...renameModal, newValue: e.target.value })} />
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                            <button onClick={() => setRenameModal({ ...renameModal, open: false })} className="glass-button button-secondary" style={{ flex: 1 }}>Cerrar</button>
+                            <button onClick={confirmRename} className="glass-button" style={{ flex: 1, background: '#fbbf24', color: 'black' }}>Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Control de Categorías */}
+            {categoryControl.open && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 7000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                    <div style={{ background: 'var(--card-bg)', padding: '25px', maxWidth: '400px', width: '100%', borderTop: '3px solid var(--primary)', borderRadius: '24px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ margin: 0 }}>Gestionar Categorías</h3>
+                            <button onClick={() => setCategoryControl({ open: false, user: null, currentCat: '' })} style={{ background: 'none', border: 'none', color: 'white', opacity: 0.5, cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+
+                        <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+                            <p style={{ margin: '0 0 5px 0', fontSize: '0.8rem', opacity: 0.7 }}>Jugador:</p>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--primary)' }}>{categoryControl.user?.name || 'Desconocido'}</div>
+                        </div>
+
+                        <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '15px', borderRadius: '12px', marginBottom: '15px' }}>
+                            <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ArrowRightLeft size={14} /> MOVER CATEGORÍA
+                            </h4>
+                            <p style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '10px' }}>Cambiar "{categoryControl.currentCat}" por:</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                {(teamCategories[categoryControl.user?.team || ''] || []).filter(c => c !== categoryControl.currentCat).map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={async () => {
+                                            try {
+                                                if (categoryControl.user) {
+                                                    await updateUserCategories(categoryControl.user.id, categoryControl.currentCat, cat, 'move');
+                                                    setCategoryControl({ open: false, user: null, currentCat: '' });
+                                                }
+                                            } catch (error: any) {
+                                                alert("Error al mover categoría: " + (error?.message || "Error desconocido"));
+                                            }
+                                        }}
+                                        style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(96, 165, 250, 0.3)', background: 'rgba(96, 165, 250, 0.1)', color: 'white', fontSize: '0.75rem', cursor: 'pointer' }}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '15px', borderRadius: '12px' }}>
+                            <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <UserPlus size={14} /> AÑADIR A OTRA CATEGORÍA
+                            </h4>
+                            <p style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '10px' }}>Mantener actual y agregar:</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                {(teamCategories[categoryControl.user?.team || ''] || []).filter(c => {
+                                    const userCats = Array.isArray(categoryControl.user?.categories) ? categoryControl.user.categories : [categoryControl.user?.category];
+                                    return !userCats.includes(c);
+                                }).map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={async () => {
+                                            try {
+                                                if (categoryControl.user) {
+                                                    await updateUserCategories(categoryControl.user.id, null, cat, 'add');
+                                                    setCategoryControl({ open: false, user: null, currentCat: '' });
+                                                }
+                                            } catch (error: any) {
+                                                alert("Error al añadir categoría: " + (error?.message || "Error desconocido"));
+                                            }
+                                        }}
+                                        style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.1)', color: 'white', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                        <Plus size={12} /> {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '15px', borderRadius: '12px', marginTop: '15px' }}>
+                            <h4 style={{ fontSize: '0.8rem', margin: '0 0 10px 0', color: '#f87171', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Trash2 size={14} /> ELIMINAR DE ESTA CATEGORÍA
+                            </h4>
+                            <p style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '10px' }}>Quitar a este jugador de "{categoryControl.currentCat}":</p>
+                            <button
+                                onClick={async () => {
+                                    if (window.confirm(`¿Seguro que quieres quitar a este jugador de la categoría ${categoryControl.currentCat}?`)) {
+                                        try {
+                                            if (categoryControl.user) {
+                                                await updateUserCategories(categoryControl.user.id, categoryControl.currentCat, null, 'remove');
+                                                setCategoryControl({ open: false, user: null, currentCat: '' });
+                                            }
+                                        } catch (error: any) {
+                                            alert("Error al eliminar categoría: " + (error?.message || "Error desconocido"));
+                                        }
+                                    }
+                                }}
+                                style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                            >
+                                <X size={14} /> QUITAR DE {(categoryControl.currentCat || '').toUpperCase()}
+                            </button>
+                        </div>
+                    </div>
+                </div >
+            )}
+
+            {showQuickRegister && (
+                <QuickRegisterModal
+                    data={quickRegisterData}
+                    onClose={() => setShowQuickRegister(false)}
+                />
+            )}
+        </div >
+    );
+};
+
+
+
+interface MatchListProps {
+    tournamentId: string;
+    onQuickRegister: (team: string, category: string) => void;
+}
+
+const MatchList = ({ tournamentId, onQuickRegister }: MatchListProps) => {
+    const [matches, setMatches] = useState<Match[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [teamsMetadata, setTeamsMetadata] = useState<Team[]>([]);
+
+    useEffect(() => {
+        const load = async () => {
+            const data = await getMatches(tournamentId);
+            setMatches(data);
+            setLoading(false);
+        };
+        load();
+
+        const unsubTeams = subscribeToTeams((data) => {
+            setTeamsMetadata(data);
+        });
+
+        return () => unsubTeams();
+    }, [tournamentId]);
+
+    const calculateMinute = (match: Match) => {
+        if (match.status !== 'live' || !match.liveStartTime) return null;
+        const elapsed = Math.floor((Date.now() - match.liveStartTime) / 60000);
+        return (match.accumulatedTime || 0) + elapsed;
+    };
+
+    if (loading) return <div style={{ textAlign: 'center', padding: '20px' }}>Cargando...</div>;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {matches.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', background: 'var(--header-bg)', borderRadius: '20px', color: 'var(--text-muted)', border: '1px dashed var(--glass-border-light)' }}>
+                    No hay partidos programados para este torneo aún.
+                </div>
+            ) : (
+                matches.map(m => (
+                    <div
+                        key={m.id}
+                        className="glass-panel"
+                        style={{ padding: '15px 20px', display: 'grid', gridTemplateColumns: 'minmax(100px, auto) 1fr minmax(120px, auto)', alignItems: 'center', gap: '20px', border: '1px solid var(--glass-border-light)', background: 'var(--header-bg)', overflowX: 'auto' }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{
+                                background: m.status === 'live' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.05)',
+                                padding: '5px 12px',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                color: m.status === 'live' ? '#ef4444' : 'var(--text-muted)',
+                                fontWeight: '700',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center'
+                            }}>
+                                {m.status === 'live' ? (
+                                    <span style={{ fontSize: '1.1rem', fontWeight: '900' }}>{calculateMinute(m)}'</span>
+                                ) : (
+                                    <span>{m.time} HS</span>
+                                )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '15px', flex: 1, minWidth: 0 }}>
+                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ fontWeight: '700', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.teamA?.name || 'Equipo A'}</div>
+                                        <div style={{ width: '24px', height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {(() => {
+                                                const tA = teamsMetadata.find(t => t.name === (m.teamA?.name || ''));
+                                                const logoUrl = tA?.logoUrl || getAdccImageUrl(m.teamA?.logo || undefined);
+                                                return logoUrl ? <img src={logoUrl} alt="L" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={(e) => (e.currentTarget.style.display = 'none')} /> : <ImageIcon size={14} opacity={0.2} />;
+                                            })()}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => onQuickRegister(m.teamA?.name || '', m.category || 'Principal')}
+                                        style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: 'var(--primary)', fontSize: '0.65rem', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', marginTop: '4px' }}
+                                    >
+                                        + REGISTRAR JUGADOR
+                                    </button>
+                                </div>
+                                <span style={{ opacity: 0.2, fontWeight: '900', fontSize: '1rem', padding: '0 10px' }}>VS</span>
+                                <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ width: '24px', height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {(() => {
+                                                const tB = teamsMetadata.find(t => t.name === (m.teamB?.name || ''));
+                                                const logoUrl = tB?.logoUrl || getAdccImageUrl(m.teamB?.logo || undefined);
+                                                return logoUrl ? <img src={logoUrl} alt="V" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={(e) => (e.currentTarget.style.display = 'none')} /> : <ImageIcon size={14} opacity={0.2} />;
+                                            })()}
+                                        </div>
+                                        <div style={{ fontWeight: '700', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.teamB?.name || 'Equipo B'}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => onQuickRegister(m.teamB?.name || '', m.category || 'Principal')}
+                                        style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: 'var(--primary)', fontSize: '0.65rem', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', marginTop: '4px' }}
+                                    >
+                                        + REGISTRAR JUGADOR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Event Summary */}
+                        <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '0.65rem', opacity: 0.5 }}>
+                            <div style={{ flex: 1, textAlign: 'right' }}>
+                                {(m.events || []).filter((e: any) => (e.teamSide === 'A' || e.team === m.teamA?.name) && (e.type === 'goal' || e.type.includes('card'))).map((e: any) => (
+                                    <span key={e.id || e.eventId} style={{ marginLeft: '8px' }}>{e.player || e.playerName} ({e.time || e.minute}')</span>
+                                ))}
+                            </div>
+                            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                            <div style={{ flex: 1 }}>
+                                {(m.events || []).filter((e: any) => (e.teamSide === 'B' || e.team === m.teamB?.name) && (e.type === 'goal' || e.type.includes('card'))).map((e: any) => (
+                                    <span key={e.id || e.eventId} style={{ marginRight: '8px' }}>{e.player || e.playerName} ({e.time || e.minute}')</span>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '5px' }}>{m.category}</span>
+                            <div className="status-badge" style={{
+                                fontSize: '0.7rem',
+                                background: (m.status === 'live') ? 'rgba(239, 68, 68, 0.2)' : (m.status === 'finished' ? 'rgba(156, 163, 175, 0.2)' : 'rgba(59, 130, 246, 0.2)'),
+                                color: (m.status === 'live') ? '#ef4444' : (m.status === 'finished' ? '#9ca3af' : '#60a5fa')
+                            }}>{(m.status || 'PROGRAMADO').toUpperCase()}</div>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+};
+
+export default Equipos;
