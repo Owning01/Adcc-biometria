@@ -19,7 +19,7 @@ import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { getFaceDataLocal } from '../services/faceServiceLocal';
 import { playSuccessSound, playErrorSound } from '../services/audioService';
 import { ShieldCheck, Search, RefreshCw, BadgeInfo, Cpu, Zap, ShieldAlert, XCircle, UserCircle, SwitchCamera, ArrowLeft, Lightbulb, Upload, X } from 'lucide-react';
-import adccLogo from '../Applogo.png';
+import adccLogo from '../Applogo.webp';
 
 const AltaLocal = () => {
     // ============================================================================

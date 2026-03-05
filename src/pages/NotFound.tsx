@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home, AlertCircle, RefreshCw } from 'lucide-react';
-import adccLogo from '../Applogo.png';
+import adccLogo from '../Applogo.webp';
 
 const NotFound = () => {
     return (

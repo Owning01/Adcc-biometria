@@ -106,7 +106,7 @@ const Config = () => {
                             <ShieldCheck size={24} />
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Seguridad Biométrica</h3>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Seguridad Biometric</h3>
                             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Validación de unicidad activa</p>
                         </div>
                     </div>

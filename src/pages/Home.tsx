@@ -37,7 +37,7 @@ import {
     Trash2,
     ShieldCheck,
     Users as UsersIcon,
-    Trophy,
+    Shield,
     CreditCard,
     ChevronRight,
     LayoutGrid,
@@ -72,7 +72,7 @@ import {
     QrCode
 } from "lucide-react";
 import releaseInfo from '../release.json';
-import adccLogo from "../Applogo.png";
+import adccLogo from "../Applogo.webp";
 
 // ============================================================================
 // 1. HELPER COMPONENTS (Cards, Badges)
@@ -380,9 +380,9 @@ const Home = ({ userRole }: { userRole?: string }) => {
             <header className="home-header">
                 <div>
                     <div className="header-brand">
-                        <img src={adccLogo} alt="Logo de ADCC" className="logo-small drop-shadow-gold" />
+                        <img src={adccLogo} alt="Logo de ADCC" className="logo-small drop-shadow-primary" />
                         <div>
-                            <h1 className="brand-title">ADCC <span className="text-highlight amber-glow">BIOMETRIC</span></h1>
+                            <h1 className="brand-title">ADCC <span className="text-highlight primary-glow">BIOMETRIC</span></h1>
                             <p className="brand-subtitle">Gestión de Acceso de Alto Rendimiento</p>
                         </div>
                     </div>
@@ -590,7 +590,7 @@ const Home = ({ userRole }: { userRole?: string }) => {
                     <div className="panel-premium panel-matches-timeline">
                         <div className="panel-title-container">
                             <div className="card-icon-wrapper">
-                                <Trophy size={14} className="text-highlight" />
+                                <Shield size={14} className="text-highlight" />
                             </div>
                             <h3 className="panel-label">Últimos Partidos</h3>
                         </div>

@@ -13,8 +13,8 @@ import { initHybridEngine, checkFaceQuality } from '../services/hybridFaceServic
 import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { saveUser, checkDniExists, getUsers, subscribeToUsers } from '../services/db';
 import { useNavigate } from 'react-router-dom';
-import { Camera, RefreshCw, User, Clipboard, Users, Trophy, Milestone, CheckCircle2, Zap, Globe, ArrowLeft, Plus, SwitchCamera, Lightbulb, Upload, X, Check as SuccessIcon, RefreshCw as RefreshIcon, AlertCircle as WarningIcon } from 'lucide-react';
-import adccLogo from '../Applogo.png';
+import { Camera, RefreshCw, User, Clipboard, Users, Activity, Milestone, CheckCircle2, Zap, Globe, ArrowLeft, Plus, SwitchCamera, Lightbulb, Upload, X, Check as SuccessIcon, RefreshCw as RefreshIcon, AlertCircle as WarningIcon } from 'lucide-react';
+import adccLogo from '../Applogo.webp';
 
 /**
  * Componente principal para el registro de nuevos usuarios.

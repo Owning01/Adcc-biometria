@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { subscribeToMatches } from '../services/matchesService';
-import { Swords, Shield, PieChart, Clock, ChevronRight, Trophy, BarChart2, Star } from 'lucide-react';
-import adccLogo from '../Applogo.png';
+import { Swords, Shield, PieChart, Clock, ChevronRight, Activity, BarChart2, Star, Award } from 'lucide-react';
+import adccLogo from '../Applogo.webp';
 import { LazyMotion, domAnimation, m } from 'framer-motion';
+import Footer from '../components/Footer';
 
 const HomeUser = () => {
     const navigate = useNavigate();
@@ -30,10 +31,10 @@ const HomeUser = () => {
     const liveCount = activeMatches.filter((m: any) => m.status === 'live').length;
 
     const quickActions = [
-        { icon: <Swords size={24} />, label: 'Partidos', color: '#d4af37', path: '/partidos' },
+        { icon: <Swords size={24} />, label: 'Partidos', color: 'var(--primary)', path: '/partidos' },
         { icon: <Shield size={24} />, label: 'Torneos', color: '#3b82f6', path: '/equipos' },
         { icon: <BarChart2 size={24} />, label: 'Stats', color: '#10b981', path: '/estadisticas' },
-        { icon: <Trophy size={24} />, label: 'Ranking', color: '#f59e0b', path: '/equipos' },
+        { icon: <Award size={24} />, label: 'Ranking', color: '#f59e0b', path: '/equipos' },
     ];
 
     return (
@@ -45,13 +46,13 @@ const HomeUser = () => {
                     position: 'relative',
                     overflow: 'hidden',
                     padding: '40px 20px 70px',
-                    background: 'linear-gradient(180deg, rgba(212,175,55,0.09) 0%, transparent 100%)',
-                    borderBottom: '1px solid rgba(212,175,55,0.1)',
+                    background: 'linear-gradient(180deg, rgba(0, 51, 102, 0.15) 0%, transparent 100%)',
+                    borderBottom: '1px solid rgba(0, 135, 81, 0.1)',
                 }}>
                     <div style={{
                         position: 'absolute', top: '-20%', right: '-10%',
                         width: '280px', height: '280px',
-                        background: 'radial-gradient(circle, rgba(212,175,55,0.18) 0%, transparent 70%)',
+                        background: 'radial-gradient(circle, rgba(0, 135, 81, 0.18) 0%, transparent 70%)',
                         borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none'
                     }} />
 
@@ -62,7 +63,7 @@ const HomeUser = () => {
                             </div>
                             <h1 style={{ fontSize: '1.9rem', fontWeight: '900', margin: 0, lineHeight: 1.1 }}>
                                 Bienvenido<br />
-                                <span style={{ color: 'var(--primary)', textShadow: '0 0 20px rgba(212,175,55,0.4)' }}>Deportista</span>
+                                <span style={{ color: 'var(--primary)', textShadow: '0 0 20px var(--primary-glow)' }}>Deportista</span>
                             </h1>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -201,7 +202,7 @@ const HomeUser = () => {
                                     >
                                         <div style={{
                                             position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px',
-                                            background: match.status === 'live' ? '#ef4444' : '#d4af37',
+                                            background: match.status === 'live' ? '#ef4444' : '#008751',
                                             borderRadius: '4px 0 0 4px'
                                         }} />
 
@@ -210,9 +211,9 @@ const HomeUser = () => {
                                                 <span style={{
                                                     fontSize: '0.58rem', fontWeight: '800', letterSpacing: '1px',
                                                     padding: '2px 8px', borderRadius: '99px',
-                                                    background: match.status === 'live' ? 'rgba(239,68,68,0.15)' : 'rgba(212,175,55,0.1)',
-                                                    color: match.status === 'live' ? '#ef4444' : '#d4af37',
-                                                    border: `1px solid ${match.status === 'live' ? 'rgba(239,68,68,0.3)' : 'rgba(212,175,55,0.2)'}`,
+                                                    background: match.status === 'live' ? 'rgba(239,68,68,0.15)' : 'rgba(0, 135, 81, 0.1)',
+                                                    color: match.status === 'live' ? '#ef4444' : '#00a859',
+                                                    border: `1px solid ${match.status === 'live' ? 'rgba(239,68,68,0.3)' : 'rgba(0, 135, 81, 0.2)'}`,
                                                     display: 'inline-flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase'
                                                 }}>
                                                     {match.status === 'live' && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />}
@@ -239,13 +240,15 @@ const HomeUser = () => {
                         </div>
                     </div>
 
-                    <div style={{ textAlign: 'center', marginTop: '48px' }}>
+                    <div style={{ textAlign: 'center', marginTop: '48px', marginBottom: '40px' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: 0.2 }}>
                             <Star size={10} />
                             <span style={{ fontSize: '0.58rem', letterSpacing: '3px', fontWeight: '800', textTransform: 'uppercase' }}>ADCC Elite Platform</span>
                             <Star size={10} />
                         </div>
                     </div>
+
+                    <Footer />
                 </div>
 
                 <style>{`
