@@ -4,23 +4,20 @@
  */
 import React, { useState, useEffect } from 'react';
 import {
+    getTournaments,
+    addTournament,
+    updateTournament,
+    deleteTournament,
+    Tournament,
     getUsers,
     User,
     updateUser,
     updateUserCategories,
-    subscribeToUsers
-} from '../services/db';
-import {
-    getTournaments,
-    saveTournament,
-    updateTournament,
-    deleteTournament,
-    Tournament,
+    subscribeToTeams,
+    Team,
     getMatches,
-    Match,
-    subscribeToMatch
-} from '../services/matchesService';
-import { subscribeToTeams, Team } from '../services/teamsService';
+    Match
+} from '../services/db';
 import {
     Trophy,
     Plus,
@@ -35,8 +32,8 @@ import {
     ArrowRightLeft,
     UserPlus
 } from 'lucide-react';
-import { syncADCCData } from '../services/syncService';
-import { getAdccImageUrl } from '../utils/imageUtils';
+import { syncAllADCCData } from '../services/syncService';
+import { getAdccImageUrl } from '../services/adccService';
 import QuickRegisterModal from '../components/QuickRegisterModal';
 
 const Equipos = ({ userRole }: { userRole: string }) => {

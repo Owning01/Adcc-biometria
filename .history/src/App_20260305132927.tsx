@@ -8,14 +8,13 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate 
 import AuditLogs from './pages/AuditLogs';
 import { loadModelsLocal } from './services/faceServiceLocal';
 import Home from './pages/Home';
-import HomePublic from './pages/HomePublic';
 import HomeUser from './pages/HomeUser';
-import Stats from './pages/Stats';
 import Register from './pages/Register';
 import AltaLocal from './pages/AltaLocal';
 import Config from './pages/Config';
 import DevTools from './pages/DevTools';
 import Novedades from './pages/Novedades';
+import Stats from './pages/Stats';
 import Webcam from 'react-webcam';
 import { getUsers, User } from './services/db';
 import { createMatcher } from './services/faceService';
@@ -23,7 +22,7 @@ import { getFaceDataLocal } from './services/faceServiceLocal';
 import { initHybridEngine, checkFaceQuality } from './services/hybridFaceService';
 import { detectFaceMediaPipe } from './services/mediapipeService';
 
-import { UserPlus, Home as HomeIcon, Search, RefreshCw, Zap, Lock, Unlock, LogIn, Settings, Globe, Terminal, Users, Trophy, Moon, Sun, WifiOff, CloudOff, Sparkles, BarChart2, LayoutDashboard, Bell, UserRoundPlus, ScanFace, Shield, PieChart, Swords, Sliders, Code2, Palette, X, Mic, AlertCircle, ShieldAlert, XCircle, UserCircle, Pause, Play, ExternalLink } from 'lucide-react';
+import { UserPlus, Home as HomeIcon, Search, RefreshCw, Zap, Lock, Unlock, LogIn, Settings, Globe, Terminal, Users, Trophy, Moon, Sun, WifiOff, CloudOff, Sparkles, BarChart2, LayoutDashboard, Bell, UserRoundPlus, ScanFace, Shield, PieChart, Swords, Sliders, Code2, Palette, X, Mic, AlertCircle, ShieldAlert, XCircle, UserCircle } from 'lucide-react';
 import adccLogo from './Applogo.png';
 import Equipos from './pages/Equipos';
 import Partidos from './pages/Partidos';
@@ -34,7 +33,6 @@ import { LazyMotion, domAnimation, m, AnimatePresence } from 'framer-motion';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { logEvent } from './services/auditService';
-import { useBatchProcessor } from './contexts/BatchProcessorContext';
 
 // ============================================================================
 // 1. CONSTANTS & CONFIG
@@ -582,6 +580,18 @@ function App() {
           </div>
         )}
 
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          color: 'rgba(255, 255, 255, 0.2)',
+          fontSize: '10px',
+          fontWeight: '800',
+          letterSpacing: '5px',
+          textTransform: 'uppercase'
+        }}>
+          ELITE CORE ENGINE <span style={{ color: '#d4af37' }}>v{VERSION}</span>
+        </div>
+
         <style>{`
           @keyframes spin { 100% { transform: rotate(360deg); } }
           @keyframes pulse-glow {
@@ -607,9 +617,10 @@ function App() {
     );
   }
 
+  import { useBatchProcessor } from './contexts/BatchProcessorContext';
 
   const BatchProcessorOverlay = () => {
-    const { status, progress, currentPlayer, currentStep, startProcessing, pauseProcessing } = useBatchProcessor();
+    const { status, progress, startProcessing, pauseProcessing } = useBatchProcessor();
     const navigate = useNavigate();
 
     if (status === 'idle' || status === 'ready' || status === 'finished') return null;
@@ -617,87 +628,69 @@ function App() {
     return (
       <div style={{
         position: 'fixed',
-        bottom: '80px',
+        bottom: '100px',
         right: '25px',
         zIndex: 1000,
         width: '280px',
-        background: 'rgba(9, 9, 11, 0.95)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(212, 175, 55, 0.2)',
-        borderRadius: '20px',
-        padding: '16px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+        background: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(212,175,55,0.3)',
+        borderRadius: '16px',
+        padding: '12px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         color: 'white',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        fontFamily: "'Outfit', sans-serif"
+        gap: '8px',
+        fontFamily: "'Inter', sans-serif"
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
+            <div className={`status-dot ${status === 'processing' ? 'active' : ''}`} style={{
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: status === 'processing' ? '#10b981' : '#fbbf24',
-              boxShadow: status === 'processing' ? '0 0 10px #10b981' : 'none',
-              animation: status === 'processing' ? 'pulse 2s infinite' : 'none'
+              background: status === 'processing' ? '#10b981' : (status === 'paused' ? '#fbbf24' : '#3b82f6'),
+              boxShadow: status === 'processing' ? '0 0 10px #10b981' : 'none'
             }}></div>
-            <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(255,255,255,0.7)' }}>
-              {status === 'loading_list' ? 'Cargando API' : (status === 'processing' ? 'Procesando' : 'En Pausa')}
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {status === 'loading_list' ? 'Cargando API...' : (status === 'processing' ? 'Procesando...' : 'En Pausa')}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {status === 'processing' ? (
-              <button onClick={(e) => { e.stopPropagation(); pauseProcessing(); }} style={{ background: 'none', border: 'none', color: '#fbbf24', cursor: 'pointer', padding: '4px' }}>
-                <Pause size={16} />
-              </button>
-            ) : status === 'paused' ? (
-              <button onClick={(e) => { e.stopPropagation(); startProcessing(); }} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', padding: '4px' }}>
-                <Play size={16} />
-              </button>
-            ) : null}
-            <button
-              onClick={() => navigate('/dev')}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px' }}
-            >
-              <ExternalLink size={16} />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/dev')}
+            style={{ background: 'none', border: 'none', color: '#d4af37', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Ver Detalles
+          </button>
         </div>
 
-        {currentPlayer && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '12px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: '#000' }}>
-              <img src={currentPlayer.processed_foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {currentPlayer.nombre} {currentPlayer.apellido}
-              </div>
-              <div style={{ fontSize: '0.6rem', color: 'var(--primary)', fontWeight: '600' }}>{currentStep}</div>
-            </div>
-          </div>
-        )}
-
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.65rem', fontWeight: '700', color: 'rgba(255,255,255,0.5)' }}>
-            <span>PROGRESO</span>
-            <span>{Math.round((progress.processed / progress.total) * 100)}%</span>
-          </div>
-          <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${(progress.processed / progress.total) * 100}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #d4af37, #f97316)',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px', fontSize: '0.6rem', fontWeight: '800' }}>
-            <span style={{ color: '#10b981' }}>{progress.success} OK</span>
-            <span style={{ color: '#ef4444' }}>{progress.failed} ERROR</span>
-          </div>
+        <div style={{ background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{
+            width: `${(progress.processed / progress.total) * 100}%`,
+            height: '100%',
+            background: 'linear-gradient(90deg, #d4af37, #fde047)',
+            transition: 'width 0.3s ease'
+          }}></div>
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', opacity: 0.8 }}>
+          <span>{progress.processed} / {progress.total}</span>
+          <span style={{ color: '#10b981' }}>{progress.success} OK</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+          {status === 'paused' ? (
+            <button onClick={startProcessing} style={{ flex: 1, background: '#10b981', border: 'none', borderRadius: '6px', padding: '6px', cursor: 'pointer', color: 'black', fontWeight: 'bold', fontSize: '0.7rem' }}>Continuar</button>
+          ) : status === 'processing' ? (
+            <button onClick={pauseProcessing} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px', cursor: 'pointer', color: 'white', fontSize: '0.7rem' }}>Pausar</button>
+          ) : null}
+        </div>
+
+        <style>{`
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        .status-dot.active { animation: pulse 1.5s infinite; }
+      `}</style>
       </div>
     );
   };
@@ -764,7 +757,6 @@ function App() {
         )}
 
         <Navigation userRole={userRole} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
-        <BatchProcessorOverlay />
 
         {/* Indicador de Modo Offline */}
         {!isOnline && (
@@ -826,31 +818,22 @@ function App() {
             <Route path="/" element={userRole !== 'public' ? (
               userRole === 'usuario' ? <HomeUser /> : <Home userRole={userRole} />
             ) : (
-              <HomePublic />
+              <AdminLogin
+                handleLogin={handleLogin}
+                loginForm={loginForm}
+                setLoginForm={setLoginForm}
+                onFaceLogin={() => setShowFaceLogin(true)}
+              />
             )} />
-
-            {/* Ruta Pública de Login */}
-            <Route path="/login" element={
-              userRole !== 'public' ? (
-                <Navigate to="/" replace />
-              ) : (
-                <AdminLogin
-                  handleLogin={handleLogin}
-                  loginForm={loginForm}
-                  setLoginForm={setLoginForm}
-                  onFaceLogin={() => setShowFaceLogin(true)}
-                />
-              )
-            } />
 
             {/* Rutas Protegidas (Solo Autenticados con Permisos) */}
             <Route path="/register" element={<ProtectedRoute isAllowed={isAdminOrDev || userRole === 'referee'}><Register /></ProtectedRoute>} />
             <Route path="/alta" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><AltaLocal /></ProtectedRoute>} />
-            <Route path="/equipos" element={<Equipos userRole={userRole} />} />
-            <Route path="/partidos" element={<Partidos userRole={userRole} />} />
-            <Route path="/partido/:id" element={<MatchDetail userRole={userRole} />} />
+            <Route path="/equipos" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Equipos /></ProtectedRoute>} />
+            <Route path="/partidos" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Partidos userRole={userRole} /></ProtectedRoute>} />
+            <Route path="/partido/:id" element={<ProtectedRoute isAllowed={userRole !== 'public'}><MatchDetail userRole={userRole} /></ProtectedRoute>} />
             <Route path="/novedades" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><Novedades /></ProtectedRoute>} />
-            <Route path="/estadisticas" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Stats userRole={userRole} /></ProtectedRoute>} />
+            <Route path="/estadisticas" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Stats /></ProtectedRoute>} />
             <Route path="/guia-arbitro" element={<ProtectedRoute isAllowed={userRole === 'referee' || userRole === 'admin' || userRole === 'dev'}><RefereeGuide /></ProtectedRoute>} />
 
             {/* Rutas de Desarrollador / Admin */}
@@ -1114,6 +1097,11 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ handleLogin, loginForm, setLogi
           </form>
         )}
       </div>
+
+      {/* Bottom branding */}
+      <div style={{ marginTop: '32px', opacity: 0.2, fontSize: '0.6rem', letterSpacing: '3px', textTransform: 'uppercase', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        Elite Core Engine
+      </div>
     </div>
   );
 };
@@ -1132,23 +1120,13 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
   return (
     <nav className="app-nav">
 
-      <Link to="/" className="hide-mobile" style={{ marginBottom: '20px', padding: '10px', textDecoration: 'none', display: 'block' }}>
-        <div style={{ fontWeight: '800', letterSpacing: '-1px', color: 'var(--primary)', fontSize: '1.2rem' }}>ADCC</div>
-      </Link>
+      {/* Logo in Desktop Sidebar */}
+      <div className="hide-mobile" style={{ marginBottom: '20px', padding: '10px' }}>
+        <div style={{ fontWeight: '800', letterSpacing: '-1px', color: 'var(--primary)' }}>ADCC</div>
+      </div>
 
       {userRole !== 'public' && (
         <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Inicio" active={location.pathname === "/"} />
-      )}
-
-      {/* Rutas Públicas */}
-      <NavItem to="/partidos" icon={<Swords size={20} />} label="Partidos" active={location.pathname === "/partidos" || location.pathname.startsWith('/partido')} />
-      <NavItem to="/equipos" icon={<Shield size={20} />} label="Torneos" active={location.pathname === "/equipos"} />
-      {userRole !== 'public' && (
-        <NavItem to="/estadisticas" icon={<PieChart size={20} />} label="Estadísticas" active={location.pathname === "/estadisticas"} />
-      )}
-
-      {userRole === 'public' && (
-        <NavItem to="/login" icon={<LogIn size={20} />} label="Ingresar" active={location.pathname === "/login"} />
       )}
 
       {userRole !== 'public' && (
@@ -1159,8 +1137,16 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
           {/* 3. Registro */}
           {(userRole === 'admin' || userRole === 'dev' || userRole === 'referee') && <NavItem to="/register" icon={<UserRoundPlus size={20} />} label="Registro" active={location.pathname === "/register"} />}
 
+          {/* 4. Partidos */}
+          <NavItem to="/partidos" icon={<Swords size={20} />} label="Partidos" active={location.pathname === "/partidos" || location.pathname.startsWith('/partido')} />
+
+          {/* 5. Torneos (Equipos) */}
+          <NavItem to="/equipos" icon={<Shield size={20} />} label="Torneos" active={location.pathname === "/equipos"} />
+
           {/* Resto */}
           {userRole !== 'usuario' && <NavItem to="/novedades" icon={<Bell size={20} />} label="Novedades" active={location.pathname === "/novedades"} />}
+
+          <NavItem to="/estadisticas" icon={<PieChart size={20} />} label="Estadísticas" active={location.pathname === "/estadisticas"} />
 
           {userRole !== 'public' && userRole !== 'usuario' && (
             <div

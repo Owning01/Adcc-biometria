@@ -168,11 +168,9 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                                 >
                                     <div className="match-card-header">
                                         <div className="match-meta-group">
-                                            {(userRole === 'admin' || userRole === 'dev' || userRole === 'referee') && (
-                                                <span className="match-id-badge">
-                                                    #{match.id.slice(-6).toUpperCase()}
-                                                </span>
-                                            )}
+                                            <span className="match-id-badge">
+                                                #{match.id.slice(-6).toUpperCase()}
+                                            </span>
                                             <span className="flex-center" style={{ gap: '5px' }}><Calendar size={14} /> {match.date}</span>
                                             <span className="flex-center" style={{ gap: '5px' }}><Clock size={14} /> {match.time} HS</span>
                                         </div>

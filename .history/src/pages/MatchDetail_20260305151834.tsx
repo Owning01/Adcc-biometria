@@ -884,13 +884,11 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                 </div>
 
                 {/* Match Identifier */}
-                {(isAdminOrDev || isReferee) && (
-                    <div style={{ position: 'absolute', top: '15px', left: '15px' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', background: 'var(--primary)', color: '#000', padding: '2px 8px', borderRadius: '4px' }}>
-                            ID: #{match.id.slice(-6).toUpperCase()}
-                        </span>
-                    </div>
-                )}
+                <div style={{ position: 'absolute', top: '15px', left: '15px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', background: 'var(--primary)', color: '#000', padding: '2px 8px', borderRadius: '4px' }}>
+                        ID: #{match.id.slice(-6).toUpperCase()}
+                    </span>
+                </div>
 
                 <div className="scoreboard-grid">
                     {/* Team Local */}

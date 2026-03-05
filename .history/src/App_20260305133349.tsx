@@ -8,14 +8,13 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate 
 import AuditLogs from './pages/AuditLogs';
 import { loadModelsLocal } from './services/faceServiceLocal';
 import Home from './pages/Home';
-import HomePublic from './pages/HomePublic';
 import HomeUser from './pages/HomeUser';
-import Stats from './pages/Stats';
 import Register from './pages/Register';
 import AltaLocal from './pages/AltaLocal';
 import Config from './pages/Config';
 import DevTools from './pages/DevTools';
 import Novedades from './pages/Novedades';
+import Stats from './pages/Stats';
 import Webcam from 'react-webcam';
 import { getUsers, User } from './services/db';
 import { createMatcher } from './services/faceService';
@@ -582,6 +581,18 @@ function App() {
           </div>
         )}
 
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          color: 'rgba(255, 255, 255, 0.2)',
+          fontSize: '10px',
+          fontWeight: '800',
+          letterSpacing: '5px',
+          textTransform: 'uppercase'
+        }}>
+          ELITE CORE ENGINE <span style={{ color: '#d4af37' }}>v{VERSION}</span>
+        </div>
+
         <style>{`
           @keyframes spin { 100% { transform: rotate(360deg); } }
           @keyframes pulse-glow {
@@ -826,31 +837,22 @@ function App() {
             <Route path="/" element={userRole !== 'public' ? (
               userRole === 'usuario' ? <HomeUser /> : <Home userRole={userRole} />
             ) : (
-              <HomePublic />
+              <AdminLogin
+                handleLogin={handleLogin}
+                loginForm={loginForm}
+                setLoginForm={setLoginForm}
+                onFaceLogin={() => setShowFaceLogin(true)}
+              />
             )} />
-
-            {/* Ruta Pública de Login */}
-            <Route path="/login" element={
-              userRole !== 'public' ? (
-                <Navigate to="/" replace />
-              ) : (
-                <AdminLogin
-                  handleLogin={handleLogin}
-                  loginForm={loginForm}
-                  setLoginForm={setLoginForm}
-                  onFaceLogin={() => setShowFaceLogin(true)}
-                />
-              )
-            } />
 
             {/* Rutas Protegidas (Solo Autenticados con Permisos) */}
             <Route path="/register" element={<ProtectedRoute isAllowed={isAdminOrDev || userRole === 'referee'}><Register /></ProtectedRoute>} />
             <Route path="/alta" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><AltaLocal /></ProtectedRoute>} />
-            <Route path="/equipos" element={<Equipos userRole={userRole} />} />
-            <Route path="/partidos" element={<Partidos userRole={userRole} />} />
-            <Route path="/partido/:id" element={<MatchDetail userRole={userRole} />} />
+            <Route path="/equipos" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Equipos /></ProtectedRoute>} />
+            <Route path="/partidos" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Partidos userRole={userRole} /></ProtectedRoute>} />
+            <Route path="/partido/:id" element={<ProtectedRoute isAllowed={userRole !== 'public'}><MatchDetail userRole={userRole} /></ProtectedRoute>} />
             <Route path="/novedades" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><Novedades /></ProtectedRoute>} />
-            <Route path="/estadisticas" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Stats userRole={userRole} /></ProtectedRoute>} />
+            <Route path="/estadisticas" element={<ProtectedRoute isAllowed={userRole !== 'public'}><Stats /></ProtectedRoute>} />
             <Route path="/guia-arbitro" element={<ProtectedRoute isAllowed={userRole === 'referee' || userRole === 'admin' || userRole === 'dev'}><RefereeGuide /></ProtectedRoute>} />
 
             {/* Rutas de Desarrollador / Admin */}
@@ -1114,6 +1116,11 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ handleLogin, loginForm, setLogi
           </form>
         )}
       </div>
+
+      {/* Bottom branding */}
+      <div style={{ marginTop: '32px', opacity: 0.2, fontSize: '0.6rem', letterSpacing: '3px', textTransform: 'uppercase', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        Elite Core Engine
+      </div>
     </div>
   );
 };
@@ -1132,23 +1139,13 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
   return (
     <nav className="app-nav">
 
-      <Link to="/" className="hide-mobile" style={{ marginBottom: '20px', padding: '10px', textDecoration: 'none', display: 'block' }}>
-        <div style={{ fontWeight: '800', letterSpacing: '-1px', color: 'var(--primary)', fontSize: '1.2rem' }}>ADCC</div>
-      </Link>
+      {/* Logo in Desktop Sidebar */}
+      <div className="hide-mobile" style={{ marginBottom: '20px', padding: '10px' }}>
+        <div style={{ fontWeight: '800', letterSpacing: '-1px', color: 'var(--primary)' }}>ADCC</div>
+      </div>
 
       {userRole !== 'public' && (
         <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Inicio" active={location.pathname === "/"} />
-      )}
-
-      {/* Rutas Públicas */}
-      <NavItem to="/partidos" icon={<Swords size={20} />} label="Partidos" active={location.pathname === "/partidos" || location.pathname.startsWith('/partido')} />
-      <NavItem to="/equipos" icon={<Shield size={20} />} label="Torneos" active={location.pathname === "/equipos"} />
-      {userRole !== 'public' && (
-        <NavItem to="/estadisticas" icon={<PieChart size={20} />} label="Estadísticas" active={location.pathname === "/estadisticas"} />
-      )}
-
-      {userRole === 'public' && (
-        <NavItem to="/login" icon={<LogIn size={20} />} label="Ingresar" active={location.pathname === "/login"} />
       )}
 
       {userRole !== 'public' && (
@@ -1159,8 +1156,16 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
           {/* 3. Registro */}
           {(userRole === 'admin' || userRole === 'dev' || userRole === 'referee') && <NavItem to="/register" icon={<UserRoundPlus size={20} />} label="Registro" active={location.pathname === "/register"} />}
 
+          {/* 4. Partidos */}
+          <NavItem to="/partidos" icon={<Swords size={20} />} label="Partidos" active={location.pathname === "/partidos" || location.pathname.startsWith('/partido')} />
+
+          {/* 5. Torneos (Equipos) */}
+          <NavItem to="/equipos" icon={<Shield size={20} />} label="Torneos" active={location.pathname === "/equipos"} />
+
           {/* Resto */}
           {userRole !== 'usuario' && <NavItem to="/novedades" icon={<Bell size={20} />} label="Novedades" active={location.pathname === "/novedades"} />}
+
+          <NavItem to="/estadisticas" icon={<PieChart size={20} />} label="Estadísticas" active={location.pathname === "/estadisticas"} />
 
           {userRole !== 'public' && userRole !== 'usuario' && (
             <div

@@ -1,4 +1,3 @@
-import { Zap, RefreshCw, AlertCircle, Pause, Play, CheckCircle } from 'lucide-react';
 import { useBatchProcessor } from '../../contexts/BatchProcessorContext';
 
 export default function BatchPhotoProcessor() {
@@ -162,11 +161,67 @@ export default function BatchPhotoProcessor() {
     );
 }
 
+{/* Logs */ }
+<div style={{
+    height: '200px',
+    background: '#09090b',
+    borderRadius: '8px',
+    padding: '16px',
+    overflowY: 'auto',
+    fontFamily: 'monospace',
+    fontSize: '0.85rem'
+}}>
+    {logs.map((log, idx) => (
+        <div key={idx} style={{ marginBottom: '4px', opacity: idx === 0 ? 1 : 0.6 }}>
+            {log}
+        </div>
+    ))}
+    {logs.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Esperando inicio...</div>}
+</div>
+            </div >
+        </div >
+    );
+}
+
 function ProgressStat({ label, value, color }: { label: string, value: number, color: string }) {
     return (
         <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
             <div style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '4px' }}>{label}</div>
             <div style={{ fontSize: '1.2rem', fontWeight: 800, color }}>{value}</div>
+        </div>
+    );
+}
+
+function StatusBadge({ label, success }: { label: string, success: boolean | null }) {
+    let bg = 'rgba(255,255,255,0.05)';
+    let color = 'rgba(255,255,255,0.3)';
+    let icon = <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />;
+
+    if (success === true) {
+        bg = 'rgba(34, 197, 94, 0.1)';
+        color = '#22c55e';
+        icon = <CheckCircle size={14} />;
+    } else if (success === false) {
+        bg = 'rgba(239, 68, 68, 0.1)';
+        color = '#ef4444';
+        icon = <AlertCircle size={14} />;
+    }
+
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            background: bg,
+            color: color,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            border: `1px solid ${success === null ? 'transparent' : color}33`
+        }}>
+            <span>{label}</span>
+            {icon}
         </div>
     );
 }

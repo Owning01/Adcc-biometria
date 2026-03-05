@@ -1114,6 +1114,11 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ handleLogin, loginForm, setLogi
           </form>
         )}
       </div>
+
+      {/* Bottom branding */}
+      <div style={{ marginTop: '32px', opacity: 0.2, fontSize: '0.6rem', letterSpacing: '3px', textTransform: 'uppercase', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        Elite Core Engine
+      </div>
     </div>
   );
 };

@@ -40,40 +40,48 @@ export const playerRegistrationService = {
             const descriptorArray = Array.from(detection.descriptor);
             const descriptorString = JSON.stringify(descriptorArray);
 
-            // 2. Procesar y Subir imagen a Firebase Storage (600x600 .webp)
+            // 2. Subir imagen a Firebase Storage con COMPRESIÓN
             let firebaseImageUrl = player.foto;
             try {
-                // Función para redimensionar a 600x600 y convertir a WebP
-                const processImage = async (image: HTMLImageElement): Promise<Blob> => {
+                // Función interna para comprimir via Canvas
+                const compressImage = async (image: HTMLImageElement): Promise<Blob> => {
                     const canvas = document.createElement('canvas');
-                    const SIZE = 600; // Tamaño solicitado 600x600
-                    canvas.width = SIZE;
-                    canvas.height = SIZE;
+                    const MAX_SIZE = 400; // Máximo 400px para ahorrar espacio
+                    let width = image.width;
+                    let height = image.height;
 
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
                     const ctx = canvas.getContext('2d');
-                    if (!ctx) throw new Error('Could not get canvas context');
-
-                    // Dibujamos la imagen centrada y recortada (Center Crop)
-                    const scale = Math.max(SIZE / image.width, SIZE / image.height);
-                    const x = (SIZE / 2) - (image.width / 2) * scale;
-                    const y = (SIZE / 2) - (image.height / 2) * scale;
-
-                    ctx.drawImage(image, x, y, image.width * scale, image.height * scale);
+                    ctx?.drawImage(image, 0, 0, width, height);
 
                     return new Promise((resolve, reject) => {
                         canvas.toBlob((blob) => {
                             if (blob) resolve(blob);
                             else reject(new Error('Canvas toBlob failed'));
-                        }, 'image/webp', 0.9); // WebP con alta calidad
+                        }, 'image/jpeg', 0.7); // Calidad 0.7
                     });
                 };
 
-                const processedBlob = await processImage(img);
-                const storageRef = ref(storage, `players/${player.jleid}/profile.webp`);
-                await uploadBytes(storageRef, processedBlob);
+                const compressedBlob = await compressImage(img);
+                const storageRef = ref(storage, `players/${player.jleid}/profile.jpg`);
+                await uploadBytes(storageRef, compressedBlob);
                 firebaseImageUrl = await getDownloadURL(storageRef);
             } catch (err) {
-                console.warn('Error procesando imagen para Storage, usando original:', err);
+                console.warn('Error subiendo/comprimiendo en Storage, usando URL original:', err);
+                // No bloqueamos el proceso si esto falla
             }
 
             // 3. Guardar en Firestore (Lógica de Upsert)

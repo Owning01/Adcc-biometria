@@ -582,6 +582,18 @@ function App() {
           </div>
         )}
 
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          color: 'rgba(255, 255, 255, 0.2)',
+          fontSize: '10px',
+          fontWeight: '800',
+          letterSpacing: '5px',
+          textTransform: 'uppercase'
+        }}>
+          ELITE CORE ENGINE <span style={{ color: '#d4af37' }}>v{VERSION}</span>
+        </div>
+
         <style>{`
           @keyframes spin { 100% { transform: rotate(360deg); } }
           @keyframes pulse-glow {
@@ -1113,6 +1125,11 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ handleLogin, loginForm, setLogi
             </button>
           </form>
         )}
+      </div>
+
+      {/* Bottom branding */}
+      <div style={{ marginTop: '32px', opacity: 0.2, fontSize: '0.6rem', letterSpacing: '3px', textTransform: 'uppercase', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        Elite Core Engine
       </div>
     </div>
   );
