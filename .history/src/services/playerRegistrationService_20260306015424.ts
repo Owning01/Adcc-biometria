@@ -115,20 +115,22 @@ export const playerRegistrationService = {
                 console.warn('Error procesando imagen para Storage, usando original:', err);
             }
 
-            // 3. Guardar en Firestore (Lógica de Upsert) - Nota: collectionName y finalDocId ya definidos arriba
-            let actualDocId = finalDocId;
+            // 3. Guardar en Firestore (Lógica de Upsert)
+            // Buscamos si ya existe un usuario con este id (jleid) o DNI
+            const collectionName = 'users';
+            let finalDocId = String(player.jleid);
 
             // Intentar encontrar por ID primero
-            const docRefSearch = doc(db, collectionName, actualDocId);
-            const docSnapSearch = await getDoc(docRefSearch);
+            const docRef = doc(db, collectionName, finalDocId);
+            const docSnap = await getDoc(docRef);
 
-            if (!docSnapSearch.exists() && player.dni !== undefined && player.dni !== null && player.dni !== '') {
+            if (!docSnap.exists() && player.dni !== undefined && player.dni !== null && player.dni !== '') {
                 // Si no existe por ID, intentamos buscar por DNI en la colección
                 const { query, where, getDocs, collection } = await import('firebase/firestore');
                 const q = query(collection(db, collectionName), where('dni', '==', player.dni));
                 const querySnap = await getDocs(q);
                 if (!querySnap.empty) {
-                    actualDocId = querySnap.docs[0].id;
+                    finalDocId = querySnap.docs[0].id;
                 }
             }
 

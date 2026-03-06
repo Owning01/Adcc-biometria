@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import { playerRegistrationService, RegistrationResult } from '../services/playerRegistrationService';
 import { loadModelsLocal } from '../services/faceServiceLocal';
-import { registerPlayerBiometrics } from '../services/adccService';
 
 interface Progress {
     processed: number;
@@ -31,7 +30,9 @@ interface BatchProcessorContextType {
 
 const BatchProcessorContext = createContext<BatchProcessorContextType | undefined>(undefined);
 
-export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export import { registerPlayerBiometrics } from '../services/adccService';
+
+const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [getUrl, setGetUrl] = useState('/api-adcc/api/jugadores');
     const [players, setPlayers] = useState<any[]>([]);
     const [status, setStatus] = useState<BatchProcessorContextType['status']>('idle');
@@ -177,14 +178,8 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
                 if (result.success) {
                     currentProgress.success++;
                     setCurrentStep('Completado');
-
-                    if (result.alreadyRegistered) {
-                        log(`ℹ️ YA EXISTE: ${player.nombre} ${player.apellido} (Saltado extraction)`);
-                        logVerify(`✨ ALREADY IN FIREBASE: ${player.nombre} ${player.apellido}`);
-                    } else {
-                        log(`✅ OK: ${player.nombre} ${player.apellido}`);
-                        logVerify(`✨ DESCRIPTOR OK: ${player.nombre} ${player.apellido} - Len: ${result.descriptor?.length}`);
-                    }
+                    log(`✅ OK: ${player.nombre} ${player.apellido}`);
+                    logVerify(`✨ DESCRIPTOR OK: ${player.nombre} ${player.apellido} - Len: ${result.descriptor?.length}`);
 
                     // Guardar para sincronización API posterior
                     setSuccessfulPlayers(prev => [...prev, {
@@ -225,7 +220,7 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
 
         for (const p of successfulPlayers) {
             try {
-                const res = await registerPlayerBiometrics(p.id, p.face_api);
+                const res = await import('./adccService').then(m => m.registerPlayerBiometrics(p.id, p.face_api));
                 if (res && (res.ok !== false)) {
                     syncedCount++;
                     log(`☁️ API OK (${syncedCount}/${successfulPlayers.length}): ${p.name}`);

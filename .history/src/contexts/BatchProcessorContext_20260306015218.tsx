@@ -177,14 +177,8 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
                 if (result.success) {
                     currentProgress.success++;
                     setCurrentStep('Completado');
-
-                    if (result.alreadyRegistered) {
-                        log(`ℹ️ YA EXISTE: ${player.nombre} ${player.apellido} (Saltado extraction)`);
-                        logVerify(`✨ ALREADY IN FIREBASE: ${player.nombre} ${player.apellido}`);
-                    } else {
-                        log(`✅ OK: ${player.nombre} ${player.apellido}`);
-                        logVerify(`✨ DESCRIPTOR OK: ${player.nombre} ${player.apellido} - Len: ${result.descriptor?.length}`);
-                    }
+                    log(`✅ OK: ${player.nombre} ${player.apellido}`);
+                    logVerify(`✨ DESCRIPTOR OK: ${player.nombre} ${player.apellido} - Len: ${result.descriptor?.length}`);
 
                     // Guardar para sincronización API posterior
                     setSuccessfulPlayers(prev => [...prev, {
