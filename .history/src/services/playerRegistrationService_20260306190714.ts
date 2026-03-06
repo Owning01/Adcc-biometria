@@ -4,7 +4,6 @@ import { db, storage } from '../firebase';
 import * as faceapi from 'face-api.js';
 import { registerPlayerBiometrics } from './adccService';
 import { getAdccImageUrl } from '../utils/imageUtils';
-import { getTeam, saveTeam } from './teamsService';
 
 export interface PlayerData {
     id: string | number;
@@ -177,35 +176,6 @@ export const playerRegistrationService = {
                 team: player.team || existingTeam || 'null',
                 category: player.category || existingCategory || 'null',
             };
-
-            // 3.5 Gestión de equipo y categoría (NUEVO REQUERIMIENTO)
-            if (player.team && player.team !== 'null') {
-                try {
-                    const teamId = player.team;
-                    const existingTeamData = await getTeam(teamId);
-                    const categoryToAdd = player.category || 'General';
-
-                    if (!existingTeamData) {
-                        // Crear equipo si no existe
-                        await saveTeam({
-                            id: teamId,
-                            name: teamId,
-                            categories: [categoryToAdd]
-                        });
-                    } else {
-                        // Si existe, verificar si la categoría ya está listada
-                        const currentCategories = existingTeamData.categories || [];
-                        if (!currentCategories.includes(categoryToAdd)) {
-                            await saveTeam({
-                                ...existingTeamData,
-                                categories: [...currentCategories, categoryToAdd]
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.error('Error gestionando equipo/categoría:', err);
-                }
-            }
 
             await setDoc(doc(db, collectionName, actualDocId), playerDoc, { merge: true });
 

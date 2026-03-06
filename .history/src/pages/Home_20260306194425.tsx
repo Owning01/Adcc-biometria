@@ -24,7 +24,6 @@ import {
     subscribeToUsersByTeam,
     subscribeToUsersByCategory,
     searchUsersServerSide,
-    getUserCount,
 } from "../services/db";
 import { subscribeToMatches } from "../services/matchesService";
 import { subscribeToTeams, Team, deleteTeam } from "../services/teamsService";
@@ -186,9 +185,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncProgress, setSyncProgress] = useState("");
 
-    // Statistics state
-    const [totalPlayers, setTotalPlayers] = useState<number | string>("...");
-
     // ============================================================================
     // 3. DATA PROCESSING (Hoisted for use in handlers)
     // ============================================================================
@@ -231,13 +227,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
         const unsubTeams = subscribeToTeams((data) => {
             setTeamsMetadata(data);
         });
-
-        // Cargar contador de jugadores
-        const fetchPlayerCount = async () => {
-            const count = await getUserCount();
-            setTotalPlayers(count);
-        };
-        fetchPlayerCount();
 
         return () => {
             unsubMatches();
@@ -441,17 +430,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
                             <h1 className="brand-title">ADCC <span className="text-highlight primary-glow">BIOMETRIC</span></h1>
                             <p className="brand-subtitle">Gestión de Acceso de Alto Rendimiento</p>
                         </div>
-                    </div>
-                </div>
-
-                <div className="stats-header-container" style={{ display: 'flex', gap: '15px', marginLeft: 'auto', marginRight: '20px' }}>
-                    <div className="stat-circle" style={{ backgroundColor: '#008751', border: 'none', transition: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '800', lineHeight: 1 }}>{totalPlayers}</span>
-                        <span style={{ fontSize: '0.6rem', fontWeight: '600', textTransform: 'uppercase', marginTop: '2px' }}>Jugadores</span>
-                    </div>
-                    <div className="stat-circle" style={{ backgroundColor: '#0051a2', border: 'none', transition: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '800', lineHeight: 1 }}>{teamsMetadata.length}</span>
-                        <span style={{ fontSize: '0.6rem', fontWeight: '600', textTransform: 'uppercase', marginTop: '2px' }}>Equipos</span>
                     </div>
                 </div>
 
@@ -914,10 +892,11 @@ const Home = ({ userRole }: { userRole?: string }) => {
                                             setModalInput("");
                                             setShowCategoryModal({ open: true, team: selectedTeam || "" });
                                         }}
-                                        className="btn-add-category-compact"
+                                        className="add-card-glass min-h-0 py-4 flex-row justify-center"
+                                        style={{ marginTop: '10px' }}
                                     >
-                                        <Plus size={14} />
-                                        <span>Nueva Cat</span>
+                                        <Plus size={20} />
+                                        <span className="ml-2">NUEVA CATEGORÍA</span>
                                     </button>
                                 )}
                             </div>

@@ -21,9 +21,6 @@ import { playSuccessSound, playErrorSound } from '../services/audioService';
 import { ShieldCheck, Search, RefreshCw, BadgeInfo, Cpu, Zap, ShieldAlert, XCircle, UserCircle, SwitchCamera, ArrowLeft, Lightbulb, Upload, X } from 'lucide-react';
 import adccLogo from '../Applogo.webp';
 
-// ============================================
-// 3. COMPONENT DEFINITION & STATE
-// ============================================
 const AltaLocal = () => {
     // ============================================================================
     // 2. STATE & CONFIG

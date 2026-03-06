@@ -9,7 +9,6 @@ export interface Team {
     logoUrl?: string; // URL from Firebase Storage
     adccLogoUrl?: string; // Original URL from ADCC
     categories?: string[]; // Listed categories for this team
-    category?: string; // Main category from sync
     lastUpdated?: number;
 }
 

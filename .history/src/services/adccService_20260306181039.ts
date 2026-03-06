@@ -9,8 +9,6 @@ export interface ADCCMatch {
     local_escudo: string;
     visitante_nombre: string;
     visitante_escudo: string;
-    local_slug: string;
-    visitante_slug: string;
     res_local: number | null;
     res_visitante: number | null;
     estado_partido: string;
@@ -19,23 +17,14 @@ export interface ADCCMatch {
 }
 
 export interface ADCCPlayer {
-    id: number;
     jleid: number;
     dni: number;
     nombre: string;
     apellido: string;
     imagen: string;
     imagen_url?: string;
-    foto?: string;
+    foto?: string; // AGREGADO: Para compatibilidad con variantes de API
     sancionado: boolean;
-    equipo?: string;
-    categoria?: string;
-    face_api?: string | null;
-    processed_foto?: string;
-    status?: any;
-    jleid_status?: any;
-    timestamp?: string;
-    msg?: string;
 }
 
 export interface ADCCMatchDetail {

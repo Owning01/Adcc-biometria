@@ -3,7 +3,7 @@ import { saveMatchWithId, saveTournamentWithId, getTournament, getMatch } from '
 import { saveTeam, getTeam } from './teamsService';
 import { compressAndUploadLogo } from './imageStorageService';
 import { playerRegistrationService } from './playerRegistrationService';
-import { doc, getDoc, setDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 
@@ -82,24 +82,28 @@ export const syncMatchDayData = async (options: {
                 await processTeam(match.visitante_nombre, match.visitante_escudo, match.visitante_slug);
 
                 // 4. Procesar Jugadores y Biometría
-                const processPlayers = async (players: any[], teamName: string) => {
-                    for (const p of players) {
-                        const dniStr = String(p.dni);
-                        const playerId = String(p.jleid || p.id || p.dni);
+                const allPlayers = [...(detail.equipo_local || []), ...(detail.equipo_visitante || [])];
+                const matchdayPlayers: any[] = [];
 
-                        // REGLA ESTRICTA: Si face_api es null, ignorar por completo (foto vieja)
-                        if (p.face_api === null || p.face_api === undefined) {
-                            continue;
-                        }
+                for (const p of allPlayers) {
+                    const dniStr = String(p.dni);
+                    const playerId = String(p.jleid || p.id || p.dni);
 
-                        // ¿Ya tiene biometría en Firebase?
-                        const userRef = doc(db, 'users', playerId);
-                        const userSnap = await getDoc(userRef);
+                    // REGLA ESTRICTA: Si face_api es null, ignorar por completo (foto vieja)
+                    if (p.face_api === null || p.face_api === undefined) {
+                        // log(`  -> Ignorando jugador ${p.nombre} por face_api null`);
+                        continue;
+                    }
 
-                        // Siempre actualizamos equipo y categorías para asegurar que el jugador esté donde corresponde
-                        // aunque ya exista su biometría
-                        log(`  -> Actualizando jugador: ${p.nombre} ${p.apellido} (DNI: ${p.dni}) en equipo ${teamName}`);
+                    // ¿Ya tiene biometría en Firebase?
+                    const userRef = doc(db, 'users', playerId);
+                    const userSnap = await getDoc(userRef);
+                    let needsRegistration = !userSnap.exists() || !userSnap.data().face_api;
 
+                    if (needsRegistration) {
+                        log(`  -> Guardando biometría para: ${p.nombre} ${p.apellido} (DNI: ${p.dni})`);
+                        // En lugar de procesar la foto nosotros (que el usuario dijo ignorar si era null),
+                        // aquí simplemente guardamos los datos que VIENEN de la API porque ya tienen face_api válido.
                         await setDoc(userRef, {
                             id: playerId,
                             jleid: p.jleid,
@@ -108,19 +112,24 @@ export const syncMatchDayData = async (options: {
                             apellido: p.apellido,
                             name: `${p.nombre} ${p.apellido}`,
                             photo: p.imagen || p.foto || p.imagen_url || '',
-                            face_api: p.face_api, // Solo sobreescribirá si viene un valor no nulo (ya validado arriba)
+                            face_api: p.face_api,
                             updatedAt: new Date().toISOString(),
                             registered: true,
                             status: 'habilitado',
-                            team: teamName,
-                            category: tournamentCat,
-                            categories: arrayUnion(tournamentCat)
+                            team: p.equipo || detail.partido.local_nombre
                         }, { merge: true });
                     }
-                };
 
-                await processPlayers(detail.equipo_local || [], match.local_nombre);
-                await processPlayers(detail.equipo_visitante || [], match.visitante_nombre);
+                    // Agregar a la lista de jugadores para este partido (caché offline)
+                    matchdayPlayers.push({
+                        id: playerId,
+                        dni: dniStr,
+                        name: `${p.nombre} ${p.apellido}`,
+                        photo: p.imagen || p.foto || p.imagen_url,
+                        jleid: p.jleid,
+                        status: 'suplente'
+                    });
+                }
 
                 // 5. Guardar Partido completo
                 const customMatchId = `adcc_${match.id}`;
@@ -162,9 +171,7 @@ export const syncMatchDayData = async (options: {
         }
 
         // 6. Actualizar el caché global de "jugadores del día" para modo offline
-        localStorage.removeItem('matchday_users_cache');
-        localStorage.removeItem('users_cache');
-
+        // Esto lo manejaremos forzando una invalidación o recarga si fuera necesario
         log("Sincronización de partidos completada.");
         return true;
     } catch (error) {

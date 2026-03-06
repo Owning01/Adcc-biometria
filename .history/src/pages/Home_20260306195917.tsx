@@ -445,13 +445,13 @@ const Home = ({ userRole }: { userRole?: string }) => {
                 </div>
 
                 <div className="stats-header-container" style={{ display: 'flex', gap: '15px', marginLeft: 'auto', marginRight: '20px' }}>
-                    <div className="stat-circle" style={{ backgroundColor: '#008751', border: 'none', transition: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '800', lineHeight: 1 }}>{totalPlayers}</span>
-                        <span style={{ fontSize: '0.6rem', fontWeight: '600', textTransform: 'uppercase', marginTop: '2px' }}>Jugadores</span>
+                    <div className="stat-circle" style={{ backgroundColor: '#10b981' }}>
+                        <span className="stat-circle-value">{totalPlayers}</span>
+                        <span className="stat-circle-label">Jugadores</span>
                     </div>
-                    <div className="stat-circle" style={{ backgroundColor: '#0051a2', border: 'none', transition: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '800', lineHeight: 1 }}>{teamsMetadata.length}</span>
-                        <span style={{ fontSize: '0.6rem', fontWeight: '600', textTransform: 'uppercase', marginTop: '2px' }}>Equipos</span>
+                    <div className="stat-circle" style={{ backgroundColor: '#3b82f6' }}>
+                        <span className="stat-circle-label">Equipos</span>
+                        <span className="stat-circle-value">{teamsMetadata.length}</span>
                     </div>
                 </div>
 

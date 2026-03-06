@@ -29,13 +29,6 @@ export interface ADCCPlayer {
     foto?: string;
     sancionado: boolean;
     equipo?: string;
-    categoria?: string;
-    face_api?: string | null;
-    processed_foto?: string;
-    status?: any;
-    jleid_status?: any;
-    timestamp?: string;
-    msg?: string;
 }
 
 export interface ADCCMatchDetail {

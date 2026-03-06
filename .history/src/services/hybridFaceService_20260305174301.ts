@@ -5,9 +5,6 @@
  * 1. Detección Rápida (MediaPipe) - Para UI fluida y tracking.
  * 2. Reconocimiento Profundo (Face-API) - Para extracción de descriptores y matching seguro.
  */
-// ============================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================
 import { loadModelsLocal, getFaceDataLocal } from './faceServiceLocal';
 import { loadMediaPipeModels } from './mediapipeService';
 

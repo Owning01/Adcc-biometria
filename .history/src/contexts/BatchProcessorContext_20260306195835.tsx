@@ -1,6 +1,3 @@
-// ============================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -41,14 +38,8 @@ interface BatchProcessorContextType {
 
 const BatchProcessorContext = createContext<BatchProcessorContextType | undefined>(undefined);
 
-// ============================================
-// 3. COMPONENT DEFINITION
-// ============================================
 export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [getUrl, setGetUrl] = useState('/api-adcc/api/jugadores');
-    // ============================================
-    // 4. STATE & REFS
-    // ============================================
     const [players, setPlayers] = useState<any[]>([]);
     const [status, setStatus] = useState<BatchProcessorContextType['status']>('idle');
     const [progress, setProgress] = useState<Progress>({ processed: 0, total: 0, success: 0, failed: 0 });
@@ -74,9 +65,6 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
         setVerificationLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 100));
     }, []);
 
-    // ============================================
-    // 6. HANDLERS & LOGIC
-    // ============================================
     const handleLoadList = async () => {
         try {
             setStatus('loading_list');

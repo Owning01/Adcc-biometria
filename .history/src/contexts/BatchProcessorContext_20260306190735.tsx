@@ -1,6 +1,3 @@
-// ============================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -41,14 +38,8 @@ interface BatchProcessorContextType {
 
 const BatchProcessorContext = createContext<BatchProcessorContextType | undefined>(undefined);
 
-// ============================================
-// 3. COMPONENT DEFINITION
-// ============================================
 export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [getUrl, setGetUrl] = useState('/api-adcc/api/jugadores');
-    // ============================================
-    // 4. STATE & REFS
-    // ============================================
     const [players, setPlayers] = useState<any[]>([]);
     const [status, setStatus] = useState<BatchProcessorContextType['status']>('idle');
     const [progress, setProgress] = useState<Progress>({ processed: 0, total: 0, success: 0, failed: 0 });
@@ -74,9 +65,6 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
         setVerificationLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 100));
     }, []);
 
-    // ============================================
-    // 6. HANDLERS & LOGIC
-    // ============================================
     const handleLoadList = async () => {
         try {
             setStatus('loading_list');
@@ -113,11 +101,7 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
                 if (pageCount > 100) break;
             }
 
-            // Filtrado CRÍTICO: Ignorar jugadores que no tienen face_api (datos viejos)
-            const filtered = allPlayers.filter(p => p.face_api !== null && p.face_api !== undefined);
-            log(`Filtrado: ${allPlayers.length - filtered.length} jugadores ignorados por face_api: null.`);
-
-            const normalized = filtered.map(p => {
+            const normalized = allPlayers.map(p => {
                 let foto = p.foto || p.imagen || '';
                 // If it's a filename or path but not a full URL, we let getAdccImageUrl handle it
                 if (foto && !foto.startsWith('http')) {
@@ -192,12 +176,7 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
             }
 
             const truncated = allPlayers.slice(0, limit);
-
-            // Filtrado CRÍTICO: Ignorar jugadores que no tienen face_api (datos viejos)
-            const filtered = truncated.filter(p => p.face_api !== null && p.face_api !== undefined);
-            log(`Filtrado (Subset): ${truncated.length - filtered.length} jugadores ignorados por face_api: null.`);
-
-            const normalized = filtered.map(p => {
+            const normalized = truncated.map(p => {
                 let foto = p.foto || p.imagen || '';
                 if (foto && !foto.startsWith('http')) {
                     if (!foto.includes('/')) {

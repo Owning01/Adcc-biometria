@@ -1,6 +1,3 @@
-// ============================================
-// 1. IMPORTS & DEPENDENCIES
-// ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { Loader2, Camera, User, CreditCard, Users, Layers } from 'lucide-react';
@@ -9,9 +6,6 @@ import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { getFaceDataLocal } from '../services/faceServiceLocal';
 import { saveUser } from '../services/db';
 
-// ============================================
-// 2. INTERFACES & BACKEND TYPES
-// ============================================
 interface QuickRegisterModalProps {
     data: {
         name: string;
@@ -22,9 +16,6 @@ interface QuickRegisterModalProps {
     onClose: () => void;
 }
 
-// ============================================
-// 3. COMPONENT DEFINITION & STATE
-// ============================================
 const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({ data, onClose }) => {
     const webcamRef = useRef<any>(null);
     const [formData, setFormData] = useState(data);

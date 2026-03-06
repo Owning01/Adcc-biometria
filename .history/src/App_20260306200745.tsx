@@ -34,8 +34,6 @@ import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { logEvent } from './services/auditService';
 import { useBatchProcessor } from './contexts/BatchProcessorContext';
-import MatchImporter from './pages/MatchImporter';
-import { MatchBatchProcessorProvider } from './contexts/MatchBatchProcessorContext';
 
 // ============================================================================
 // 1. CONSTANTS & CONFIG
@@ -680,13 +678,6 @@ function App() {
             <Route path="/equipos" element={<Equipos userRole={userRole} />} />
             <Route path="/partidos" element={<Partidos userRole={userRole} />} />
             <Route path="/partido/:id" element={<MatchDetail userRole={userRole} />} />
-            <Route path="/match-importer" element={
-              <ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev'}>
-                <MatchBatchProcessorProvider>
-                  <MatchImporter />
-                </MatchBatchProcessorProvider>
-              </ProtectedRoute>
-            } />
             {/* Rutas de Desarrollador */}
             <Route path="/dev" element={<ProtectedRoute isAllowed={userRole === 'dev'}><DevTools /></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute isAllowed={isAdminOrDev}><AuditLogs /></ProtectedRoute>} />
@@ -1039,10 +1030,7 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
               {userRole !== 'usuario' && <NavItem to="/alta" label="Reconocimiento" active={location.pathname === "/alta"} />}
               {(userRole === 'admin' || userRole === 'dev' || userRole === 'referee') && <NavItem to="/register" label="Registro" active={location.pathname === "/register"} />}
               {userRole === 'dev' && (
-                <>
-                  <NavItem to="/dev" label="Dev" active={location.pathname === "/dev"} />
-                  <NavItem to="/match-importer" label="Importador" active={location.pathname === "/match-importer"} />
-                </>
+                <NavItem to="/dev" label="Dev" active={location.pathname === "/dev"} />
               )}
             </>
           )}
@@ -1120,10 +1108,7 @@ const Navigation: React.FC<NavigationProps> = ({ userRole, onLogout, theme, togg
               )}
 
               {userRole === 'dev' && (
-                <>
-                  <Link to="/dev" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Terminal size={22} /> Dev</Link>
-                  <Link to="/match-importer" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Swords size={22} /> Importador Partidos</Link>
-                </>
+                <Link to="/dev" className="mobile-menu-item" onClick={() => setIsMenuOpen(false)}><Terminal size={22} /> Dev</Link>
               )}
 
               {userRole !== 'public' && (

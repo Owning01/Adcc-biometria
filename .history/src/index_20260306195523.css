@@ -286,50 +286,6 @@ body::before {
   line-height: 1;
 }
 
-/* Category View Improvements */
-.category-list-scroll {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.btn-add-category-compact {
-  position: absolute;
-  top: -45px;
-  right: 0;
-  background: rgba(var(--primary-rgb), 0.15);
-  border: 1px solid rgba(var(--primary-rgb), 0.3);
-  color: var(--text-highlight);
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-  z-index: 10;
-  text-transform: uppercase;
-}
-
-.btn-add-category-compact:hover {
-  background: rgba(var(--primary-rgb), 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-add-category-compact svg {
-  opacity: 0.8;
-}
-
-@media (max-width: 768px) {
-  .btn-add-category-compact {
-    top: -40px;
-    padding: 4px 10px;
-    font-size: 0.6rem;
-  }
-}
-
 .stat-circle-label {
   font-size: 0.6rem;
   font-weight: 600;
@@ -342,11 +298,9 @@ body::before {
     width: 65px;
     height: 65px;
   }
-
   .stat-circle-value {
     font-size: 1rem;
   }
-
   .stat-circle-label {
     font-size: 0.5rem;
   }
