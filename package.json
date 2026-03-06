@@ -1,7 +1,7 @@
 {
   "name": "reconocimiento-facial",
   "private": true,
-  "version": "0.0.219",
+  "version": "0.0.220",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,9 +20,11 @@
     "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "dotenv": "^17.3.1",
     "face-api.js": "^0.22.2",
+    "file-saver": "^2.0.5",
     "firebase": "^12.8.0",
     "framer-motion": "^12.29.0",
     "fuse.js": "^7.1.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.562.0",
     "ngrok": "^5.0.0-beta.2",
     "react": "^19.2.0",
@@ -30,10 +32,12 @@
     "react-router-dom": "^7.12.0",
     "react-webcam": "^7.2.0",
     "sharp": "^0.34.5",
+    "tailwindcss": "^4.2.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^25.2.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
