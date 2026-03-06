@@ -53,8 +53,8 @@ export const getUsers = async (forceRefresh = false): Promise<User[]> => {
         // Si hay caché y no se fuerza actualización, verificamos la validez del caché
         if (cached && !forceRefresh) {
             const { data, timestamp } = JSON.parse(cached);
-            // El caché es válido por 60 minutos para evitar descargas masivas frecuentes
-            if (Date.now() - timestamp < 60 * 60 * 1000) {
+            // El caché es válido por 10 minutos (10 * 60 * 1000 ms)
+            if (Date.now() - timestamp < 10 * 60 * 1000) {
                 return data;
             }
         }
@@ -201,16 +201,9 @@ export const searchUsersServerSide = async (searchTerm: string, limitCount = 50)
 
         const term = searchTerm.toLowerCase();
 
-        // Check offline/matchday cache first for snappy results
-        const cachedMatchDay = localStorage.getItem('matchday_users_cache');
-        if (cachedMatchDay) {
-            const { data } = JSON.parse(cachedMatchDay);
-            const matchDayResults = data.filter((u: User) =>
-                u.name?.toLowerCase().includes(term) ||
-                u.dni?.includes(term)
-            );
-            if (matchDayResults.length > 5) return matchDayResults.slice(0, limitCount);
-        }
+        // Firestore no soporta búsquedas parciales (LIKE) nativamente de forma eficiente sin servicios externos.
+        // Pero podemos buscar por DNI exacto o prefijo de nombre si estuviéramos indexando.
+        // Por ahora, buscaremos por DNI exacto como primera opción si parece un DNI.
 
         const isNumeric = /^\d+$/.test(searchTerm);
         let q;

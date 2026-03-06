@@ -21,9 +21,6 @@ import {
     deletePlayersByTeam,
     updateUser,
     updateUserCategories,
-    subscribeToUsersByTeam,
-    subscribeToUsersByCategory,
-    searchUsersServerSide,
 } from "../services/db";
 import { subscribeToMatches } from "../services/matchesService";
 import { subscribeToTeams, Team, deleteTeam } from "../services/teamsService";
@@ -184,7 +181,7 @@ const Home = ({ userRole }: { userRole?: string }) => {
     // ============================================================================
     // 3. DATA PROCESSING (Hoisted for use in handlers)
     // ============================================================================
-    const teams = teamsMetadata.map(t => t.name).sort();
+    const teams = [...new Set(users.map((u: any) => u.team))].filter(Boolean).sort() as string[];
 
     // ============================================================================
     // 4. EFFECT HOOKS (Data Fetching & Subscriptions)
@@ -204,10 +201,11 @@ const Home = ({ userRole }: { userRole?: string }) => {
                 setRemoteVersion("Error");
             });
 
-        // ✅ OPTIMIZACIÓN: Ya no suscribimos a TODOS los usuarios por defecto.
-        // La carga de usuarios será perezosa (por equipo o búsqueda).
-        const unsubUsers = () => { }; // Placeholder
-        setLoading(false);
+        // Suscripción a cambios en tiempo real de la colección de usuarios
+        const unsubUsers = subscribeToUsers((data: any[]) => {
+            setUsers(data || []);
+            setLoading(false);
+        });
 
         // Suscripción a cambios en partidos (para mostrar live events y resultados)
         const unsubMatches = subscribeToMatches((data: any[]) => {
@@ -225,35 +223,11 @@ const Home = ({ userRole }: { userRole?: string }) => {
         });
 
         return () => {
+            unsubUsers();
             unsubMatches();
             unsubTeams();
         };
     }, []);
-
-    // --- EFECTO: CARGA PEREZOSA DE USUARIOS POR EQUIPO/BUSQUEDA ---
-    useEffect(() => {
-        let unsubUsers = () => { };
-
-        if (selectedTeam) {
-            // Cargar solo los usuarios del equipo seleccionado
-            unsubUsers = subscribeToUsersByTeam(selectedTeam, (data) => {
-                setUsers(data);
-            });
-        } else if (searchTerm && searchTerm.length >= 3) {
-            // Búsqueda en el servidor si no hay equipo seleccionado
-            const performSearch = async () => {
-                const results = await searchUsersServerSide(searchTerm);
-                setUsers(results);
-            };
-            const timeout = setTimeout(performSearch, 500);
-            return () => clearTimeout(timeout);
-        } else {
-            // Si no hay filtro ni equipo, vaciamos la lista local (o mostramos vacio)
-            setUsers([]);
-        }
-
-        return () => unsubUsers();
-    }, [selectedTeam, searchTerm]);
 
     // ============================================================================
     // 4. ACTION HANDLERS (CRUD, Modals)
@@ -357,7 +331,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
     const categoriesForTeam = selectedTeam
         ? [
             ...new Set([
-                ...(teamsMetadata.find(t => t.name === selectedTeam)?.categories || []),
                 ...users
                     .filter((u) => u.team === selectedTeam)
                     .flatMap((u) => {
@@ -367,7 +340,7 @@ const Home = ({ userRole }: { userRole?: string }) => {
                                 : [u.category];
                         return cats;
                     }),
-                selectedCategory,
+                selectedCategory, // Asegurar que la categoría actual (incluso si está vacía) esté en la lista
             ]),
         ]
             .filter(Boolean)
@@ -376,17 +349,23 @@ const Home = ({ userRole }: { userRole?: string }) => {
 
     // Filtrar usuarios según búsqueda, equipo seleccionado y categoría
     const filteredUsers = users.filter((u) => {
-        // Si hay búsqueda, ya viene filtrado del servidor o por el hook, 
-        // pero aplicamos filtros locales adicionales si es necesario.
+        const searchLower = searchTerm.toLowerCase();
         const cats =
             Array.isArray(u.categories) && u.categories.length > 0
                 ? u.categories
                 : [u.category];
 
-        if (selectedTeam && u.team !== selectedTeam) return false;
-        if (selectedCategory && !cats.includes(selectedCategory)) return false;
+        if (searchTerm) {
+            return (
+                (u.name && u.name.toLowerCase().includes(searchLower)) ||
+                (u.dni && String(u.dni).toLowerCase().includes(searchLower)) ||
+                (u.team && u.team.toLowerCase().includes(searchLower)) ||
+                cats.some((c: string) => c && String(c).toLowerCase().includes(searchLower))
+            );
+        }
 
-        return true;
+        if (u.team !== selectedTeam) return false;
+        return cats.includes(selectedCategory);
     });
 
     // ============================================================================
@@ -594,7 +573,7 @@ const Home = ({ userRole }: { userRole?: string }) => {
                                                 <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{team}</h4>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                                                     <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-highlight)', background: 'rgba(var(--primary-rgb), 0.1)', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
-                                                        VER JUGADORES
+                                                        {users.filter(u => u.team === team).length} JUGADORES
                                                     </span>
                                                 </div>
                                             </div>
