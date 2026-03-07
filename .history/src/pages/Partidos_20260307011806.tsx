@@ -209,6 +209,53 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                     >
                         INGRESAR <LogIn size={16} />
                     </m.button>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                        <m.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowSyncPanel(!showSyncPanel)}
+                            className="premium-button"
+                            style={{
+                                flex: 1,
+                                padding: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                background: 'rgba(0, 135, 81, 0.2)',
+                                border: '1px solid rgba(0, 135, 81, 0.4)',
+                                color: 'var(--primary)',
+                                borderRadius: '12px',
+                                fontSize: '0.9rem',
+                                fontWeight: '600'
+                            }}
+                        >
+                            {showSyncPanel ? <X size={18} /> : <RefreshCw size={18} />}
+                            {showSyncPanel ? 'CERRAR PANEL' : 'IMPORTAR PARTIDOS ADCC'}
+                        </m.button>
+
+                        <m.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleClearMatches}
+                            className="premium-button"
+                            style={{
+                                padding: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#ef4444',
+                                borderRadius: '12px',
+                                fontSize: '0.9rem',
+                                fontWeight: '600'
+                            }}
+                            disabled={syncRunning}
+                        >
+                            <Trash2 size={18} />
+                            BORRAR TODO
+                        </m.button>
+                    </div>
                 </div>
             )}
             <header className="list-header" style={{ borderBottom: '2px solid rgba(0, 135, 81, 0.2)' }}>
@@ -220,48 +267,21 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                     {/* Botón de importación ADCC — solo admin/dev */}
                     {(userRole === 'admin' || userRole === 'dev') && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button
-                                    onClick={handleSync}
-                                    disabled={syncRunning}
-                                    className="glass-button"
-                                    style={{
-                                        background: syncRunning ? 'rgba(0,135,81,0.08)' : 'rgba(0,135,81,0.18)',
-                                        border: '1px solid var(--primary)',
-                                        color: 'var(--primary)',
-                                        opacity: syncRunning ? 0.7 : 1,
-                                        display: 'flex', alignItems: 'center', gap: '8px',
-                                        padding: '8px 12px',
-                                        borderRadius: '8px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: '600'
-                                    }}
-                                >
-                                    <RefreshCw size={15} style={{ animation: syncRunning ? 'spin 1s linear infinite' : 'none' }} />
-                                    {syncRunning ? 'IMPORTANDO...' : 'IMPORTAR ADCC'}
-                                </button>
-
-                                <button
-                                    onClick={handleClearMatches}
-                                    disabled={syncRunning}
-                                    className="glass-button"
-                                    style={{
-                                        background: 'rgba(239, 68, 68, 0.1)',
-                                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                                        color: '#ef4444',
-                                        opacity: syncRunning ? 0.7 : 1,
-                                        display: 'flex', alignItems: 'center', gap: '8px',
-                                        padding: '8px 12px',
-                                        borderRadius: '8px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: '600'
-                                    }}
-                                >
-                                    <Trash2 size={15} />
-                                    BORRAR TODO
-                                </button>
-                            </div>
-
+                            <button
+                                onClick={handleSync}
+                                disabled={syncRunning}
+                                className="glass-button"
+                                style={{
+                                    background: syncRunning ? 'rgba(0,135,81,0.08)' : 'rgba(0,135,81,0.18)',
+                                    border: '1px solid var(--primary)',
+                                    color: 'var(--primary)',
+                                    opacity: syncRunning ? 0.7 : 1,
+                                    display: 'flex', alignItems: 'center', gap: '8px'
+                                }}
+                            >
+                                <RefreshCw size={15} style={{ animation: syncRunning ? 'spin 1s linear infinite' : 'none' }} />
+                                {syncRunning ? 'IMPORTANDO...' : 'IMPORTAR PARTIDOS ADCC'}
+                            </button>
                             {syncLogs.length > 0 && (
                                 <button
                                     onClick={() => setShowSyncPanel(p => !p)}

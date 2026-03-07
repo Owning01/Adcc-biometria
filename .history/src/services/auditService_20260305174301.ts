@@ -1,4 +1,4 @@
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import { collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const AUDIT_COLLECTION = 'audit_logs';
@@ -56,6 +56,7 @@ export const getAuditLogs = async (maxResults = 100): Promise<AuditLog[]> => {
  * Helper para obtener datos básicos del usuario actual para auditoría.
  */
 export const getCurrentUserAudit = () => {
+    const { auth } = require('../firebase');
     const user = auth.currentUser;
     if (!user) return { uid: 'anonymous', name: 'Anónimo', role: 'public' };
 
