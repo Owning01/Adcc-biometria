@@ -803,6 +803,10 @@ function App() {
             </Routes>
 
 
+
+            <footer style={{ marginTop: '50px', textAlign: 'center', opacity: 0.3, fontSize: '0.7rem', paddingBottom: '20px' }}>
+              2026 Gbro
+            </footer>
           </main>
 
           {/* Modal de Login Facial */}

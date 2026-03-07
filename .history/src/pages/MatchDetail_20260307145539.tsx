@@ -39,158 +39,6 @@ interface Match {
 }
 
 // ============================================================================
-// SUB-COMPONENTS & INTERFACES
-// ============================================================================
-
-const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
-    <button
-        onClick={onClick}
-        className={`match-tab-button ${active ? 'active' : ''}`}
-    >
-        <div className="tab-icon-wrapper">{icon}</div>
-        <span className="tab-label-text">{label}</span>
-        {active && <div className="tab-indicator" />}
-    </button>
-);
-
-interface SquadColumnProps {
-    title: string;
-    logoUrl?: string;
-    players: any[];
-    teamSide: string;
-    onAdd: () => void;
-    onSubstitution: (team: string) => void;
-    onUpdate: (idx: number, field: string, value: any) => void;
-    onRemove: (idx: number) => void;
-    isReferee: boolean;
-    userRole: string;
-    onPlayerClick: (idx: number, player: any) => void;
-    onPhotoClick: (url: string, name: string) => void;
-}
-
-const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick }: SquadColumnProps) => {
-    const isAdmin = userRole === 'admin' || userRole === 'dev';
-    const canManageMatch = isAdmin || userRole === 'referee';
-
-    return (
-        <div className="glass-panel squad-column-premium">
-            <div className="squad-header-premium">
-                <div className="squad-team-info">
-                    <div className="squad-logo-container">
-                        {logoUrl ? <img src={logoUrl} alt="L" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <Users size={20} color="var(--primary)" />}
-                    </div>
-                    <div className="squad-title-box">
-                        <h4 className="squad-title-text" title={title}>{title}</h4>
-                        <div className="squad-count-text">Plantel: {players.length} jugadores</div>
-                    </div>
-                </div>
-                {canManageMatch && (
-                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button onClick={() => onSubstitution(teamSide)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
-                            <Repeat2 size={12} /> <span className="hide-mobile">CAMBIO</span>
-                        </button>
-                        {isAdmin && (
-                            <button onClick={onAdd} className="glass-button" style={{ width: '30px', height: '30px', padding: 0, borderRadius: '50%', fontSize: '0.8rem' }}>
-                                <Plus size={16} />
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-            <div className="squad-players-list">
-                {players.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)', fontSize: '1rem' }}>Sin jugadores asignados</div>
-                ) : (
-                    players.map((p: any, idx: number) => (
-                        <div key={idx}
-                            onClick={() => canManageMatch && onPlayerClick(idx, p)}
-                            className={`player-card-premium ${p.isDisabled ? 'disabled' : ''} ${canManageMatch ? 'clickable' : ''}`}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 200px' }}>
-                                <div className="player-number-display">
-                                    <input
-                                        type="number"
-                                        value={p.number}
-                                        onChange={(e) => onUpdate(idx, 'number', e.target.value)}
-                                        style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'center', fontWeight: 'bold' }}
-                                        disabled={!isAdmin}
-                                    />
-                                </div>
-                                <div
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
-                                    }}
-                                    className={`player-photo-wrapper ${p.isDisabled ? 'disabled' : ''}`}
-                                >
-                                    <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/40'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-                                <div className="player-info-content" style={{ opacity: p.status === 'suplente' ? 0.5 : 1 }}>
-                                    <div className="player-name-text" style={{ color: p.isDisabled ? '#fca5a5' : (p.status === 'expulsado' ? '#ef4444' : 'white') }}>
-                                        {p.name}
-                                        {p.isDisabled && <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '900', marginLeft: '5px' }}>⚠️</span>}
-                                        {p.status === 'expulsado' && <span style={{ fontSize: '0.8rem', background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>ROJA</span>}
-                                    </div>
-                                    <div className="player-status-text">
-                                        {p.status === 'titular' ? (p.isDisabled ? 'Inhabilitado' : 'Titular') : (p.status === 'suplente' ? 'Suplente' : 'Expulsado')}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Indicadores rápidos de goles y tarjetas */}
-                            <div className="player-stats-indicators">
-                                {parseInt(p.yellowCards) > 0 && (
-                                    <div className="indicator-badge indicator-yellow">
-                                        <div style={{ width: '8px', height: '12px', background: '#fbbf24', borderRadius: '1.5px' }}></div>
-                                        <span>{p.yellowCards}</span>
-                                    </div>
-                                )}
-                                {p.redCard && (
-                                    <div className="indicator-red"></div>
-                                )}
-                                {parseInt(p.goals) > 0 && (
-                                    <div className="indicator-badge indicator-goals">
-                                        <Target size={12} color="#10b981" />
-                                        <span>{p.goals}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
-    );
-};
-
-const StatBar = ({ label, a, b, icon, color = 'var(--primary)' }: { label: string, a: number, b: number, icon: React.ReactNode, color?: string }) => {
-    const total = (a + b) || 1;
-    const pctA = (a / total) * 100;
-
-    return (
-        <div className="stat-bar-wrapper">
-            <div className="stat-header">
-                <div style={{ color: a > b ? color : 'var(--text-muted)' }}>{a}</div>
-                <div className="stat-label-box">
-                    {icon} <span className="stat-label-text">{label}</span>
-                </div>
-                <div style={{ color: b > a ? color : 'var(--text-muted)' }}>{b}</div>
-            </div>
-            <div className="stat-progress-container">
-                <div
-                    className="stat-progress-fill"
-                    style={{ width: `${pctA}%`, background: a > 0 ? (a >= b ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
-                ></div>
-                <div
-                    className="stat-progress-fill"
-                    style={{ flex: 1, background: b > 0 ? (b >= a ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
-                ></div>
-            </div>
-        </div>
-    );
-};
-
-// ============================================================================
 // 1. MAIN COMPONENT & STATE
 // ============================================================================
 const MatchDetail = ({ userRole }: { userRole: string }) => {
@@ -1786,6 +1634,153 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                     </div>
                 )
             }
+        </div >
+        </div >
+    );
+};
+
+const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
+    <button
+        onClick={onClick}
+        className={`tab-button-premium ${active ? 'active' : ''}`}
+    >
+        {icon} <span>{label}</span>
+    </button>
+);
+
+interface SquadColumnProps {
+    title: string;
+    logoUrl?: string;
+    players: any[];
+    teamSide: string;
+    onAdd: () => void;
+    onSubstitution: (team: string) => void;
+    onUpdate: (idx: number, field: string, value: any) => void;
+    onRemove: (idx: number) => void;
+    isReferee: boolean;
+    userRole: string;
+    onPlayerClick: (idx: number, player: any) => void;
+    onPhotoClick: (url: string, name: string) => void;
+}
+
+const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick }: SquadColumnProps) => {
+    const isAdmin = userRole === 'admin' || userRole === 'dev';
+    const canManageMatch = isAdmin || userRole === 'referee';
+
+    return (
+        <div className="glass-panel squad-column-premium">
+            <div className="squad-header-premium">
+                <div className="squad-team-info">
+                    <div className="squad-logo-container">
+                        {logoUrl ? <img src={logoUrl} alt="L" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <Users size={20} color="var(--primary)" />}
+                    </div>
+                    <div className="squad-title-box">
+                        <h4 className="squad-title-text" title={title}>{title}</h4>
+                        <div className="squad-count-text">Plantel: {players.length} jugadores</div>
+                    </div>
+                </div>
+                {canManageMatch && (
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        <button onClick={() => onSubstitution(teamSide)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
+                            <Repeat2 size={12} /> <span className="hide-mobile">CAMBIO</span>
+                        </button>
+                        {isAdmin && (
+                            <button onClick={onAdd} className="glass-button" style={{ width: '30px', height: '30px', padding: 0, borderRadius: '50%', fontSize: '0.8rem' }}>
+                                <Plus size={16} />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+            <div className="squad-players-list">
+                {players.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)', fontSize: '1rem' }}>Sin jugadores asignados</div>
+                ) : (
+                    players.map((p: any, idx: number) => (
+                        <div key={idx}
+                            onClick={() => canManageMatch && onPlayerClick(idx, p)}
+                            className={`player-card-premium ${p.isDisabled ? 'disabled' : ''} ${canManageMatch ? 'clickable' : ''}`}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 200px' }}>
+                                <div className="player-number-display">
+                                    <input
+                                        type="number"
+                                        value={p.number}
+                                        onChange={(e) => onUpdate(idx, 'number', e.target.value)}
+                                        style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'center', fontWeight: 'bold' }}
+                                        disabled={!isAdmin}
+                                    />
+                                </div>
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
+                                    }}
+                                    className={`player-photo-wrapper ${p.isDisabled ? 'disabled' : ''}`}
+                                >
+                                    <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/40'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
+                                <div className="player-info-content" style={{ opacity: p.status === 'suplente' ? 0.5 : 1 }}>
+                                    <div className="player-name-text" style={{ color: p.isDisabled ? '#fca5a5' : (p.status === 'expulsado' ? '#ef4444' : 'white') }}>
+                                        {p.name}
+                                        {p.isDisabled && <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '900', marginLeft: '5px' }}>⚠️</span>}
+                                        {p.status === 'expulsado' && <span style={{ fontSize: '0.8rem', background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>ROJA</span>}
+                                    </div>
+                                    <div className="player-status-text">
+                                        {p.status === 'titular' ? (p.isDisabled ? 'Inhabilitado' : 'Titular') : (p.status === 'suplente' ? 'Suplente' : 'Expulsado')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Indicadores rápidos de goles y tarjetas */}
+                            <div className="player-stats-indicators">
+                                {parseInt(p.yellowCards) > 0 && (
+                                    <div className="indicator-badge indicator-yellow">
+                                        <div style={{ width: '8px', height: '12px', background: '#fbbf24', borderRadius: '1.5px' }}></div>
+                                        <span>{p.yellowCards}</span>
+                                    </div>
+                                )}
+                                {p.redCard && (
+                                    <div className="indicator-red"></div>
+                                )}
+                                {parseInt(p.goals) > 0 && (
+                                    <div className="indicator-badge indicator-goals">
+                                        <Target size={12} color="#10b981" />
+                                        <span>{p.goals}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+const StatBar = ({ label, a, b, icon, color = 'var(--primary)' }: { label: string, a: number, b: number, icon: React.ReactNode, color?: string }) => {
+    const total = (a + b) || 1;
+    const pctA = (a / total) * 100;
+
+    return (
+        <div className="stat-bar-wrapper">
+            <div className="stat-header">
+                <div style={{ color: a > b ? color : 'var(--text-muted)' }}>{a}</div>
+                <div className="stat-label-box">
+                    {icon} <span className="stat-label-text">{label}</span>
+                </div>
+                <div style={{ color: b > a ? color : 'var(--text-muted)' }}>{b}</div>
+            </div>
+            <div className="stat-progress-container">
+                <div
+                    className="stat-progress-fill"
+                    style={{ width: `${pctA}%`, background: a > 0 ? (a >= b ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
+                ></div>
+                <div
+                    className="stat-progress-fill"
+                    style={{ flex: 1, background: b > 0 ? (b >= a ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
+                ></div>
+            </div>
         </div>
     );
 };

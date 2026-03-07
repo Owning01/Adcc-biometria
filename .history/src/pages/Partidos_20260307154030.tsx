@@ -458,7 +458,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                         <input
                             type="text"
                             placeholder="Buscar por equipo..."
-                            className="premium-input w-full sm:flex-1 shrink-0"
+                            className="premium-input search-input-large w-full sm:flex-1"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />

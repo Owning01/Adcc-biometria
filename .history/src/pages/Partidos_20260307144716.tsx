@@ -377,9 +377,9 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                         </div>
                     </div>
                     {(userRole === 'admin' || userRole === 'dev') && (
-                        <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto mt-4 sm:mt-0">
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                <button onClick={handleSync} disabled={syncRunning} className="glass-button w-full sm:w-auto justify-center"
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button onClick={handleSync} disabled={syncRunning} className="glass-button"
                                     style={{
                                         background: syncRunning ? 'rgba(0,135,81,0.08)' : 'rgba(0,135,81,0.18)',
                                         border: '1px solid var(--primary)', color: 'var(--primary)', opacity: syncRunning ? 0.7 : 1,
@@ -388,7 +388,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                                     <RefreshCw size={15} style={{ animation: syncRunning ? 'spin 1s linear infinite' : 'none' }} />
                                     {syncRunning ? 'IMPORTANDO...' : 'IMPORTAR ADCC'}
                                 </button>
-                                <button onClick={handleClearMatches} disabled={syncRunning} className="glass-button w-full sm:w-auto justify-center"
+                                <button onClick={handleClearMatches} disabled={syncRunning} className="glass-button"
                                     style={{
                                         background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.4)',
                                         color: '#ef4444', opacity: syncRunning ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '600'
@@ -398,7 +398,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                                 </button>
                             </div>
                             {syncLogs.length > 0 && (
-                                <button onClick={() => setShowSyncPanel(p => !p)} className="self-center sm:self-end mt-2" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <button onClick={() => setShowSyncPanel(p => !p)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     {showSyncPanel ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                                     {showSyncPanel ? 'Ocultar log' : 'Ver log'}
                                 </button>
@@ -428,27 +428,27 @@ const Partidos = ({ userRole }: { userRole: string }) => {
 
                 <div className="header-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', marginTop: '20px' }}>
                     {(userRole === 'admin' || userRole === 'dev') && (
-                        <div className="glass-panel quick-actions-panel flex flex-col sm:flex-row items-center w-full gap-4" style={{ padding: '15px' }}>
-                            <div className="flex-1 text-center sm:text-left w-full">
-                                <h4 className="panel-label text-highlight justify-center sm:justify-start" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', color: 'var(--primary)' }}>
+                        <div className="glass-panel quick-actions-panel" style={{ padding: '10px 15px' }}>
+                            <div style={{ flex: '1 1 200px' }}>
+                                <h4 className="panel-label text-highlight" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', color: 'var(--primary)' }}>
                                     <ScanFace size={16} /> ACCIONES DE BIOMETRÍA
                                 </h4>
-                                <p className="list-subtitle" style={{ fontSize: '0.75rem' }}>Identifica jugadores en tiempo real.</p>
+                                <p className="list-subtitle" style={{ fontSize: '0.7rem' }}>Identifica jugadores en tiempo real.</p>
                             </div>
-                            <div className="flex flex-center w-full sm:w-auto">
-                                <button onClick={() => navigate('/alta')} className="glass-button w-full sm:w-auto justify-center" style={{ background: 'var(--primary)', color: 'white', padding: '10px 20px', fontSize: '0.8rem' }}>
-                                    <Search size={16} /> CONSULTA RÁPIDA
+                            <div className="flex-center" style={{ gap: '10px' }}>
+                                <button onClick={() => navigate('/alta')} className="glass-button" style={{ background: 'var(--primary)', color: 'white', padding: '8px 15px', fontSize: '0.7rem' }}>
+                                    <Search size={14} /> CONSULTA RÁPIDA
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full">
+                    <div style={{ display: 'flex', gap: '10px', flex: '1 1 auto', flexWrap: 'wrap' }}>
                         <select
                             value={selectedTournament}
                             onChange={(e) => setSelectedTournament(e.target.value)}
-                            className="premium-input w-full sm:flex-1"
-                            style={{ background: 'rgba(0, 51, 102, 0.5)', color: 'white', border: '1px solid rgba(0, 135, 81, 0.3)' }}
+                            className="premium-input"
+                            style={{ flex: '1 1 140px', minWidth: '140px', background: 'rgba(0, 51, 102, 0.5)', color: 'white', border: '1px solid rgba(0, 135, 81, 0.3)' }}
                         >
                             <option value="todos">🏆 Todos los Torneos</option>
                             {tournamentOptions.map(tName => (
@@ -458,21 +458,22 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                         <input
                             type="text"
                             placeholder="Buscar por equipo..."
-                            className="premium-input w-full sm:flex-1 shrink-0"
+                            className="premium-input search-input-large"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ flex: '2 1 180px', minWidth: '180px' }}
                         />
                     </div>
-                    <div className="w-full mt-2 sm:mt-0">
+                    <div style={{ marginTop: '10px' }}>
                         <input
                             type="date"
-                            className="premium-input w-full"
+                            className="premium-input"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            style={{ background: 'rgba(0, 51, 102, 0.5)', color: 'white', border: '1px solid rgba(0, 135, 81, 0.3)' }}
+                            style={{ width: '100%', background: 'rgba(0, 51, 102, 0.5)', color: 'white', border: '1px solid rgba(0, 135, 81, 0.3)' }}
                         />
                         {selectedDate && (
-                            <button onClick={() => setSelectedDate('')} className="mt-1 flex items-center justify-center sm:justify-start w-full sm:w-auto" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}>✕ Limpiar fecha</button>
+                            <button onClick={() => setSelectedDate('')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginTop: '4px', fontSize: '0.8rem' }}>✕ Limpiar fecha</button>
                         )}
                     </div>
                 </div>
@@ -545,7 +546,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                 </div>
             )}
             {userRole === 'dev' && (
-                <div className="hidden sm:block" style={{
+                <div style={{
                     position: 'fixed',
                     bottom: '80px',
                     left: '20px',

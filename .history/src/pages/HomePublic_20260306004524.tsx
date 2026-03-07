@@ -56,6 +56,7 @@ const HomePublic = () => {
                     maxWidth: '1400px',
                     display: 'flex',
                     flex: 1,
+                    minHeight: '110vh',
                     flexWrap: 'wrap',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -136,7 +137,6 @@ const HomePublic = () => {
                         initial={{ x: -50, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.2 }}
-                        onClick={() => navigate('/partidos')}
                         style={{
                             flex: '1 1 350px',
                             display: 'flex',

@@ -1786,7 +1786,8 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                     </div>
                 )
             }
-        </div>
+        </div >
+        </div >
     );
 };
 

@@ -39,158 +39,6 @@ interface Match {
 }
 
 // ============================================================================
-// SUB-COMPONENTS & INTERFACES
-// ============================================================================
-
-const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
-    <button
-        onClick={onClick}
-        className={`match-tab-button ${active ? 'active' : ''}`}
-    >
-        <div className="tab-icon-wrapper">{icon}</div>
-        <span className="tab-label-text">{label}</span>
-        {active && <div className="tab-indicator" />}
-    </button>
-);
-
-interface SquadColumnProps {
-    title: string;
-    logoUrl?: string;
-    players: any[];
-    teamSide: string;
-    onAdd: () => void;
-    onSubstitution: (team: string) => void;
-    onUpdate: (idx: number, field: string, value: any) => void;
-    onRemove: (idx: number) => void;
-    isReferee: boolean;
-    userRole: string;
-    onPlayerClick: (idx: number, player: any) => void;
-    onPhotoClick: (url: string, name: string) => void;
-}
-
-const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick }: SquadColumnProps) => {
-    const isAdmin = userRole === 'admin' || userRole === 'dev';
-    const canManageMatch = isAdmin || userRole === 'referee';
-
-    return (
-        <div className="glass-panel squad-column-premium">
-            <div className="squad-header-premium">
-                <div className="squad-team-info">
-                    <div className="squad-logo-container">
-                        {logoUrl ? <img src={logoUrl} alt="L" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <Users size={20} color="var(--primary)" />}
-                    </div>
-                    <div className="squad-title-box">
-                        <h4 className="squad-title-text" title={title}>{title}</h4>
-                        <div className="squad-count-text">Plantel: {players.length} jugadores</div>
-                    </div>
-                </div>
-                {canManageMatch && (
-                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button onClick={() => onSubstitution(teamSide)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
-                            <Repeat2 size={12} /> <span className="hide-mobile">CAMBIO</span>
-                        </button>
-                        {isAdmin && (
-                            <button onClick={onAdd} className="glass-button" style={{ width: '30px', height: '30px', padding: 0, borderRadius: '50%', fontSize: '0.8rem' }}>
-                                <Plus size={16} />
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-            <div className="squad-players-list">
-                {players.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)', fontSize: '1rem' }}>Sin jugadores asignados</div>
-                ) : (
-                    players.map((p: any, idx: number) => (
-                        <div key={idx}
-                            onClick={() => canManageMatch && onPlayerClick(idx, p)}
-                            className={`player-card-premium ${p.isDisabled ? 'disabled' : ''} ${canManageMatch ? 'clickable' : ''}`}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 200px' }}>
-                                <div className="player-number-display">
-                                    <input
-                                        type="number"
-                                        value={p.number}
-                                        onChange={(e) => onUpdate(idx, 'number', e.target.value)}
-                                        style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'center', fontWeight: 'bold' }}
-                                        disabled={!isAdmin}
-                                    />
-                                </div>
-                                <div
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
-                                    }}
-                                    className={`player-photo-wrapper ${p.isDisabled ? 'disabled' : ''}`}
-                                >
-                                    <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/40'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-                                <div className="player-info-content" style={{ opacity: p.status === 'suplente' ? 0.5 : 1 }}>
-                                    <div className="player-name-text" style={{ color: p.isDisabled ? '#fca5a5' : (p.status === 'expulsado' ? '#ef4444' : 'white') }}>
-                                        {p.name}
-                                        {p.isDisabled && <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '900', marginLeft: '5px' }}>⚠️</span>}
-                                        {p.status === 'expulsado' && <span style={{ fontSize: '0.8rem', background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>ROJA</span>}
-                                    </div>
-                                    <div className="player-status-text">
-                                        {p.status === 'titular' ? (p.isDisabled ? 'Inhabilitado' : 'Titular') : (p.status === 'suplente' ? 'Suplente' : 'Expulsado')}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Indicadores rápidos de goles y tarjetas */}
-                            <div className="player-stats-indicators">
-                                {parseInt(p.yellowCards) > 0 && (
-                                    <div className="indicator-badge indicator-yellow">
-                                        <div style={{ width: '8px', height: '12px', background: '#fbbf24', borderRadius: '1.5px' }}></div>
-                                        <span>{p.yellowCards}</span>
-                                    </div>
-                                )}
-                                {p.redCard && (
-                                    <div className="indicator-red"></div>
-                                )}
-                                {parseInt(p.goals) > 0 && (
-                                    <div className="indicator-badge indicator-goals">
-                                        <Target size={12} color="#10b981" />
-                                        <span>{p.goals}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-        </div>
-    );
-};
-
-const StatBar = ({ label, a, b, icon, color = 'var(--primary)' }: { label: string, a: number, b: number, icon: React.ReactNode, color?: string }) => {
-    const total = (a + b) || 1;
-    const pctA = (a / total) * 100;
-
-    return (
-        <div className="stat-bar-wrapper">
-            <div className="stat-header">
-                <div style={{ color: a > b ? color : 'var(--text-muted)' }}>{a}</div>
-                <div className="stat-label-box">
-                    {icon} <span className="stat-label-text">{label}</span>
-                </div>
-                <div style={{ color: b > a ? color : 'var(--text-muted)' }}>{b}</div>
-            </div>
-            <div className="stat-progress-container">
-                <div
-                    className="stat-progress-fill"
-                    style={{ width: `${pctA}%`, background: a > 0 ? (a >= b ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
-                ></div>
-                <div
-                    className="stat-progress-fill"
-                    style={{ flex: 1, background: b > 0 ? (b >= a ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
-                ></div>
-            </div>
-        </div>
-    );
-};
-
-// ============================================================================
 // 1. MAIN COMPONENT & STATE
 // ============================================================================
 const MatchDetail = ({ userRole }: { userRole: string }) => {
@@ -999,464 +847,507 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
             </div>
 
             {/* Scoreboard Card */}
-            {/* ENCABEZADO / SCOREBOARD */}
-            <div className="glass-panel" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-                <div className="match-info-box">
-                    <div className="live-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div className="pulse-dot"></div>
-                        <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '2px' }}>EN VIVO</span>
-                    </div>
-                    <div className="match-date-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 15px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', border: '1px solid var(--glass-border)' }}>
-                        <Calendar size={14} className="text-primary" />
-                        <span style={{ fontWeight: 600, fontSize: '0.75rem' }}>{match.date} {match.time} HS</span>
-                    </div>
-                </div>
+            <div className="glass-panel" style={{ padding: '20px', marginBottom: '25px', position: 'relative' }}>
+                <div className="flex flex-col gap-6">
+                    <div className="flex flex-wrap items-center justify-center gap-3 relative z-10">
+                        <div className="flex flex-wrap items-center justify-center gap-3 mb-6 relative z-10">
+                            {/* Match Identifier */}
+                            {(isAdminOrDev || isReferee) && (
+                                <span className="text-[10px] sm:text-xs font-black bg-primary text-slate-900 px-2 py-1 rounded tracking-tighter shadow-lg shadow-primary/20">
+                                    ID: #{match.id.slice(-6).toUpperCase()}
+                                </span>
+                            )}
 
-                <div className="scoreboard-grid">
-                    <div className="scoreboard-team">
-                        <div className="team-logo-large">
-                            {(() => {
-                                const teamData = teamsMetadata.find(t => t.name === match.teamA?.name);
-                                const logoUrl = teamData?.logoUrl || getAdccImageUrl(match.teamA?.logo);
-                                return logoUrl ? (
-                                    <img src={logoUrl} alt="Logo Local" onError={(e) => (e.currentTarget.src = 'https://placehold.co/128x128?text=Team')} />
-                                ) : (
-                                    <Shield size={40} opacity={0.2} />
-                                );
-                            })()}
-                        </div>
-                        <h2 className="team-name-large">{match.teamA?.name ?? 'Equipo Local'}</h2>
-                        <span className="team-label">Local</span>
-
-                        {/* Goles y Tarjetas Local (Summary) */}
-                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
-                            {(match.events || []).filter(e => e.teamSide === 'A' && (e.type === 'goal' || e.type.includes('card'))).map(e => (
-                                <div key={e.id} style={{ fontSize: '0.8rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{e.time}'</span>
-                                    <span>{e.player}</span>
-                                    {e.type === 'goal' && <Activity size={10} color="#10b981" />}
-                                    {e.type === 'yellow_card' && <Square size={10} fill="#fbbf24" color="#fbbf24" />}
-                                    {e.type === 'red_card' && <Square size={10} fill="#ef4444" color="#ef4444" />}
+                            {/* Status Badge */}
+                            {match.status === 'live' ? (
+                                <div className="flex flex-wrap items-center justify-center gap-2">
+                                    <div className="status-chip active" style={{ cursor: 'default' }}>
+                                        <Activity size={12} className="animate-pulse" />
+                                        EN VIVO
+                                    </div>
+                                    <div className="status-chip" onClick={() => handleStatusUpdate('halftime')} style={{ cursor: 'pointer' }}>
+                                        ENTRETIEMPO
+                                    </div>
+                                    <div className="status-chip danger" onClick={() => handleStatusUpdate('finished')} style={{ cursor: 'pointer' }}>
+                                        FINALIZADO
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="scoreboard-result">
-                        <div className="flex items-center justify-center gap-2 sm:gap-6">
-                            {(isAdminOrDev || isReferee) ? (
-                                <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => handleScoreChange('a', 1)}
-                                        className="score-control-premium plus"
-                                        aria-label="Sumar gol local"
-                                    >
-                                        <Plus size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleScoreChange('a', -1)}
-                                        className="score-control-premium minus"
-                                        aria-label="Restar gol local"
-                                    >
-                                        <Minus size={16} />
-                                    </button>
-                                </div>
-                            ) : null}
-
-                            <div className="score-display-premium min-w-[120px] sm:min-w-[180px]">
-                                <span>{match.score?.a ?? 0}</span>
-                                <span className="score-divider mx-2 sm:mx-4">:</span>
-                                <span>{match.score?.b ?? 0}</span>
-                            </div>
-
-                            {(isAdminOrDev || isReferee) ? (
-                                <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => handleScoreChange('b', 1)}
-                                        className="score-control-premium plus"
-                                        aria-label="Sumar gol visitante"
-                                    >
-                                        <Plus size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleScoreChange('b', -1)}
-                                        className="score-control-premium minus"
-                                        aria-label="Restar gol visitante"
-                                    >
-                                        <Minus size={16} />
-                                    </button>
-                                </div>
-                            ) : null}
-                        </div>
-
-                        {match.status === 'live' && (
-                            <div className="live-badge" style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px 20px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '12px', marginTop: '15px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    <div className="pulse-dot"></div>
-                                    <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>EN VIVO</span>
-                                </div>
-                                <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
-                                    {matchTime.min.toString().padStart(2, '0')}:{matchTime.sec.toString().padStart(2, '0')}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="scoreboard-team">
-                        <div className="team-logo-large">
-                            {(() => {
-                                const teamData = teamsMetadata.find(t => t.name === match.teamB?.name);
-                                const logoUrl = teamData?.logoUrl || getAdccImageUrl(match.teamB?.logo);
-                                return logoUrl ? (
-                                    <img src={logoUrl} alt="Logo Visitante" onError={(e) => (e.currentTarget.src = 'https://placehold.co/128x128?text=Team')} />
-                                ) : (
-                                    <Shield size={40} opacity={0.2} />
-                                );
-                            })()}
-                        </div>
-                        <h2 className="team-name-large">{match.teamB?.name ?? 'Equipo Visitante'}</h2>
-                        <span className="team-label">Visitante</span>
-
-                        {/* Goles y Tarjetas Visitante (Summary) */}
-                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
-                            {(match.events || []).filter(e => e.teamSide === 'B' && (e.type === 'goal' || e.type.includes('card'))).map(e => (
-                                <div key={e.id} style={{ fontSize: '0.8rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{e.time}'</span>
-                                    <span>{e.player}</span>
-                                    {e.type === 'goal' && <Activity size={10} color="#10b981" />}
-                                    {e.type === 'yellow_card' && <Square size={10} fill="#fbbf24" color="#fbbf24" />}
-                                    {e.type === 'red_card' && <Square size={10} fill="#ef4444" color="#ef4444" />}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {isAdminOrDev && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', padding: '0 20px' }}>
-                    <button
-                        onClick={() => setShowReportModal(true)}
-                        className="glass-button w-full sm:w-auto"
-                        style={{
-                            background: 'rgba(52, 211, 153, 0.1)',
-                            color: '#34d399',
-                            padding: '12px 24px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            fontSize: '0.9rem',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        <Save size={18} /> CARGAR PLANILLA OFICIAL
-                    </button>
-                </div>
-            )}
-
-            {/* Tabs Selector */}
-            <div className="match-tabs-container">
-                <TabButton active={activeTab === 'eventos'} onClick={() => setActiveTab('eventos')} icon={<TrendingUp size={18} />} label="Incidencias" />
-                <TabButton active={activeTab === 'planteles'} onClick={() => setActiveTab('planteles')} icon={<Users size={18} />} label="Planteles" />
-                <TabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Award size={18} />} label="Estadísticas" />
-            </div>
-
-            {/* Tab Content: Planteles */}
-            {
-                activeTab === 'planteles' && (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
-                        gap: '20px'
-                    }}>
-                        <SquadColumn
-                            title={match.teamA?.name ?? 'Equipo Local'}
-                            logoUrl={teamsMetadata.find(t => t.name === match.teamA?.name)?.logoUrl || getAdccImageUrl(match.teamA?.logo)}
-                            players={match.playersA || []}
-                            teamSide="A"
-                            onAdd={() => setShowAddPlayer('A')}
-                            onSubstitution={() => handleSubstitution('A')}
-                            onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'A', field, val)}
-                            onRemove={(idx: number) => removePlayer(idx, 'A')}
-                            isReferee={isReferee}
-                            userRole={userRole}
-                            onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
-                            onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
-                        />
-                        <SquadColumn
-                            title={match.teamB?.name ?? 'Equipo Visitante'}
-                            logoUrl={teamsMetadata.find(t => t.name === match.teamB?.name)?.logoUrl || getAdccImageUrl(match.teamB?.logo)}
-                            players={match.playersB || []}
-                            teamSide="B"
-                            onAdd={() => setShowAddPlayer('B')}
-                            onSubstitution={() => handleSubstitution('B')}
-                            onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'B', field, val)}
-                            onRemove={(idx: number) => removePlayer(idx, 'B')}
-                            isReferee={isReferee}
-                            userRole={userRole}
-                            onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
-                            onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
-                        />
-                    </div>
-                )
-            }
-
-            {
-                activeTab === 'stats' && (
-                    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div className="glass-panel" style={{ padding: '30px' }}>
-                            <h3 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '2px', opacity: 0.7 }}>
-                                <Zap size={18} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
-                                Comparativa de Rendimiento
-                            </h3>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                                <StatBar
-                                    label="Goles"
-                                    a={match.score?.a ?? 0}
-                                    b={match.score?.b ?? 0}
-                                    icon={<Target size={14} />}
-                                />
-                                <StatBar
-                                    label="Tarjetas Amarillas"
-                                    a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'yellow_card').length}
-                                    b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'yellow_card').length}
-                                    icon={<Square size={14} fill="#fbbf24" color="#fbbf24" />}
-                                    color="#fbbf24"
-                                />
-                                <StatBar
-                                    label="Tarjetas Rojas"
-                                    a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'red_card').length}
-                                    b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'red_card').length}
-                                    icon={<Square size={14} fill="#ef4444" color="#ef4444" />}
-                                    color="#ef4444"
-                                />
-                                <StatBar
-                                    label="Total Jugadores"
-                                    a={(match.playersA || []).length}
-                                    b={(match.playersB || []).length}
-                                    icon={<Users size={14} />}
-                                />
-                                <StatBar
-                                    label="Expulsados"
-                                    a={(match.playersA || []).filter(p => p.status === 'expulsado').length}
-                                    b={(match.playersB || []).filter(p => p.status === 'expulsado').length}
-                                    icon={<ShieldAlert size={14} />}
-                                    color="#ef4444"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {
-                activeTab === 'eventos' && (
-                    <div className="animate-fade-in glass-panel" style={{ padding: '30px' }}>
-                        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                            <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>Cronología Dinámica</h3>
-                            <div style={{ height: '2px', width: '50px', background: 'var(--primary)', margin: '10px auto' }}></div>
-                        </div>
-
-                        <div style={{ position: 'relative' }}>
-                            {/* Central Line */}
-                            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, bottom: 0, width: '2px', background: 'rgba(255,255,255,0.05)', display: window.innerWidth > 768 ? 'block' : 'none' }} />
-
-                            {(match.events || []).length === 0 ? (
-                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No hay incidencias registradas.</p>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                                    {[...(match.events || [])].reverse().map((event) => {
-                                        const isLocal = event.teamSide === 'A' || !event.teamSide;
-                                        const iconColor = event.type === 'goal' ? '#10b981' : (event.type === 'red_card' ? '#ef4444' : (event.type === 'yellow_card' ? '#fbbf24' : '#3b82f6'));
-
-                                        return (
-                                            <div key={event.id} style={{
-                                                display: 'flex',
-                                                justifyContent: window.innerWidth > 768 ? (isLocal ? 'flex-end' : 'flex-start') : 'flex-start',
-                                                alignItems: 'center',
-                                                paddingRight: window.innerWidth > 768 ? (isLocal ? '55%' : '0') : '0',
-                                                paddingLeft: window.innerWidth > 768 ? (isLocal ? '0' : '55%') : '40px',
-                                                position: 'relative'
-                                            }}>
-                                                {/* Desktop Circle in middle */}
-                                                {window.innerWidth > 768 && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        left: '50%',
-                                                        transform: 'translateX(-50%)',
-                                                        width: '24px',
-                                                        height: '24px',
-                                                        borderRadius: '50%',
-                                                        background: '#1a1a1a',
-                                                        border: `2px solid ${iconColor} `,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        zIndex: 2,
-                                                        boxShadow: `0 0 10px ${iconColor} 44`
-                                                    }}>
-                                                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{event.time}'</span>
-                                                    </div>
-                                                )}
-
-                                                {/* Mobile Circle in side */}
-                                                {window.innerWidth <= 768 && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        left: 0,
-                                                        width: '24px',
-                                                        height: '24px',
-                                                        borderRadius: '50%',
-                                                        background: '#1a1a1a',
-                                                        border: `2px solid ${iconColor} `,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        zIndex: 2,
-                                                    }}>
-                                                        <span style={{ fontSize: '0.55rem', fontWeight: 'bold' }}>{event.time}'</span>
-                                                    </div>
-                                                )}
-
-                                                <div className="glass-panel" style={{
-                                                    width: '100%',
-                                                    padding: '15px 20px',
-                                                    background: isLocal ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.02)',
-                                                    border: isLocal ? '1px solid rgba(59, 130, 246, 0.1)' : '1px solid rgba(255,255,255,0.05)',
-                                                    borderRadius: '15px',
-                                                    position: 'relative'
-                                                }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                            <div style={{
-                                                                width: '36px', height: '36px', borderRadius: '10px',
-                                                                background: `${iconColor} 22`,
-                                                                color: iconColor,
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                            }}>
-                                                                {event.type === 'goal' && <Target size={20} />}
-                                                                {event.type === 'assist' && <Star size={20} />}
-                                                                {event.type === 'yellow_card' && <Square size={20} fill="#fbbf24" color="#fbbf24" style={{ borderRadius: '2px' }} />}
-                                                                {event.type === 'red_card' && <Square size={20} fill="#ef4444" color="#ef4444" style={{ borderRadius: '2px' }} />}
-                                                                {event.type === 'substitution' && <Repeat2 size={20} />}
-                                                                {(event.type === 'match_start' || event.type === 'halftime' || event.type === 'finish') && <Info size={20} />}
-                                                            </div>
-                                                            <div>
-                                                                <div style={{ fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                    {event.type === 'goal' && '¡GOL!'}
-                                                                    {event.type === 'assist' && 'Asistencia'}
-                                                                    {event.type === 'yellow_card' && 'Amonestación'}
-                                                                    {event.type === 'red_card' && 'Expulsión'}
-                                                                    {event.type === 'substitution' && 'Cambio'}
-                                                                    {event.type === 'match_start' && 'Inicio'}
-                                                                    {event.type === 'halftime' && 'Pausa'}
-                                                                    {event.type === 'finish' && 'Final'}
-                                                                </div>
-                                                                <div style={{ fontSize: '1.1rem', color: '#fff' }}>
-                                                                    {event.type === 'substitution' ? (
-                                                                        <div style={{ fontSize: '0.95rem' }}>
-                                                                            <span style={{ color: '#ef4444' }}>⬇ {event.playerOut}</span>
-                                                                            <span style={{ margin: '0 8px', opacity: 0.3 }}>|</span>
-                                                                            <span style={{ color: '#10b981' }}>⬆ {event.playerIn}</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span style={{ fontWeight: '500' }}>{event.player || event.detail}</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {isAdminOrDev && (
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); removeEvent(event.id); }}
-                                                                style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.4, cursor: 'pointer' }}
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                <div className="status-chip active"
+                                    style={{ cursor: (isAdminOrDev || isReferee) ? 'pointer' : 'default' }}
+                                    onClick={() => (isAdminOrDev || isReferee) && match.status === 'scheduled' && handleStatusUpdate('live')}>
+                                    {match.status === 'live' && <Activity size={12} className="animate-pulse" />}
+                                    {match.status === 'scheduled' ? 'INICIAR PARTIDO' :
+                                        match.status === 'live' ? 'EN VIVO' :
+                                            match.status === 'halftime' ? 'ENTRETIEMPO' :
+                                                match.status === 'finished' ? 'FINALIZADO' : (match.status?.toUpperCase() ?? 'DESCONOCIDO')}
                                 </div>
                             )}
                         </div>
-                    </div>
-                )
-            }
 
-            {/* Modal Selector Jugadores */}
-            {
-                showAddPlayer && (
-                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-                        <div className="glass-panel" style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ padding: '25px', borderBottom: '1px solid var(--glass-border)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                    <h3 style={{ margin: 0, fontSize: '1rem' }}>Agregar Jugador - {targetTeamName}</h3>
-                                    <button
-                                        onClick={handleOpenQuickRegister}
-                                        className="glass-button"
-                                        style={{ padding: '6px 12px', fontSize: '0.9rem', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.2)' }}
-                                    >
-                                        + NUEVO REGISTRO BIOMÉTRICO
-                                    </button>
+                        <div className="scoreboard-grid">
+                            {/* Team Local */}
+                            <div className="scoreboard-team">
+                                <div className="team-logo-large">
+                                    {(() => {
+                                        const teamData = teamsMetadata.find(t => t.name === match.teamA?.name);
+                                        const logoUrl = teamData?.logoUrl || getAdccImageUrl(match.teamA?.logo);
+                                        return logoUrl ? (
+                                            <img src={logoUrl} alt="Logo Local" onError={(e) => (e.currentTarget.src = 'https://placehold.co/128x128?text=Team')} />
+                                        ) : (
+                                            <Shield size={40} opacity={0.2} />
+                                        );
+                                    })()}
                                 </div>
-                                <input
-                                    autoFocus
-                                    className="premium-input"
-                                    placeholder="Buscar por nombre o DNI..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    style={{ marginBottom: '15px' }}
-                                />
+                                <h2 className="team-name-large">{match.teamA?.name ?? 'Equipo Local'}</h2>
+                                <span className="team-label">Local</span>
+
+                                {/* Goles y Tarjetas Local (Summary) */}
+                                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
+                                    {(match.events || []).filter(e => e.teamSide === 'A' && (e.type === 'goal' || e.type.includes('card'))).map(e => (
+                                        <div key={e.id} style={{ fontSize: '0.9rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{e.time}</span>
+                                            <span>{e.player}</span>
+                                            {e.type === 'goal' && <Activity size={10} color="#10b981" />}
+                                            {e.type === 'yellow_card' && <Square size={10} fill="#fbbf24" color="#fbbf24" />}
+                                            {e.type === 'red_card' && <Square size={10} fill="#ef4444" color="#ef4444" />}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-                                {filteredUsers.map(user => (
-                                    <div
-                                        key={user.id}
-                                        className="nav-item"
-                                        style={{
-                                            flexDirection: 'row',
-                                            padding: '12px',
-                                            justifyContent: 'flex-start',
-                                            gap: '15px',
-                                            borderRadius: '12px',
-                                            cursor: 'pointer',
-                                            background: 'rgba(255,255,255,0.02)',
-                                            marginBottom: '5px'
-                                        }}
-                                        onClick={() => handleAddPlayer(user, showAddPlayer)}
-                                    >
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', overflow: 'hidden' }}>
-                                            <img src={getAdccImageUrl(user.photos?.[0] || user.photo) || 'https://via.placeholder.com/40'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+
+                            {/* Result */}
+                            <div className="scoreboard-result">
+                                <div className="flex items-center justify-center gap-2 sm:gap-6">
+                                    {isAdminOrDev || isReferee ? (
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                onClick={() => handleScoreChange('a', 1)}
+                                                className="score-control-premium plus"
+                                                aria-label="Sumar gol local"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleScoreChange('a', -1)}
+                                                className="score-control-premium minus"
+                                                aria-label="Restar gol local"
+                                            >
+                                                <Minus size={16} />
+                                            </button>
                                         </div>
-                                        <div style={{ textAlign: 'left' }}>
-                                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{user.name || (user.nombre + ' ' + (user.apellido || ''))}</div>
-                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>DNI: {user.dni}</div>
-                                        </div>
-                                        <Plus size={18} style={{ marginLeft: 'auto', opacity: 0.5 }} />
+                                    ) : null}
+
+                                    <div className="score-display-premium min-w-[120px] sm:min-w-[180px]">
+                                        <span>{match.score?.a ?? 0}</span>
+                                        <span className="score-divider mx-2 sm:mx-4">:</span>
+                                        <span>{match.score?.b ?? 0}</span>
                                     </div>
-                                ))}
+
+                                    {isAdminOrDev || isReferee ? (
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                onClick={() => handleScoreChange('b', 1)}
+                                                className="score-control-premium plus"
+                                                aria-label="Sumar gol visitante"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleScoreChange('b', -1)}
+                                                className="score-control-premium minus"
+                                                aria-label="Restar gol visitante"
+                                            >
+                                                <Minus size={16} />
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                                {match.status === 'live' && (
+                                    <div className="live-badge" style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px 20px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                            <div className="pulse-dot"></div>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>EN VIVO</span>
+                                        </div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+                                            {matchTime.min.toString().padStart(2, '0')}:{matchTime.sec.toString().padStart(2, '0')}
+                                        </div>
+                                    </div>
+                                )}
+                                {match.status === 'halftime' && (
+                                    <div className="halftime-badge" style={{ padding: '8px 15px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                                        • ENTRETIEMPO ({matchTime.min.toString().padStart(2, '0')}:{matchTime.sec.toString().padStart(2, '0')})
+                                    </div>
+                                )}
+                                {match.status === 'finished' && (
+                                    <div className="halftime-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}>FINALIZADO</div>
+                                )}
+
+                                <div className="match-info" style={{ marginTop: '15px', opacity: 0.5 }}>
+                                    <span><Calendar size={12} /> {match.date}</span>
+                                    <span><Clock size={12} /> {match.time} HS</span>
+                                    {match.liveStartTime && match.status === 'live' && (
+                                        <span style={{ marginLeft: '10px', color: '#10b981' }}>
+                                            (Inicio Real: {new Date(match.liveStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Team Visitor */}
+                            <div className="scoreboard-team">
+                                <div className="team-logo-large">
+                                    {(() => {
+                                        const teamData = teamsMetadata.find(t => t.name === match.teamB?.name);
+                                        const logoUrl = teamData?.logoUrl || getAdccImageUrl(match.teamB?.logo);
+                                        return logoUrl ? (
+                                            <img src={logoUrl} alt="Logo Visitante" onError={(e) => (e.currentTarget.src = 'https://placehold.co/128x128?text=Team')} />
+                                        ) : (
+                                            <Shield size={40} opacity={0.2} />
+                                        );
+                                    })()}
+                                </div>
+                                <h2 className="team-name-large">{match.teamB?.name ?? 'Equipo Visitante'}</h2>
+                                <span className="team-label">Visitante</span>
+
+                                {/* Goles y Tarjetas Visitante (Summary) */}
+                                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
+                                    {(match.events || []).filter(e => e.teamSide === 'B' && (e.type === 'goal' || e.type.includes('card'))).map(e => (
+                                        <div key={e.id} style={{ fontSize: '0.9rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{e.time}</span>
+                                            <span>{e.player}</span>
+                                            {e.type === 'goal' && <Activity size={10} color="#10b981" />}
+                                            {e.type === 'yellow_card' && <Square size={10} fill="#fbbf24" color="#fbbf24" />}
+                                            {e.type === 'red_card' && <Square size={10} fill="#ef4444" color="#ef4444" />}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
-                )
-            }
-            {
-                showQuickRegister && (
+                </div>
+
+                {isAdminOrDev && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', padding: '0 20px' }}>
+                        <button
+                            onClick={() => setShowReportModal(true)}
+                            className="glass-button w-full sm:w-auto"
+                            style={{
+                                background: 'rgba(52, 211, 153, 0.1)',
+                                color: '#34d399',
+                                padding: '12px 24px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '10px',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            <Save size={18} /> CARGAR PLANILLA OFICIAL
+                        </button>
+                    </div>
+                )}
+
+                {/* Tabs Selector */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '25px', padding: '0 10px' }}>
+                    <TabButton active={activeTab === 'eventos'} onClick={() => setActiveTab('eventos')} icon={<TrendingUp size={18} />} label="Incidencias" />
+                    <TabButton active={activeTab === 'planteles'} onClick={() => setActiveTab('planteles')} icon={<Users size={18} />} label="Planteles" />
+                    <TabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Award size={18} />} label="Estadísticas" />
+                </div>
+
+                {/* Tab Content: Planteles */}
+                {
+                    activeTab === 'planteles' && (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
+                            gap: '20px'
+                        }}>
+                            <SquadColumn
+                                title={match.teamA?.name ?? 'Equipo Local'}
+                                logoUrl={teamsMetadata.find(t => t.name === match.teamA?.name)?.logoUrl || getAdccImageUrl(match.teamA?.logo)}
+                                players={match.playersA || []}
+                                teamSide="A"
+                                onAdd={() => setShowAddPlayer('A')}
+                                onSubstitution={() => handleSubstitution('A')}
+                                onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'A', field, val)}
+                                onRemove={(idx: number) => removePlayer(idx, 'A')}
+                                isReferee={isReferee}
+                                userRole={userRole}
+                                onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
+                                onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
+                            />
+                            <SquadColumn
+                                title={match.teamB?.name ?? 'Equipo Visitante'}
+                                logoUrl={teamsMetadata.find(t => t.name === match.teamB?.name)?.logoUrl || getAdccImageUrl(match.teamB?.logo)}
+                                players={match.playersB || []}
+                                teamSide="B"
+                                onAdd={() => setShowAddPlayer('B')}
+                                onSubstitution={() => handleSubstitution('B')}
+                                onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'B', field, val)}
+                                onRemove={(idx: number) => removePlayer(idx, 'B')}
+                                isReferee={isReferee}
+                                userRole={userRole}
+                                onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
+                                onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
+                            />
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'stats' && (
+                        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div className="glass-panel" style={{ padding: '30px' }}>
+                                <h3 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '2px', opacity: 0.7 }}>
+                                    <Zap size={18} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
+                                    Comparativa de Rendimiento
+                                </h3>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                                    <StatBar
+                                        label="Goles"
+                                        a={match.score?.a ?? 0}
+                                        b={match.score?.b ?? 0}
+                                        icon={<Target size={14} />}
+                                    />
+                                    <StatBar
+                                        label="Tarjetas Amarillas"
+                                        a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'yellow_card').length}
+                                        b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'yellow_card').length}
+                                        icon={<Square size={14} fill="#fbbf24" color="#fbbf24" />}
+                                        color="#fbbf24"
+                                    />
+                                    <StatBar
+                                        label="Tarjetas Rojas"
+                                        a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'red_card').length}
+                                        b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'red_card').length}
+                                        icon={<Square size={14} fill="#ef4444" color="#ef4444" />}
+                                        color="#ef4444"
+                                    />
+                                    <StatBar
+                                        label="Total Jugadores"
+                                        a={(match.playersA || []).length}
+                                        b={(match.playersB || []).length}
+                                        icon={<Users size={14} />}
+                                    />
+                                    <StatBar
+                                        label="Expulsados"
+                                        a={(match.playersA || []).filter(p => p.status === 'expulsado').length}
+                                        b={(match.playersB || []).filter(p => p.status === 'expulsado').length}
+                                        icon={<ShieldAlert size={14} />}
+                                        color="#ef4444"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'eventos' && (
+                        <div className="animate-fade-in glass-panel" style={{ padding: '30px' }}>
+                            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                                <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>Cronología Dinámica</h3>
+                                <div style={{ height: '2px', width: '50px', background: 'var(--primary)', margin: '10px auto' }}></div>
+                            </div>
+
+                            <div style={{ position: 'relative' }}>
+                                {/* Central Line */}
+                                <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, bottom: 0, width: '2px', background: 'rgba(255,255,255,0.05)', display: window.innerWidth > 768 ? 'block' : 'none' }} />
+
+                                {(match.events || []).length === 0 ? (
+                                    <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No hay incidencias registradas.</p>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                                        {[...(match.events || [])].reverse().map((event) => {
+                                            const isLocal = event.teamSide === 'A' || !event.teamSide;
+                                            const iconColor = event.type === 'goal' ? '#10b981' : (event.type === 'red_card' ? '#ef4444' : (event.type === 'yellow_card' ? '#fbbf24' : '#3b82f6'));
+
+                                            return (
+                                                <div key={event.id} style={{
+                                                    display: 'flex',
+                                                    justifyContent: window.innerWidth > 768 ? (isLocal ? 'flex-end' : 'flex-start') : 'flex-start',
+                                                    alignItems: 'center',
+                                                    paddingRight: window.innerWidth > 768 ? (isLocal ? '55%' : '0') : '0',
+                                                    paddingLeft: window.innerWidth > 768 ? (isLocal ? '0' : '55%') : '40px',
+                                                    position: 'relative'
+                                                }}>
+                                                    {/* Desktop Circle in middle */}
+                                                    {window.innerWidth > 768 && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: '50%',
+                                                            transform: 'translateX(-50%)',
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: '#1a1a1a',
+                                                            border: `2px solid ${iconColor} `,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            zIndex: 2,
+                                                            boxShadow: `0 0 10px ${iconColor} 44`
+                                                        }}>
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{event.time}'</span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Mobile Circle in side */}
+                                                    {window.innerWidth <= 768 && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: 0,
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: '#1a1a1a',
+                                                            border: `2px solid ${iconColor} `,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            zIndex: 2,
+                                                        }}>
+                                                            <span style={{ fontSize: '0.55rem', fontWeight: 'bold' }}>{event.time}'</span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="glass-panel" style={{
+                                                        width: '100%',
+                                                        padding: '15px 20px',
+                                                        background: isLocal ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.02)',
+                                                        border: isLocal ? '1px solid rgba(59, 130, 246, 0.1)' : '1px solid rgba(255,255,255,0.05)',
+                                                        borderRadius: '15px',
+                                                        position: 'relative'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                                <div style={{
+                                                                    width: '36px', height: '36px', borderRadius: '10px',
+                                                                    background: `${iconColor} 22`,
+                                                                    color: iconColor,
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                }}>
+                                                                    {event.type === 'goal' && <Target size={20} />}
+                                                                    {event.type === 'assist' && <Star size={20} />}
+                                                                    {event.type === 'yellow_card' && <Square size={20} fill="#fbbf24" color="#fbbf24" style={{ borderRadius: '2px' }} />}
+                                                                    {event.type === 'red_card' && <Square size={20} fill="#ef4444" color="#ef4444" style={{ borderRadius: '2px' }} />}
+                                                                    {event.type === 'substitution' && <Repeat2 size={20} />}
+                                                                    {(event.type === 'match_start' || event.type === 'halftime' || event.type === 'finish') && <Info size={20} />}
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                        {event.type === 'goal' && '¡GOL!'}
+                                                                        {event.type === 'assist' && 'Asistencia'}
+                                                                        {event.type === 'yellow_card' && 'Amonestación'}
+                                                                        {event.type === 'red_card' && 'Expulsión'}
+                                                                        {event.type === 'substitution' && 'Cambio'}
+                                                                        {event.type === 'match_start' && 'Inicio'}
+                                                                        {event.type === 'halftime' && 'Pausa'}
+                                                                        {event.type === 'finish' && 'Final'}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '1.1rem', color: '#fff' }}>
+                                                                        {event.type === 'substitution' ? (
+                                                                            <div style={{ fontSize: '0.95rem' }}>
+                                                                                <span style={{ color: '#ef4444' }}>⬇ {event.playerOut}</span>
+                                                                                <span style={{ margin: '0 8px', opacity: 0.3 }}>|</span>
+                                                                                <span style={{ color: '#10b981' }}>⬆ {event.playerIn}</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span style={{ fontWeight: '500' }}>{event.player || event.detail}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {isAdminOrDev && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); removeEvent(event.id); }}
+                                                                    style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.4, cursor: 'pointer' }}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )
+                }
+
+                {/* Modal Selector Jugadores */}
+                {
+                    showAddPlayer && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+                            <div className="glass-panel" style={{ maxWidth: '500px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ padding: '25px', borderBottom: '1px solid var(--glass-border)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1rem' }}>Agregar Jugador - {targetTeamName}</h3>
+                                        <button
+                                            onClick={handleOpenQuickRegister}
+                                            className="glass-button"
+                                            style={{ padding: '6px 12px', fontSize: '0.9rem', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.2)' }}
+                                        >
+                                            + NUEVO REGISTRO BIOMÉTRICO
+                                        </button>
+                                    </div>
+                                    <input
+                                        autoFocus
+                                        className="premium-input"
+                                        placeholder="Buscar por nombre o DNI..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        style={{ marginBottom: '15px' }}
+                                    />
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+                                    {filteredUsers.map(user => (
+                                        <div
+                                            key={user.id}
+                                            className="nav-item"
+                                            style={{
+                                                flexDirection: 'row',
+                                                padding: '12px',
+                                                justifyContent: 'flex-start',
+                                                gap: '15px',
+                                                borderRadius: '12px',
+                                                cursor: 'pointer',
+                                                background: 'rgba(255,255,255,0.02)',
+                                                marginBottom: '5px'
+                                            }}
+                                            onClick={() => handleAddPlayer(user, showAddPlayer)}
+                                        >
+                                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', overflow: 'hidden' }}>
+                                                <img src={getAdccImageUrl(user.photos?.[0] || user.photo) || 'https://via.placeholder.com/40'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+                                            <div style={{ textAlign: 'left' }}>
+                                                <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{user.name || (user.nombre + ' ' + (user.apellido || ''))}</div>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>DNI: {user.dni}</div>
+                                            </div>
+                                            <Plus size={18} style={{ marginLeft: 'auto', opacity: 0.5 }} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+                {showQuickRegister && (
                     <QuickRegisterModal
                         data={quickRegisterData}
                         onClose={() => setShowQuickRegister(false)}
                     />
-                )
-            }
+                )}
 
-            {/* Modal de Carga de Planilla Oficial */}
-            {
-                showReportModal && (
+                {/* Modal de Carga de Planilla Oficial */}
+                {showReportModal && (
                     <div className="modal-overlay animate-fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backdropFilter: 'blur(10px)' }}>
                         <div className="glass-panel" style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '40px', border: '1px solid var(--primary)', position: 'relative' }}>
                             <button onClick={() => setShowReportModal(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={30} /></button>
@@ -1604,12 +1495,10 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                             </div>
                         </div>
                     </div>
-                )
-            }
+                )}
 
-            {/* MODAL DE ACCIONES DE JUGADOR */}
-            {
-                selectedPlayer && (
+                {/* MODAL DE ACCIONES DE JUGADOR */}
+                {selectedPlayer && (
                     <div className="modal-overlay animate-fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 11000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backdropFilter: 'blur(8px)' }}>
                         <div className="glass-panel" style={{ maxWidth: '400px', width: '100%', padding: '30px', position: 'relative', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <button onClick={() => setSelectedPlayer(null)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.5 }}><X size={24} /></button>
@@ -1756,12 +1645,10 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                             </div>
                         </div>
                     </div>
-                )
-            }
+                )}
 
-            {/* MODAL ZOOM DE FOTO */}
-            {
-                zoomedPhoto && (
+                {/* MODAL ZOOM DE FOTO */}
+                {zoomedPhoto && (
                     <div
                         className="modal-overlay animate-fade-in"
                         onClick={() => setZoomedPhoto(null)}
@@ -1784,8 +1671,154 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                             </div>
                         </div>
                     </div>
-                )
-            }
+                )}
+            </div>
+        </div>
+    );
+};
+
+const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
+    <button
+        onClick={onClick}
+        className={`tab-button-premium ${active ? 'active' : ''}`}
+    >
+        {icon} <span>{label}</span>
+    </button>
+);
+
+interface SquadColumnProps {
+    title: string;
+    logoUrl?: string;
+    players: any[];
+    teamSide: string;
+    onAdd: () => void;
+    onSubstitution: (team: string) => void;
+    onUpdate: (idx: number, field: string, value: any) => void;
+    onRemove: (idx: number) => void;
+    isReferee: boolean;
+    userRole: string;
+    onPlayerClick: (idx: number, player: any) => void;
+    onPhotoClick: (url: string, name: string) => void;
+}
+
+const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick }: SquadColumnProps) => {
+    const isAdmin = userRole === 'admin' || userRole === 'dev';
+    const canManageMatch = isAdmin || userRole === 'referee';
+
+    return (
+        <div className="glass-panel squad-column-premium">
+            <div className="squad-header-premium">
+                <div className="squad-team-info">
+                    <div className="squad-logo-container">
+                        {logoUrl ? <img src={logoUrl} alt="L" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <Users size={20} color="var(--primary)" />}
+                    </div>
+                    <div className="squad-title-box">
+                        <h4 className="squad-title-text" title={title}>{title}</h4>
+                        <div className="squad-count-text">Plantel: {players.length} jugadores</div>
+                    </div>
+                </div>
+                {canManageMatch && (
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        <button onClick={() => onSubstitution(teamSide)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
+                            <Repeat2 size={12} /> <span className="hide-mobile">CAMBIO</span>
+                        </button>
+                        {isAdmin && (
+                            <button onClick={onAdd} className="glass-button" style={{ width: '30px', height: '30px', padding: 0, borderRadius: '50%', fontSize: '0.8rem' }}>
+                                <Plus size={16} />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+            <div className="squad-players-list">
+                {players.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)', fontSize: '1rem' }}>Sin jugadores asignados</div>
+                ) : (
+                    players.map((p: any, idx: number) => (
+                        <div key={idx}
+                            onClick={() => canManageMatch && onPlayerClick(idx, p)}
+                            className={`player-card-premium ${p.isDisabled ? 'disabled' : ''} ${canManageMatch ? 'clickable' : ''}`}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 200px' }}>
+                                <div className="player-number-display">
+                                    <input
+                                        type="number"
+                                        value={p.number}
+                                        onChange={(e) => onUpdate(idx, 'number', e.target.value)}
+                                        style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'center', fontWeight: 'bold' }}
+                                        disabled={!isAdmin}
+                                    />
+                                </div>
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
+                                    }}
+                                    className={`player-photo-wrapper ${p.isDisabled ? 'disabled' : ''}`}
+                                >
+                                    <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/40'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
+                                <div className="player-info-content" style={{ opacity: p.status === 'suplente' ? 0.5 : 1 }}>
+                                    <div className="player-name-text" style={{ color: p.isDisabled ? '#fca5a5' : (p.status === 'expulsado' ? '#ef4444' : 'white') }}>
+                                        {p.name}
+                                        {p.isDisabled && <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '900', marginLeft: '5px' }}>⚠️</span>}
+                                        {p.status === 'expulsado' && <span style={{ fontSize: '0.8rem', background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>ROJA</span>}
+                                    </div>
+                                    <div className="player-status-text">
+                                        {p.status === 'titular' ? (p.isDisabled ? 'Inhabilitado' : 'Titular') : (p.status === 'suplente' ? 'Suplente' : 'Expulsado')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Indicadores rápidos de goles y tarjetas */}
+                            <div className="player-stats-indicators">
+                                {parseInt(p.yellowCards) > 0 && (
+                                    <div className="indicator-badge indicator-yellow">
+                                        <div style={{ width: '8px', height: '12px', background: '#fbbf24', borderRadius: '1.5px' }}></div>
+                                        <span>{p.yellowCards}</span>
+                                    </div>
+                                )}
+                                {p.redCard && (
+                                    <div className="indicator-red"></div>
+                                )}
+                                {parseInt(p.goals) > 0 && (
+                                    <div className="indicator-badge indicator-goals">
+                                        <Target size={12} color="#10b981" />
+                                        <span>{p.goals}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+const StatBar = ({ label, a, b, icon, color = 'var(--primary)' }: { label: string, a: number, b: number, icon: React.ReactNode, color?: string }) => {
+    const total = (a + b) || 1;
+    const pctA = (a / total) * 100;
+
+    return (
+        <div className="stat-bar-wrapper">
+            <div className="stat-header">
+                <div style={{ color: a > b ? color : 'var(--text-muted)' }}>{a}</div>
+                <div className="stat-label-box">
+                    {icon} <span className="stat-label-text">{label}</span>
+                </div>
+                <div style={{ color: b > a ? color : 'var(--text-muted)' }}>{b}</div>
+            </div>
+            <div className="stat-progress-container">
+                <div
+                    className="stat-progress-fill"
+                    style={{ width: `${pctA}%`, background: a > 0 ? (a >= b ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
+                ></div>
+                <div
+                    className="stat-progress-fill"
+                    style={{ flex: 1, background: b > 0 ? (b >= a ? color : 'rgba(255,255,255,0.1)') : 'transparent' }}
+                ></div>
+            </div>
         </div>
     );
 };

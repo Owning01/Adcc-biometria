@@ -799,11 +799,10 @@ body::before {
 }
 
 .match-team-name {
-  font-size: clamp(0.65rem, 0.5rem + 1.5vw, 0.85rem);
+  font-size: var(--font-sm);
   font-weight: 700;
   color: #fff;
   line-height: 1.2;
-  word-break: break-word;
 }
 
 .match-score-pill {
