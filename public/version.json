@@ -1,12 +1,12 @@
 {
-  "android": {
-    "version": "1",
-    "url": "https://recofacial-7cea1.web.app/adcc-biometric.apk",
-    "mandatory": true
-  },
   "ios": {
-    "version": "1",
-    "url": "#",
-    "mandatory": true
+    "mandatory": true,
+    "version": "0.0.222",
+    "url": "#"
+  },
+  "android": {
+    "mandatory": true,
+    "version": "0.0.222",
+    "url": "https://github.com/Owning01/biometricreleases/releases/download/v0.0.222/adcc-v0.0.222.apk"
   }
 }
