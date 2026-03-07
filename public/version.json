@@ -1,12 +1,12 @@
 {
   "ios": {
     "mandatory": true,
-    "version": "0.0.222",
+    "version": "0.0.223",
     "url": "#"
   },
   "android": {
     "mandatory": true,
-    "version": "0.0.222",
-    "url": "https://github.com/Owning01/biometricreleases/releases/download/v0.0.222/adcc-v0.0.222.apk"
+    "version": "0.0.223",
+    "url": "https://github.com/Owning01/biometricreleases/releases/download/v0.0.223/adcc-v0.0.223.apk"
   }
 }
