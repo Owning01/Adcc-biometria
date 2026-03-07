@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useMatchBatchProcessor } from '../contexts/MatchBatchProcessorContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAdccImageUrl } from '../utils/imageUtils';
 
 export default function MatchImporter() {
     const {
@@ -306,7 +305,7 @@ export default function MatchImporter() {
                                             transition: 'transform 0.2s ease'
                                         }}>
                                             <div style={{ width: '52px', height: '52px', borderRadius: '12px', overflow: 'hidden', background: '#000', position: 'relative', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-                                                <img src={getAdccImageUrl(p.foto || p.imagen || p.imagen_url || p.processed_foto)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <img src={p.foto || p.imagen || p.imagen_url || p.processed_foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 {isProcessed && (
                                                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                         <CheckCircle size={22} color="white" />

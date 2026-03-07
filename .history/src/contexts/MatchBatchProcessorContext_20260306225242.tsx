@@ -124,21 +124,6 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
         setStatus('processing');
         log('🚀 Iniciando procesamiento masivo automático de TODOS los partidos...', 'info');
 
-        const fetchWithRetry = async <T>(apiCall: () => Promise<T>, description: string): Promise<T> => {
-            while (true) {
-                try {
-                    return await apiCall();
-                } catch (err: any) {
-                    if (err.message?.includes('429') || (err.response && err.response.status === 429) || err.message?.toLowerCase().includes('too many attempts')) {
-                        log(`⚠️ [429] Límite de API alcanzado al ${description}. Reintentando en 10 segundos...`, 'warning');
-                        await new Promise(resolve => setTimeout(resolve, 10000));
-                        continue;
-                    }
-                    throw err;
-                }
-            }
-        };
-
         try {
             await loadModelsLocal();
 
@@ -150,37 +135,36 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
 
             do {
                 log(`Cargando página ${currentPage}...`, 'info');
-                const response = await fetchWithRetry(() => fetchADCCMatches(currentPage), `cargar página ${currentPage}`);
+                const response = await fetchADCCMatches(currentPage);
                 allMatches = [...allMatches, ...response.data];
                 lastPage = response.last_page;
                 currentPage++;
-                
-                if (isPausedRef.current) break;
-            } while (currentPage <= lastPage);
-
-            if (isPausedRef.current && allMatches.length === 0) {
-                isProcessingRef.current = false;
-                setStatus('paused');
-                return;
-            }
+            } while (currentPage <= lastPage && !isPausedRef.current);
 
             // Filtrar partidos del mes de marzo en adelante
+            // Asumimos formato YYYY-MM-DD o similar. Si es DD/MM/YYYY, el split cambia.
+            // Para marzo en adelante (Marzo es mes 3)
             const matchesToProcess = allMatches.filter(match => {
                 if (!match.dia) return false;
 
+                // Intentamos parsear la fecha. ADCC suele usar YYYY-MM-DD
                 const parts = match.dia.split('-');
                 if (parts.length === 3) {
+                    const year = parseInt(parts[0]);
                     const month = parseInt(parts[1]);
+                    // Filtramos por marzo (3) o superior del año actual (2025 asumido o dinámico)
+                    // El usuario dijo "marzo en adelante", asumo que se refiere a la temporada actual.
                     return month >= 3;
                 }
 
+                // Fallback si el formato es DD/MM/YYYY
                 const partsSlash = match.dia.split('/');
                 if (partsSlash.length === 3) {
                     const month = parseInt(partsSlash[1]);
                     return month >= 3;
                 }
 
-                return true;
+                return true; // Si no podemos parsear, lo incluimos por las dudas
             });
 
             setMatches(matchesToProcess);
@@ -211,7 +195,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                 let players: ADCCPlayer[] = [];
 
                 try {
-                    const detail = await fetchWithRetry(() => fetchADCCMatchDetail(match.id), `obtener detalle partido ${match.id}`);
+                    const detail = await fetchADCCMatchDetail(match.id);
                     const allPlayers = [
                         ...detail.equipo_local.map(p => ({ ...p, equipo: detail.partido.local_nombre, categoria: detail.partido.categoria })),
                         ...detail.equipo_visitante.map(p => ({ ...p, equipo: detail.partido.visitante_nombre, categoria: detail.partido.categoria }))

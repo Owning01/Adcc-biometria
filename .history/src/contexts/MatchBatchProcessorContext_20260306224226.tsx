@@ -124,67 +124,18 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
         setStatus('processing');
         log('🚀 Iniciando procesamiento masivo automático de TODOS los partidos...', 'info');
 
-        const fetchWithRetry = async <T>(apiCall: () => Promise<T>, description: string): Promise<T> => {
-            while (true) {
-                try {
-                    return await apiCall();
-                } catch (err: any) {
-                    if (err.message?.includes('429') || (err.response && err.response.status === 429) || err.message?.toLowerCase().includes('too many attempts')) {
-                        log(`⚠️ [429] Límite de API alcanzado al ${description}. Reintentando en 10 segundos...`, 'warning');
-                        await new Promise(resolve => setTimeout(resolve, 10000));
-                        continue;
-                    }
-                    throw err;
-                }
-            }
-        };
-
         try {
             await loadModelsLocal();
 
-            let allMatches: ADCCMatch[] = [];
-            log('Obteniendo lista completa de partidos de todas las páginas...', 'info');
+            let matchesToProcess = matches;
 
-            let currentPage = 1;
-            let lastPage = 1;
-
-            do {
-                log(`Cargando página ${currentPage}...`, 'info');
-                const response = await fetchWithRetry(() => fetchADCCMatches(currentPage), `cargar página ${currentPage}`);
-                allMatches = [...allMatches, ...response.data];
-                lastPage = response.last_page;
-                currentPage++;
-                
-                if (isPausedRef.current) break;
-            } while (currentPage <= lastPage);
-
-            if (isPausedRef.current && allMatches.length === 0) {
-                isProcessingRef.current = false;
-                setStatus('paused');
-                return;
+            if (matchesToProcess.length === 0) {
+                log('Obteniendo lista de partidos...', 'info');
+                const response = await fetchADCCMatches(1);
+                matchesToProcess = response.data;
+                setMatches(matchesToProcess);
+                log(`Se encontraron ${matchesToProcess.length} partidos.`, 'success');
             }
-
-            // Filtrar partidos del mes de marzo en adelante
-            const matchesToProcess = allMatches.filter(match => {
-                if (!match.dia) return false;
-
-                const parts = match.dia.split('-');
-                if (parts.length === 3) {
-                    const month = parseInt(parts[1]);
-                    return month >= 3;
-                }
-
-                const partsSlash = match.dia.split('/');
-                if (partsSlash.length === 3) {
-                    const month = parseInt(partsSlash[1]);
-                    return month >= 3;
-                }
-
-                return true;
-            });
-
-            setMatches(matchesToProcess);
-            log(`Se encontraron ${allMatches.length} partidos totales. ${matchesToProcess.length} partidos filtrados (Marzo en adelante).`, 'success');
 
             for (let m = 0; m < matchesToProcess.length; m++) {
                 if (isPausedRef.current) {
@@ -211,7 +162,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                 let players: ADCCPlayer[] = [];
 
                 try {
-                    const detail = await fetchWithRetry(() => fetchADCCMatchDetail(match.id), `obtener detalle partido ${match.id}`);
+                    const detail = await fetchADCCMatchDetail(match.id);
                     const allPlayers = [
                         ...detail.equipo_local.map(p => ({ ...p, equipo: detail.partido.local_nombre, categoria: detail.partido.categoria })),
                         ...detail.equipo_visitante.map(p => ({ ...p, equipo: detail.partido.visitante_nombre, categoria: detail.partido.categoria }))

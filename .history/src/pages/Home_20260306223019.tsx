@@ -591,7 +591,7 @@ const Home = ({ userRole }: { userRole?: string }) => {
                                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                             >
                                                 {u.photo ? (
-                                                    <img src={getAdccImageUrl(u.photo)} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => (e.currentTarget.src = 'https://placehold.co/30x30?text=?')} />
+                                                    <img src={u.photo} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => (e.currentTarget.src = 'https://placehold.co/30x30?text=?')} />
                                                 ) : (
                                                     <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                         <UsersIcon size={14} style={{ opacity: 0.5 }} />
@@ -643,7 +643,7 @@ const Home = ({ userRole }: { userRole?: string }) => {
                                         >
                                             <div className="team-logo-wrapper" style={{ width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', flexShrink: 0 }}>
                                                 {teamData?.logoUrl ? (
-                                                    <img src={getAdccImageUrl(teamData.logoUrl)} alt={team} style={{ width: '45px', height: '45px', objectFit: 'contain' }} onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100?text=Team')} />
+                                                    <img src={teamData.logoUrl} alt={team} style={{ width: '45px', height: '45px', objectFit: 'contain' }} onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100?text=Team')} />
                                                 ) : teamData?.adccLogoUrl ? (
                                                     <img src={getAdccImageUrl(teamData.adccLogoUrl)} alt={team} style={{ width: '45px', height: '45px', objectFit: 'contain' }} onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100?text=Team')} />
                                                 ) : (
