@@ -72,7 +72,8 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
         arbitro3: '',
         informearbitro: '',
         res_local_p: null as number | null,
-        res_visitante_p: null as number | null
+        res_visitante_p: null as number | null,
+        partido_id_manual: ''
     });
 
     // Estado para Modal de Acciones de Jugador
@@ -689,11 +690,12 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
     const submitMatchReport = async () => {
         if (!match) return;
 
-        const partidoId = (match.partido_id || match.realId || 0);
-        const finalMatchId = typeof partidoId === 'string' ? parseInt(partidoId) : partidoId;
+        const partidoId = reportData.partido_id_manual
+            ? parseInt(reportData.partido_id_manual)
+            : (match.partido_id || match.realId || 0);
 
-        if (!finalMatchId) {
-            alert("Este partido no tiene un ID de ADCC válido para cargar la planilla. Por favor, verifique la importación.");
+        if (!partidoId && !reportData.partido_id_manual) {
+            alert("Por favor ingrese el ID numérico del partido.");
             return;
         }
 
@@ -729,7 +731,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
         };
 
         const payload = {
-            partido_id: finalMatchId,
+            partido_id: partidoId,
             res_local: match.score.a,
             res_local_p: reportData.res_local_p || 0,
             res_visitante: match.score.b,
@@ -1354,24 +1356,16 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
                                 <div className="form-group">
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--primary)' }}>ID DE PARTIDO (Sincronizado)</label>
-                                    <div style={{
-                                        padding: '12px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        borderRadius: '12px',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        fontSize: '1.2rem',
-                                        fontWeight: '900',
-                                        color: 'white',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '10px'
-                                    }}>
-                                        <Award size={20} className="text-primary" />
-                                        {match?.partido_id || match?.realId || 'SIN ID'}
-                                    </div>
-                                    {!(match?.partido_id || match?.realId) && (
-                                        <span style={{ fontSize: '0.65rem', color: '#ef4444' }}>Advertencia: Falta ID de partido en sistema API.</span>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--primary)' }}>ID DE PARTIDO (Debe ser numérico)</label>
+                                    <input
+                                        type="number"
+                                        className="premium-input w-full"
+                                        placeholder="Ej: 1234"
+                                        value={reportData.partido_id_manual}
+                                        onChange={(e) => setReportData({ ...reportData, partido_id_manual: e.target.value })}
+                                    />
+                                    {!(match?.partido_id || match?.realId) && !reportData.partido_id_manual && (
+                                        <span style={{ fontSize: '0.65rem', color: '#ef4444' }}>Campo obligatorio. Consulte en la web oficial.</span>
                                     )}
                                 </div>
                                 <div className="form-group">

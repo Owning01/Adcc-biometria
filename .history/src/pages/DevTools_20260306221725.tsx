@@ -771,8 +771,8 @@ const DevTools: React.FC = () => {
                                     <div style={{ padding: '100px', textAlign: 'center' }}><RefreshCw className="animate-spin" size={40} opacity={0.2} /></div>
                                 ) : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                                        {state.adccMatches.map((match, idx) => (
-                                            <div key={`${match.id}-${idx}`} className="glass-panel" style={{ padding: '24px' }}>
+                                        {state.adccMatches.map(match => (
+                                            <div key={match.id} className="glass-panel" style={{ padding: '24px' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                                                     <div style={{ textAlign: 'center', flex: 1 }}>
                                                         <img src={getAdccImageUrl(match.local_escudo)} style={{ height: '40px' }} />

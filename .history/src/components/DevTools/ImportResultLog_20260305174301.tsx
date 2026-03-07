@@ -27,7 +27,7 @@ const ImportResultLog: React.FC<ImportResultLogProps> = ({ results }) => {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {[...results].reverse().map((r, i) => (
-                        <div key={`${r.name}-${r.status}-${i}`} style={{ padding: '12px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${r.status === 'success' ? 'rgba(16, 185, 129, 0.1)' : r.status === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'transparent'}` }}>
+                        <div key={`${r.name}-${i}`} style={{ padding: '12px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${r.status === 'success' ? 'rgba(16, 185, 129, 0.1)' : r.status === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'transparent'}` }}>
                             <div style={{ minWidth: 0 }}>
                                 <div style={{ fontSize: '0.85rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
                                 <div style={{ fontSize: '0.7rem', color: r.status === 'error' ? '#ef4444' : '#10b981', opacity: 0.9 }}>{r.message}</div>
