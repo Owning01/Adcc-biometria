@@ -227,52 +227,23 @@ export default function MatchImporter() {
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
                                 }}>
-                                    <motion.div
-                                        initial={{ scale: 0.9, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        key={currentPlayer.jleid}
-                                        style={{
-                                            width: '120px',
-                                            height: '120px',
-                                            borderRadius: '24px',
-                                            overflow: 'hidden',
-                                            background: '#000',
-                                            border: '3px solid var(--primary)',
-                                            boxShadow: '0 0 25px var(--primary-glow)',
-                                            flexShrink: 0
-                                        }}
-                                    >
-                                        <img
-                                            src={currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url || currentPlayer.processed_foto}
-                                            alt=""
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            onLoad={(e) => (e.currentTarget.style.opacity = '1')}
-                                            onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/120?text=Error')}
-                                        />
-                                    </motion.div>
+                                    <div style={{
+                                        width: '80px',
+                                        height: '80px',
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
+                                        background: '#000',
+                                        border: '2px solid var(--primary)',
+                                        boxShadow: '0 0 15px var(--primary-glow)'
+                                    }}>
+                                        <img src={currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url || currentPlayer.processed_foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
                                     <div style={{ flex: 1 }}>
-                                        <motion.div
-                                            initial={{ x: 20, opacity: 0 }}
-                                            animate={{ x: 0, opacity: 1 }}
-                                            key={`name-${currentPlayer.jleid}`}
-                                            style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '8px' }}
-                                        >
-                                            {currentPlayer.nombre} {currentPlayer.apellido}
-                                        </motion.div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            <div style={{
-                                                fontSize: '0.85rem',
-                                                color: 'var(--primary)',
-                                                fontWeight: 800,
-                                                background: 'var(--primary-glow)',
-                                                padding: '6px 14px',
-                                                borderRadius: '10px',
-                                                display: 'inline-block',
-                                                width: 'fit-content'
-                                            }}>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '4px' }}>{currentPlayer.nombre} {currentPlayer.apellido}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700, background: 'var(--primary-glow)', padding: '4px 10px', borderRadius: '8px' }}>
                                                 {currentStep}
                                             </div>
-                                            <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>ID Jugador: {currentPlayer.jleid}</div>
                                         </div>
                                     </div>
                                     <div style={{ position: 'relative' }}>
@@ -295,26 +266,25 @@ export default function MatchImporter() {
 
                                     return (
                                         <div key={p.jleid} className="glass-panel" style={{
-                                            padding: '14px',
+                                            padding: '12px',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '14px',
+                                            gap: '12px',
                                             border: isProcessed ? '1px solid #10b981' : (hasError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.05)'),
-                                            background: isProcessed ? 'rgba(16,185,129,0.08)' : (hasError ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.02)'),
-                                            borderRadius: '16px',
-                                            transition: 'transform 0.2s ease'
+                                            background: isProcessed ? 'rgba(16,185,129,0.05)' : (hasError ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.02)'),
+                                            borderRadius: '12px'
                                         }}>
-                                            <div style={{ width: '52px', height: '52px', borderRadius: '12px', overflow: 'hidden', background: '#000', position: 'relative', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                                            <div style={{ width: '42px', height: '42px', borderRadius: '10px', overflow: 'hidden', background: '#000', position: 'relative', border: '1px solid rgba(255,255,255,0.1)' }}>
                                                 <img src={p.foto || p.imagen || p.imagen_url || p.processed_foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 {isProcessed && (
-                                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <CheckCircle size={22} color="white" />
+                                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <CheckCircle size={18} color="white" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px' }}>{p.nombre} {p.apellido}</div>
-                                                <div style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 600 }}>{p.equipo || p.equipo_nombre}</div>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nombre} {p.apellido}</div>
+                                                <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{p.equipo || p.equipo_nombre}</div>
                                             </div>
                                         </div>
                                     );

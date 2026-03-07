@@ -15,7 +15,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getTeams, saveTeam } from '../services/teamsService';
 import { getAdccImageUrl } from '../utils/imageUtils';
 import MatchImporter from './MatchImporter';
-import { MatchBatchProcessorProvider } from '../contexts/MatchBatchProcessorContext';
 
 // --- Tipos ---
 interface Result {
@@ -787,9 +786,7 @@ const DevTools: React.FC = () => {
                             </m.div>
                         ) : mode === 'match_importer' ? (
                             <m.div key="match_importer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6">
-                                <MatchBatchProcessorProvider>
-                                    <MatchImporter />
-                                </MatchBatchProcessorProvider>
+                                <MatchImporter />
                             </m.div>
                         ) : (
                             <m.div key="import" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>

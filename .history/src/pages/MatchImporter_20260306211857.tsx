@@ -227,38 +227,20 @@ export default function MatchImporter() {
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
                                 }}>
-                                    <motion.div
-                                        initial={{ scale: 0.9, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        key={currentPlayer.jleid}
-                                        style={{
-                                            width: '120px',
-                                            height: '120px',
-                                            borderRadius: '24px',
-                                            overflow: 'hidden',
-                                            background: '#000',
-                                            border: '3px solid var(--primary)',
-                                            boxShadow: '0 0 25px var(--primary-glow)',
-                                            flexShrink: 0
-                                        }}
-                                    >
-                                        <img
-                                            src={currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url || currentPlayer.processed_foto}
-                                            alt=""
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            onLoad={(e) => (e.currentTarget.style.opacity = '1')}
-                                            onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/120?text=Error')}
-                                        />
-                                    </motion.div>
+                                    <div style={{
+                                        width: '120px',
+                                        height: '120px',
+                                        borderRadius: '24px',
+                                        overflow: 'hidden',
+                                        background: '#000',
+                                        border: '3px solid var(--primary)',
+                                        boxShadow: '0 0 25px var(--primary-glow)',
+                                        flexShrink: 0
+                                    }}>
+                                        <img src={currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url || currentPlayer.processed_foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
                                     <div style={{ flex: 1 }}>
-                                        <motion.div
-                                            initial={{ x: 20, opacity: 0 }}
-                                            animate={{ x: 0, opacity: 1 }}
-                                            key={`name-${currentPlayer.jleid}`}
-                                            style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '8px' }}
-                                        >
-                                            {currentPlayer.nombre} {currentPlayer.apellido}
-                                        </motion.div>
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '8px' }}>{currentPlayer.nombre} {currentPlayer.apellido}</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             <div style={{
                                                 fontSize: '0.85rem',

@@ -1,0 +1,23 @@
+{
+  "id": 36274,
+  "dia": "2026-03-07 17:00:00",
+  "fecha": 1,
+  "minutos": 40,
+  "cancha": "Santa Clara Al Sur",
+  "local_id": 7943,
+  "local_nombre": "Santa Clara Al Sur",
+  "local_escudo": "https://adccanning.com.ar/img/FMKV6GGd1t_logo santa clara al sur.jpg",
+  "local_slug": "SCAS",
+  "res_local": null,
+  "res_local_p": null,
+  "visitante_id": 7942,
+  "visitante_nombre": "Mirasoles V",
+  "visitante_escudo": "https://adccanning.com.ar/img/FL7UZTOaRK_image0 (1).jpeg",
+  "visitante_slug": "MV",
+  "res_visitante": null,
+  "res_visitante_p": null,
+  "estado_partido": "pendiente",
+  "liga": "Copa De Bronce B Senior 2025 - Play Off Reposicionamiento \"3° / 8° Puesto\"",
+  "torneo": "Copa De Bronce",
+  "categoria": "Senior"
+}

@@ -9,13 +9,11 @@ import { fetchADCCMatches, fetchADCCMatchDetail, ADCCMatch } from '../services/a
 import MatchManager from '../components/DevTools/MatchManager';
 import ImportResultLog from '../components/DevTools/ImportResultLog';
 import BatchPhotoProcessor from '../components/DevTools/BatchPhotoProcessor';
-import { Globe, UserCheck, Image as ImageIcon, Lock, Trash2, Swords } from 'lucide-react';
+import { Globe, UserCheck, Image as ImageIcon, Lock, Trash2 } from 'lucide-react';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getTeams, saveTeam } from '../services/teamsService';
 import { getAdccImageUrl } from '../utils/imageUtils';
-import MatchImporter from './MatchImporter';
-import { MatchBatchProcessorProvider } from '../contexts/MatchBatchProcessorContext';
 
 // --- Tipos ---
 interface Result {
@@ -82,7 +80,7 @@ const DevTools: React.FC = () => {
     const [passwordInput, setPasswordInput] = useState('');
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [rawInput, setRawInput] = useState('');
-    const [mode, setMode] = useState<'files' | 'universal' | 'matches' | 'adcc' | 'batch_photos' | 'match_importer'>('files');
+    const [mode, setMode] = useState<'files' | 'universal' | 'matches' | 'adcc' | 'batch_photos'>('files');
 
     useEffect(() => {
         if (mode === 'matches') {
@@ -702,14 +700,7 @@ const DevTools: React.FC = () => {
                             onClick={() => setMode('batch_photos')}
                             style={{ background: mode === 'batch_photos' ? 'rgba(139, 92, 246, 0.2)' : '' }}
                         >
-                            <ImageIcon size={18} /> Procesador Masivo (API)
-                        </button>
-                        <button
-                            className={`glass-button ${mode === 'match_importer' ? 'active' : ''}`}
-                            onClick={() => setMode('match_importer')}
-                            style={{ background: mode === 'match_importer' ? 'rgba(236, 72, 153, 0.2)' : '' }}
-                        >
-                            <Swords size={18} /> Procesador Masivo (Partidos)
+                            <ImageIcon size={18} /> Procesador Masivo
                         </button>
                         <button
                             className={`glass-button ${mode === 'files' ? 'active' : ''}`}
@@ -784,12 +775,6 @@ const DevTools: React.FC = () => {
                         ) : mode === 'batch_photos' ? (
                             <m.div key="batch" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6">
                                 <BatchPhotoProcessor />
-                            </m.div>
-                        ) : mode === 'match_importer' ? (
-                            <m.div key="match_importer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-6">
-                                <MatchBatchProcessorProvider>
-                                    <MatchImporter />
-                                </MatchBatchProcessorProvider>
                             </m.div>
                         ) : (
                             <m.div key="import" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
