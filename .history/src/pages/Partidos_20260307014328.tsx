@@ -531,3 +531,5 @@ const Partidos = ({ userRole }: { userRole: string }) => {
 };
 
 export default Partidos;
+
+export default Partidos;

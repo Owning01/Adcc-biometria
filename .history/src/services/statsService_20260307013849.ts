@@ -132,14 +132,8 @@ export const calculateTeamStats = async () => {
         const matchesSnapshot = await getDocs(collection(db, 'matches'));
         const teamStats: Record<string, any> = {};
 
-        // Optimización: Pre-agrupar partidos por tournamentId
-        const matchesByTournament = new Map<string, any[]>();
-        matchesSnapshot.docs.forEach(doc => {
-            const m = doc.data();
-            const tId = m.tournamentId;
-            if (!matchesByTournament.has(tId)) matchesByTournament.set(tId, []);
-            matchesByTournament.get(tId)?.push(m);
-        });
+        // Track when teams participated in matches to calculate years in league
+        const matches = matchesSnapshot.docs.map(d => d.data());
 
         tournamentsSnapshot.docs.forEach(doc => {
             const tourney = doc.data();
@@ -147,8 +141,8 @@ export const calculateTeamStats = async () => {
             const category = tourney.category || 'General';
             const tournamentId = doc.id;
 
-            // Find teams that played in this tournament (Búsqueda O(1) en el Map)
-            const tournamentMatches = matchesByTournament.get(tournamentId) || [];
+            // Find teams that played in this tournament
+            const tournamentMatches = matches.filter(m => m.tournamentId === tournamentId);
             const teamsInTourney = new Set<string>();
             tournamentMatches.forEach(m => {
                 if (m.teamA?.name) teamsInTourney.add(m.teamA.name);

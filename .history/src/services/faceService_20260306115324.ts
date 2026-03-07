@@ -9,14 +9,11 @@ const CLOUD_FUNCTION_URL = 'https://us-central1-adccbiometric.cloudfunctions.net
  * A diferencia del modo local, aquí no necesitamos cargar modelos pesados de TensorFlow en el navegador.
  * Solo necesitamos la librería base para manejar las estructuras de datos (descriptores).
  */
-let modelsLoaded = false;
-
 /**
  * Inicializa el servicio en modo local.
  * Carga los modelos de face-api.js desde la carpeta public/ai_models.
  */
 export const loadModels = async () => {
-    if (modelsLoaded) return true;
     try {
         const MODEL_URL = '/ai_models';
         await Promise.all([
@@ -25,7 +22,6 @@ export const loadModels = async () => {
             faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
         ]);
-        modelsLoaded = true;
         return true;
     } catch (error) {
         return false;
@@ -75,31 +71,13 @@ export const getFaceDescriptor = async (videoElement: HTMLVideoElement | HTMLIma
 };
 
 /**
- * Cache para evitar recrear el Matcher si los usuarios no han cambiado.
- */
-let matcherCache: {
-    usersHash: string;
-    matcher: faceapi.FaceMatcher;
-} | null = null;
-
-/**
  * Crea una instancia de FaceMatcher para comparar descriptores.
  * 
  * @param {Array} users - Lista de usuarios con descriptores guardados.
  * @returns {faceapi.FaceMatcher|null}
  */
 export const createMatcher = (users: any[]): faceapi.FaceMatcher | null => {
-    if (!users || users.length === 0) {
-        matcherCache = null;
-        return null;
-    }
-
-    // Crear un "hash" simple basado en IDs y longitud para validar el cache
-    const usersHash = `${users.length}_${users.map(u => u.id).join(',')}`;
-
-    if (matcherCache && matcherCache.usersHash === usersHash) {
-        return matcherCache.matcher;
-    }
+    if (!users || users.length === 0) return null;
 
     const labeledDescriptors = users
         .filter(u => u.descriptor || u.face_api)
@@ -119,26 +97,14 @@ export const createMatcher = (users: any[]): faceapi.FaceMatcher | null => {
 
             if (!rawDescriptor) return null;
 
-            try {
-                const descriptorValues = Array.isArray(rawDescriptor) ? rawDescriptor : Object.values(rawDescriptor);
-                const descriptor = new Float32Array(descriptorValues);
-                return new faceapi.LabeledFaceDescriptors(user.id, [descriptor]);
-            } catch (e) {
-                console.error(`Error al crear descriptor para usuario ${user.id}`, e);
-                return null;
-            }
+            const descriptorValues = Array.isArray(rawDescriptor) ? rawDescriptor : Object.values(rawDescriptor);
+            const descriptor = new Float32Array(descriptorValues);
+            return new faceapi.LabeledFaceDescriptors(user.id, [descriptor]);
         })
-        .filter((ld): ld is faceapi.LabeledFaceDescriptors => ld !== null);
+        .filter(ld => ld !== null) as faceapi.LabeledFaceDescriptors[];
 
     // Umbral de distancia Euclideana (0.0 = idéntico, > umbral = diferente)
     // 0.45 es el balance óptimo entre seguridad y usabilidad.
     // Se unifica este criterio para coincidir con la lógica de verificación en App.tsx.
-    if (labeledDescriptors.length === 0) {
-        matcherCache = null;
-        return null;
-    }
-
-    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
-    matcherCache = { usersHash, matcher };
-    return matcher;
+    return labeledDescriptors.length > 0 ? new faceapi.FaceMatcher(labeledDescriptors, 0.45) : null;
 };

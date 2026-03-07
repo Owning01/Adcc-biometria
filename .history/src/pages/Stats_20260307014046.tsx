@@ -115,127 +115,22 @@ const Stats = ({ userRole }: { userRole?: string }) => {
                 </button>
             </div>
 
-            {activeTab === 'players' ? (
-                <div className="stats-grid-container" style={{ gridTemplateColumns: window.innerWidth > 992 ? '350px 1fr' : '1fr' }}>
-                    {/* Lista de Jugadores */}
-                    <div className="glass-panel player-list-panel">
-                        <div className="player-search-wrapper">
-                            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
-                            <input
-                                className="premium-input"
-                                placeholder="Buscar jugador o equipo..."
-                                style={{ paddingLeft: '40px' }}
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div style={{ flex: 1, overflowY: 'auto' }}>
-                            {filteredUsers.map(u => (
-                                <PlayerListItem
-                                    key={u.id}
-                                    user={u}
-                                    stats={playerStats[u.id] || { totalGoals: 0, totalAssists: 0 }}
-                                    isActive={selectedPlayer?.id === u.id}
-                                    onClick={() => setSelectedPlayer(u)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Perfil del Jugador */}
-                    <div className="glass-panel player-profile-panel">
-                        {selectedPlayer ? (
-                            <div className="animate-fade-in">
-                                <div className="player-profile-header">
-                                    <div className="player-profile-avatar-large">
-                                        <img src={selectedPlayer.photos?.[0] || selectedPlayer.photo || 'https://via.placeholder.com/100'} alt={selectedPlayer.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: '800' }}>{selectedPlayer.name || (selectedPlayer.nombre + ' ' + (selectedPlayer.apellido || ''))}</h2>
-                                        <p style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '1.1rem', margin: '5px 0' }}>{selectedPlayer.team}</p>
-                                        <div style={{ display: 'flex', gap: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', flexWrap: 'wrap' }}>
-                                            <span>DNI: {selectedPlayer.dni}</span>
-                                            {isAdmin && (
-                                                <>
-                                                    <span style={{ opacity: 0.3 }}>•</span>
-                                                    <EditableStat
-                                                        label="Ajuste Años"
-                                                        value={selectedPlayer.manualStats?.yearsAdjustment || 0}
-                                                        onSave={(v) => handleManualStatsUpdate(selectedPlayer.id, 'yearsAdjustment', v)}
-                                                        suffix=" años extra"
-                                                    />
-                                                </>
-                                            )}
-                                            <span style={{ opacity: 0.3 }}>•</span>
-                                            <span>{playerStats[selectedPlayer.id]?.timeInLeague || 'Nuevo'} en ADCC</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="stat-card-grid">
-                                    <StatCard
-                                        label="GOLES TOTALES"
-                                        value={playerStats[selectedPlayer.id]?.totalGoals || 0}
-                                        icon={<Shield color="#f59e0b" />}
-                                        editable={isAdmin}
-                                        baseValue={selectedPlayer.manualStats?.baseGoals || 0}
-                                        onSave={(v) => handleManualStatsUpdate(selectedPlayer.id, 'baseGoals', v)}
-                                    />
-                                    <StatCard
-                                        label="ASISTENCIAS"
-                                        value={playerStats[selectedPlayer.id]?.totalAssists || 0}
-                                        icon={<Activity color="#10b981" />}
-                                        editable={isAdmin}
-                                        baseValue={selectedPlayer.manualStats?.baseAssists || 0}
-                                        onSave={(v) => handleManualStatsUpdate(selectedPlayer.id, 'baseAssists', v)}
-                                    />
-                                    <StatCard label="TEMPORADAS" value={Object.keys(playerStats[selectedPlayer.id]?.seasons || {}).length} icon={<Calendar color="#3b82f6" />} />
-                                </div>
-
-                                <h3 className="section-title-small" style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>Historial por Temporada</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    {Object.entries(playerStats[selectedPlayer.id]?.seasons || {}).map(([season, data]) => (
-                                        <div key={season} className="stat-season-row">
-                                            <div style={{ fontWeight: '700' }}>Temporada {season}</div>
-                                            <div style={{ display: 'flex', gap: '20px' }}>
-                                                <span><span className="text-highlight">{data.goals}</span> Goles</span>
-                                                <span><span className="text-highlight">{data.assists}</span> Asist.</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <h3 style={{ fontSize: '1.1rem', marginTop: '40px', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Clubes anteriores ADCC</h3>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                    {(playerStats[selectedPlayer.id]?.clubs || []).map(club => (
-                                        <div key={club} style={{ padding: '8px 16px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', borderRadius: '99px', fontSize: '0.8rem', fontWeight: '700', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                                            {club}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}>
-                                <UserIcon size={64} />
-                                <p>Selecciona un jugador para ver su perfil estadístico</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            ) : (
-                /* Contenido de la pestaña de Equipos */
-                <div className="stats-grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
-                    {Object.entries(teamStats).map(([team, stats]) => (
-                        <TeamStatCard
-                            key={team}
-                            team={team}
-                            stats={stats}
-                            teamData={teamsMetadata.find(t => t.name === team)}
-                        />
-                    ))}
-                </div>
-            )}
         </div>
+    ) : (
+        /* Contenido de la pestaña de Equipos */
+        <div className="stats-grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
+            {Object.entries(teamStats).map(([team, stats]) => (
+                <TeamStatCard
+                    key={team}
+                    team={team}
+                    stats={stats}
+                    teamData={teamsMetadata.find(t => t.name === team)}
+                />
+            ))}
+        </div>
+    )
+}
+        </div >
     );
 };
 

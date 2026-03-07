@@ -75,31 +75,13 @@ export const getFaceDescriptor = async (videoElement: HTMLVideoElement | HTMLIma
 };
 
 /**
- * Cache para evitar recrear el Matcher si los usuarios no han cambiado.
- */
-let matcherCache: {
-    usersHash: string;
-    matcher: faceapi.FaceMatcher;
-} | null = null;
-
-/**
  * Crea una instancia de FaceMatcher para comparar descriptores.
  * 
  * @param {Array} users - Lista de usuarios con descriptores guardados.
  * @returns {faceapi.FaceMatcher|null}
  */
 export const createMatcher = (users: any[]): faceapi.FaceMatcher | null => {
-    if (!users || users.length === 0) {
-        matcherCache = null;
-        return null;
-    }
-
-    // Crear un "hash" simple basado en IDs y longitud para validar el cache
-    const usersHash = `${users.length}_${users.map(u => u.id).join(',')}`;
-
-    if (matcherCache && matcherCache.usersHash === usersHash) {
-        return matcherCache.matcher;
-    }
+    if (!users || users.length === 0) return null;
 
     const labeledDescriptors = users
         .filter(u => u.descriptor || u.face_api)
@@ -133,12 +115,5 @@ export const createMatcher = (users: any[]): faceapi.FaceMatcher | null => {
     // Umbral de distancia Euclideana (0.0 = idéntico, > umbral = diferente)
     // 0.45 es el balance óptimo entre seguridad y usabilidad.
     // Se unifica este criterio para coincidir con la lógica de verificación en App.tsx.
-    if (labeledDescriptors.length === 0) {
-        matcherCache = null;
-        return null;
-    }
-
-    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
-    matcherCache = { usersHash, matcher };
-    return matcher;
+    return labeledDescriptors.length > 0 ? new faceapi.FaceMatcher(labeledDescriptors, 0.45) : null;
 };

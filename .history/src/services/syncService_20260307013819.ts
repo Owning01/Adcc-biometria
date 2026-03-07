@@ -87,66 +87,7 @@ export const syncMatchDayData = async (options: {
             return true;
         }
 
-        // ── HELPERS PARA PROCESAMIENTO ───────────────────────────────────────
-        /** Equipos */
-        const processTeam = async (name: string, escudo: string, slug: string, category: string) => {
-            if (slug === 'FL') return;
-            const teamId = name.toLowerCase().replace(/\s+/g, '-');
-            const team = await getTeam(teamId);
-            let logoUrl = team?.logoUrl;
-
-            if (!logoUrl && escudo && !isPublic) {
-                try { logoUrl = await compressAndUploadLogo(escudo, teamId); } catch (_) { }
-            }
-
-            await saveTeam({
-                id: teamId,
-                name,
-                adccLogoUrl: escudo,
-                logoUrl: logoUrl || undefined,
-                category: category,
-            });
-        };
-
-        /** Jugadores / biometría */
-        const processPlayers = async (players: any[], teamName: string, category: string) => {
-            const playersToProcess = players.filter(p => p.face_api);
-            if (playersToProcess.length === 0) return;
-
-            const { writeBatch } = await import('firebase/firestore');
-            const batch = writeBatch(db);
-            let count = 0;
-
-            for (const p of playersToProcess) {
-                const playerId = String(p.jleid || p.id || p.dni);
-                const userRef = doc(db, 'users', playerId);
-
-                const payload: any = {
-                    id: playerId,
-                    jleid: p.jleid,
-                    dni: String(p.dni),
-                    nombre: p.nombre,
-                    apellido: p.apellido,
-                    name: `${p.nombre} ${p.apellido}`,
-                    photo: p.imagen || p.foto || p.imagen_url || '',
-                    face_api: p.face_api,
-                    updatedAt: new Date().toISOString(),
-                    registered: true,
-                    status: 'habilitado',
-                    team: teamName,
-                    category: category,
-                    categories: arrayUnion(category),
-                };
-
-                batch.set(userRef, payload, { merge: true });
-                count++;
-            }
-
-            if (count > 0) {
-                await batch.commit();
-            }
-        };
-
+        // ── Paso 3: Procesar cada partido ──────────────────────────────────────
         // ── Paso 3: Procesar partidos en paralelo controlado ──────────────────
         let processed = 0;
         let errors = 0;

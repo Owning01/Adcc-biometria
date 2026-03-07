@@ -78,16 +78,14 @@ const Stats = ({ userRole }: { userRole?: string }) => {
         }
     };
 
-    const filteredUsers = React.useMemo(() => {
-        return users.filter(u =>
-            (u.name || (u.nombre + ' ' + (u.apellido || '')) || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (u.team || '').toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => {
-            const statsA = playerStats[a.id]?.totalGoals || 0;
-            const statsB = playerStats[b.id]?.totalGoals || 0;
-            return statsB - statsA;
-        });
-    }, [users, searchTerm, playerStats]);
+    const filteredUsers = users.filter(u =>
+        (u.name || (u.nombre + ' ' + (u.apellido || '')) || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.team || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ).sort((a, b) => {
+        const statsA = playerStats[a.id]?.totalGoals || 0;
+        const statsB = playerStats[b.id]?.totalGoals || 0;
+        return statsB - statsA;
+    });
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Calculando estadísticas...</div>;
 
@@ -130,15 +128,28 @@ const Stats = ({ userRole }: { userRole?: string }) => {
                             />
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto' }}>
-                            {filteredUsers.map(u => (
-                                <PlayerListItem
-                                    key={u.id}
-                                    user={u}
-                                    stats={playerStats[u.id] || { totalGoals: 0, totalAssists: 0 }}
-                                    isActive={selectedPlayer?.id === u.id}
-                                    onClick={() => setSelectedPlayer(u)}
-                                />
-                            ))}
+                            {filteredUsers.map(u => {
+                                const stats = playerStats[u.id] || { totalGoals: 0, totalAssists: 0 };
+                                return (
+                                    <div
+                                        key={u.id}
+                                        onClick={() => setSelectedPlayer(u)}
+                                        className={`player-item ${selectedPlayer?.id === u.id ? 'active' : ''}`}
+                                    >
+                                        <div className="player-item-avatar">
+                                            <img src={u.photos?.[0] || u.photo || 'https://via.placeholder.com/40'} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: '700' }}>{u.name || (u.nombre + ' ' + (u.apellido || ''))}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{u.team}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary)' }}>{stats.totalGoals} G</div>
+                                            <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{stats.totalAssists} A</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -223,16 +234,48 @@ const Stats = ({ userRole }: { userRole?: string }) => {
                     </div>
                 </div>
             ) : (
-                /* Contenido de la pestaña de Equipos */
-                <div className="stats-grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
-                    {Object.entries(teamStats).map(([team, stats]) => (
-                        <TeamStatCard
-                            key={team}
-                            team={team}
-                            stats={stats}
-                            teamData={teamsMetadata.find(t => t.name === team)}
-                        />
-                    ))}
+                <div className="stats-grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                    {Object.entries(teamStats).length === 0 ? (
+                        <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', opacity: 0.3 }}>
+                            No hay datos de campeonatos registrados aún.
+                        </div>
+                    ) : (
+                        Object.entries(teamStats).map(([team, stats]) => (
+                            <div key={team} className="glass-panel" style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                                    <div>
+                                        <h2 style={{ fontSize: '1.4rem', margin: 0, fontWeight: '800' }}>{team}</h2>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
+                                            <p className="text-highlight" style={{ fontWeight: '700', margin: 0 }}>{stats.championshipsTotal} Campeonatos</p>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>• {stats.yearsInLeague} años en ADCC</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ width: '50px', height: '50px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border-light)', overflow: 'hidden' }}>
+                                        {(() => {
+                                            const teamData = teamsMetadata.find(t => t.name === team);
+                                            // Prefer local logo, fallback to ADCC logo if available (though teamStats doesn't have it, teamsMetadata might if synced)
+                                            const logoUrl = teamData?.logoUrl;
+                                            return logoUrl ? (
+                                                <img src={logoUrl} alt={team} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '5px' }} />
+                                            ) : (
+                                                <Award size={28} color="#f59e0b" />
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: '700', letterSpacing: '0.5px' }}>LOGROS POR CATEGORÍA</div>
+                                    {Object.entries(stats.championshipsByCat).map(([cat, count]) => (
+                                        <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
+                                            <span>{cat}</span>
+                                            <span style={{ fontWeight: '800' }}>x{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             )}
         </div>
@@ -240,10 +283,10 @@ const Stats = ({ userRole }: { userRole?: string }) => {
 };
 
 // ============================================================================
-// 3. HELPER COMPONENTS (CARDS & EDITABLES) - MEMOIZED
+// 3. HELPER COMPONENTS (CARDS & EDITABLES)
 // ============================================================================
 
-const StatCard = React.memo(({ label, value, icon, editable = false, baseValue = 0, onSave }: { label: string, value: any, icon: any, editable?: boolean, baseValue?: any, onSave?: (v: any) => void }) => {
+const StatCard = ({ label, value, icon, editable = false, baseValue = 0, onSave }: { label: string, value: any, icon: any, editable?: boolean, baseValue?: any, onSave?: (v: any) => void }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [val, setVal] = useState(baseValue || 0);
 
@@ -280,9 +323,9 @@ const StatCard = React.memo(({ label, value, icon, editable = false, baseValue =
             )}
         </div>
     );
-});
+};
 
-const EditableStat = React.memo(({ label, value, onSave, suffix = "" }: { label: string, value: any, onSave: (v: any) => void, suffix?: string }) => {
+const EditableStat = ({ label, value, onSave, suffix = "" }: { label: string, value: any, onSave: (v: any) => void, suffix?: string }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [val, setVal] = useState(value);
 
@@ -305,71 +348,6 @@ const EditableStat = React.memo(({ label, value, onSave, suffix = "" }: { label:
             {value}{suffix}
         </span>
     );
-});
-
-const PlayerListItem = React.memo(({ user, stats, isActive, onClick }: {
-    user: User,
-    stats: { totalGoals: number; totalAssists: number },
-    isActive: boolean,
-    onClick: () => void
-}) => (
-    <div
-        onClick={onClick}
-        className={`player-item ${isActive ? 'active' : ''}`}
-    >
-        <div className="player-item-avatar">
-            <img
-                src={user.photos?.[0] || user.photo || 'https://via.placeholder.com/40'}
-                alt={user.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-        </div>
-        <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: '700' }}>
-                {user.name || (user.nombre + ' ' + (user.apellido || ''))}
-            </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user.team}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary)' }}>{stats.totalGoals} G</div>
-            <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{stats.totalAssists} A</div>
-        </div>
-    </div>
-));
-
-const TeamStatCard = React.memo(({ team, stats, teamData }: {
-    team: string,
-    stats: TeamStats,
-    teamData?: Team
-}) => (
-    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-            <div>
-                <h2 style={{ fontSize: '1.4rem', margin: 0, fontWeight: '800' }}>{team}</h2>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
-                    <p className="text-highlight" style={{ fontWeight: '700', margin: 0 }}>{stats.championshipsTotal} Campeonatos</p>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>• {stats.yearsInLeague} años en ADCC</span>
-                </div>
-            </div>
-            <div style={{ width: '50px', height: '50px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border-light)', overflow: 'hidden' }}>
-                {teamData?.logoUrl ? (
-                    <img src={teamData.logoUrl} alt={team} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '5px' }} />
-                ) : (
-                    <Award size={28} color="#f59e0b" />
-                )}
-            </div>
-        </div>
-
-        <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: '700', letterSpacing: '0.5px' }}>LOGROS POR CATEGORÍA</div>
-            {Object.entries(stats.championshipsByCat).map(([cat, count]) => (
-                <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
-                    <span>{cat}</span>
-                    <span style={{ fontWeight: '800' }}>x{count}</span>
-                </div>
-            ))}
-        </div>
-    </div>
-));
+};
 
 export default Stats;

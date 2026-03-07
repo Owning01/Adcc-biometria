@@ -1957,16 +1957,16 @@ const Home = ({ userRole }: { userRole?: string }) => {
                 selectedCategory={selectedCategory}
                 onUpdateUser={updateUser}
                 onToggleStatus={handleToggleStatus}
-                onReassignTeam={(u: any) => {
+                onReassignTeam={(u) => {
                     setMovePlayerControl({ open: true, user: u });
                     setMoveTargetTeam(u.team || "");
                     setPlayerDetails({ open: false, user: null });
                 }}
-                onManageCategories={(u: any, cat: string) => {
+                onManageCategories={(u, cat) => {
                     setCategoryControl({ open: true, user: u, currentCat: cat });
                     setPlayerDetails({ open: false, user: null });
                 }}
-                onDeletePlayer={(u: any) => {
+                onDeletePlayer={(u) => {
                     setDeleteModal({ open: true, userId: u.id, userName: u.name });
                     setPlayerDetails({ open: false, user: null });
                 }}

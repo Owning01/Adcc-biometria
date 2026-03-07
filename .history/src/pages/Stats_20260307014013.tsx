@@ -223,70 +223,57 @@ const Stats = ({ userRole }: { userRole?: string }) => {
                     </div>
                 </div>
             ) : (
-                /* Contenido de la pestaña de Equipos */
-                <div className="stats-grid-container" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
-                    {Object.entries(teamStats).map(([team, stats]) => (
-                        <TeamStatCard
-                            key={team}
-                            team={team}
-                            stats={stats}
-                            teamData={teamsMetadata.find(t => t.name === team)}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
     );
 };
 
-// ============================================================================
-// 3. HELPER COMPONENTS (CARDS & EDITABLES) - MEMOIZED
-// ============================================================================
+            // ============================================================================
+            // 3. HELPER COMPONENTS (CARDS & EDITABLES) - MEMOIZED
+            // ============================================================================
 
-const StatCard = React.memo(({ label, value, icon, editable = false, baseValue = 0, onSave }: { label: string, value: any, icon: any, editable?: boolean, baseValue?: any, onSave?: (v: any) => void }) => {
+            const StatCard = React.memo(({label, value, icon, editable = false, baseValue = 0, onSave}: {label: string, value: any, icon: any, editable?: boolean, baseValue?: any, onSave?: (v: any) => void }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [val, setVal] = useState(baseValue || 0);
+            const [val, setVal] = useState(baseValue || 0);
 
-    return (
-        <div className="stat-card-premium">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{label}</span>
-                {icon}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: '900' }}>{value}</div>
-                {editable && !isEditing && onSave && (
-                    <button onClick={() => { setVal(baseValue); setIsEditing(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, opacity: 0.5 }}>
-                        <Edit2 size={12} />
-                    </button>
+            return (
+            <div className="stat-card-premium">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>{label}</span>
+                    {icon}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <div style={{ fontSize: '1.8rem', fontWeight: '900' }}>{value}</div>
+                    {editable && !isEditing && onSave && (
+                        <button onClick={() => { setVal(baseValue); setIsEditing(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, opacity: 0.5 }}>
+                            <Edit2 size={12} />
+                        </button>
+                    )}
+                </div>
+                {isEditing && onSave && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.95)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px', zIndex: 10 }}>
+                        <input
+                            type="number"
+                            value={val}
+                            onChange={e => setVal(e.target.value)}
+                            style={{ width: '60px', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--primary)', borderRadius: '6px', color: 'white', padding: '5px', textAlign: 'center' }}
+                        />
+                        <button onClick={() => { onSave(val); setIsEditing(false); }} style={{ background: 'var(--primary)', border: 'none', borderRadius: '6px', padding: '5px' }}><Save size={14} color="black" /></button>
+                        <button onClick={() => setIsEditing(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', padding: '5px' }}><X size={14} color="white" /></button>
+                    </div>
+                )}
+                {editable && (baseValue > 0) && (
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '5px' }}>
+                        Incluye {baseValue} base manual
+                    </div>
                 )}
             </div>
-            {isEditing && onSave && (
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.95)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px', zIndex: 10 }}>
-                    <input
-                        type="number"
-                        value={val}
-                        onChange={e => setVal(e.target.value)}
-                        style={{ width: '60px', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--primary)', borderRadius: '6px', color: 'white', padding: '5px', textAlign: 'center' }}
-                    />
-                    <button onClick={() => { onSave(val); setIsEditing(false); }} style={{ background: 'var(--primary)', border: 'none', borderRadius: '6px', padding: '5px' }}><Save size={14} color="black" /></button>
-                    <button onClick={() => setIsEditing(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', padding: '5px' }}><X size={14} color="white" /></button>
-                </div>
-            )}
-            {editable && (baseValue > 0) && (
-                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '5px' }}>
-                    Incluye {baseValue} base manual
-                </div>
-            )}
-        </div>
-    );
+            );
 });
 
-const EditableStat = React.memo(({ label, value, onSave, suffix = "" }: { label: string, value: any, onSave: (v: any) => void, suffix?: string }) => {
+            const EditableStat = React.memo(({label, value, onSave, suffix = ""}: {label: string, value: any, onSave: (v: any) => void, suffix?: string }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [val, setVal] = useState(value);
+            const [val, setVal] = useState(value);
 
-    if (isEditing) {
+            if (isEditing) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <input
@@ -297,79 +284,79 @@ const EditableStat = React.memo(({ label, value, onSave, suffix = "" }: { label:
                 />
                 <button onClick={() => { onSave(val); setIsEditing(false); }} style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer' }}><Save size={12} /></button>
             </div>
-        );
+            );
     }
 
-    return (
-        <span onClick={() => { setVal(value); setIsEditing(true); }} style={{ cursor: 'pointer', borderBottom: '1px dashed rgba(255,255,255,0.2)' }}>
-            {value}{suffix}
-        </span>
-    );
+            return (
+            <span onClick={() => { setVal(value); setIsEditing(true); }} style={{ cursor: 'pointer', borderBottom: '1px dashed rgba(255,255,255,0.2)' }}>
+                {value}{suffix}
+            </span>
+            );
 });
 
-const PlayerListItem = React.memo(({ user, stats, isActive, onClick }: {
-    user: User,
-    stats: { totalGoals: number; totalAssists: number },
-    isActive: boolean,
-    onClick: () => void
+            const PlayerListItem = React.memo(({user, stats, isActive, onClick}: {
+                user: User,
+            stats: {totalGoals: number; totalAssists: number },
+            isActive: boolean, 
+    onClick: () => void 
 }) => (
-    <div
-        onClick={onClick}
-        className={`player-item ${isActive ? 'active' : ''}`}
-    >
-        <div className="player-item-avatar">
-            <img
-                src={user.photos?.[0] || user.photo || 'https://via.placeholder.com/40'}
-                alt={user.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-        </div>
-        <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: '700' }}>
-                {user.name || (user.nombre + ' ' + (user.apellido || ''))}
-            </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user.team}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary)' }}>{stats.totalGoals} G</div>
-            <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{stats.totalAssists} A</div>
-        </div>
-    </div>
-));
-
-const TeamStatCard = React.memo(({ team, stats, teamData }: {
-    team: string,
-    stats: TeamStats,
-    teamData?: Team
-}) => (
-    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-            <div>
-                <h2 style={{ fontSize: '1.4rem', margin: 0, fontWeight: '800' }}>{team}</h2>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
-                    <p className="text-highlight" style={{ fontWeight: '700', margin: 0 }}>{stats.championshipsTotal} Campeonatos</p>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>• {stats.yearsInLeague} años en ADCC</span>
+            <div
+                onClick={onClick}
+                className={`player-item ${isActive ? 'active' : ''}`}
+            >
+                <div className="player-item-avatar">
+                    <img
+                        src={user.photos?.[0] || user.photo || 'https://via.placeholder.com/40'}
+                        alt={user.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '700' }}>
+                        {user.name || (user.nombre + ' ' + (user.apellido || ''))}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user.team}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary)' }}>{stats.totalGoals} G</div>
+                    <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>{stats.totalAssists} A</div>
                 </div>
             </div>
-            <div style={{ width: '50px', height: '50px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border-light)', overflow: 'hidden' }}>
-                {teamData?.logoUrl ? (
-                    <img src={teamData.logoUrl} alt={team} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '5px' }} />
-                ) : (
-                    <Award size={28} color="#f59e0b" />
-                )}
-            </div>
-        </div>
+            ));
 
-        <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: '700', letterSpacing: '0.5px' }}>LOGROS POR CATEGORÍA</div>
-            {Object.entries(stats.championshipsByCat).map(([cat, count]) => (
-                <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
-                    <span>{cat}</span>
-                    <span style={{ fontWeight: '800' }}>x{count}</span>
+            const TeamStatCard = React.memo(({team, stats, teamData}: {
+                team: string,
+            stats: TeamStats,
+            teamData?: Team 
+}) => (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                    <div>
+                        <h2 style={{ fontSize: '1.4rem', margin: 0, fontWeight: '800' }}>{team}</h2>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
+                            <p className="text-highlight" style={{ fontWeight: '700', margin: 0 }}>{stats.championshipsTotal} Campeonatos</p>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>• {stats.yearsInLeague} años en ADCC</span>
+                        </div>
+                    </div>
+                    <div style={{ width: '50px', height: '50px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border-light)', overflow: 'hidden' }}>
+                        {teamData?.logoUrl ? (
+                            <img src={teamData.logoUrl} alt={team} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '5px' }} />
+                        ) : (
+                            <Award size={28} color="#f59e0b" />
+                        )}
+                    </div>
                 </div>
-            ))}
-        </div>
-    </div>
-));
 
-export default Stats;
+                <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem', fontWeight: '700', letterSpacing: '0.5px' }}>LOGROS POR CATEGORÍA</div>
+                    {Object.entries(stats.championshipsByCat).map(([cat, count]) => (
+                        <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.9rem' }}>
+                            <span>{cat}</span>
+                            <span style={{ fontWeight: '800' }}>x{count}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            ));
+
+            export default Stats;

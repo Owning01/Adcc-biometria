@@ -609,620 +609,10 @@ const TeamView = React.memo(({
     </div>
 ));
 
+
 // ============================================================================
-// 1.1 MODAL COMPONENTS (Memoized)
-// ============================================================================
-
-const DeletePlayerModal = React.memo(({
-    isOpen,
-    userName,
-    onClose,
-    onConfirm
-}: {
-    isOpen: boolean,
-    userName: string,
-    onClose: () => void,
-    onConfirm: () => void
-}) => {
-    if (!isOpen) return null;
-    return (
-        <div className="modal-overlay">
-            <div className="modal-card">
-                <AlertCircle
-                    size={32}
-                    color="#f87171"
-                    style={{ marginBottom: "15px" }}
-                />
-                <h3 style={{ margin: "0 0 10px 0" }}>Eliminar Jugador</h3>
-                <p
-                    style={{
-                        fontSize: "1rem",
-                        opacity: 0.7,
-                        marginBottom: "20px",
-                    }}
-                >
-                    ¿Deseas eliminar a <strong>{userName}</strong>?
-                </p>
-                <div style={{ display: "flex", gap: "10px" }}>
-                    <button
-                        onClick={onClose}
-                        className="glass-button"
-                        style={{ flex: 1, background: "rgba(255,255,255,0.05)" }}
-                    >
-                        CANCELAR
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        className="glass-button"
-                        style={{ flex: 1, background: "#ef4444" }}
-                    >
-                        ELIMINAR
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-});
-
-const NewTeamModal = React.memo(({
-    isOpen,
-    onClose,
-    onConfirm,
-    modalInput,
-    setModalInput
-}: {
-    isOpen: boolean,
-    onClose: () => void,
-    onConfirm: () => void,
-    modalInput: string,
-    setModalInput: (val: string) => void
-}) => {
-    if (!isOpen) return null;
-    return (
-        <div className="modal-overlay" style={{ zIndex: 4000 }}>
-            <div
-                className="modal-card"
-                style={{ borderTop: "2px solid var(--primary)" }}
-            >
-                <h3 style={{ marginBottom: "20px" }}>Nuevo Equipo</h3>
-                <input
-                    autoFocus
-                    className="premium-input"
-                    placeholder="Nombre"
-                    value={modalInput}
-                    onChange={(e) => setModalInput(e.target.value)}
-                />
-                <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                    <button
-                        onClick={onClose}
-                        className="glass-button button-secondary"
-                        style={{ flex: 1 }}
-                    >
-                        Cerrar
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        className="glass-button"
-                        style={{ flex: 1 }}
-                    >
-                        Agregar
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-});
-
-const NewCategoryModal = React.memo(({
-    isOpen,
-    team,
-    onClose,
-    onConfirm,
-    modalInput,
-    setModalInput
-}: {
-    isOpen: boolean,
-    team: string,
-    onClose: () => void,
-    onConfirm: () => void,
-    modalInput: string,
-    setModalInput: (val: string) => void
-}) => {
-    if (!isOpen) return null;
-    return (
-        <div className="modal-premium-overlay" onClick={onClose}>
-            <div className="modal-premium-card" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-premium-header">
-                    <h3 className="modal-premium-title">Nueva Categoría</h3>
-                    <button className="btn-close-modal" onClick={onClose}>
-                        <X size={20} />
-                    </button>
-                </div>
-                <p className="modal-premium-subtitle">Equipo: {team}</p>
-                <input
-                    autoFocus
-                    className="premium-input-full"
-                    placeholder="Nombre (ej: Libre)"
-                    value={modalInput}
-                    onChange={(e) => setModalInput(e.target.value)}
-                />
-                <div className="btn-group-modal">
-                    <button
-                        onClick={onClose}
-                        className="glass-button button-secondary flex-1"
-                    >
-                        Cerrar
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        className="glass-button flex-1"
-                    >
-                        Agregar
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-});
-
-const ImagePreviewModal = React.memo(({
-    image,
-    onClose
-}: {
-    image: string | null,
-    onClose: () => void
-}) => {
-    if (!image) return null;
-    return (
-        <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-premium-overlay overlay-dark"
-            onClick={onClose}
-            style={{ zIndex: 10000 }}
-        >
-            <m.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="modal-preview-card"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <button className="btn-close-modal-overlap" onClick={onClose}>
-                    <X size={20} />
-                </button>
-                <img
-                    src={image}
-                    alt="Preview"
-                    className="img-preview"
-                />
-            </m.div>
-        </m.div>
-    );
-});
-
-const ReassignTeamModal = React.memo(({
-    isOpen,
-    user,
-    teamsMetadata,
-    teams,
-    moveTargetTeam,
-    setMoveTargetTeam,
-    onClose,
-    onUpdateUser
-}: {
-    isOpen: boolean,
-    user: any | null,
-    teamsMetadata: Team[],
-    teams: string[],
-    moveTargetTeam: string,
-    setMoveTargetTeam: (val: string) => void,
-    onClose: () => void,
-    onUpdateUser: (id: string, data: any) => Promise<void>
-}) => {
-    if (!isOpen || !user) return null;
-    return (
-        <div className="modal-premium-overlay" style={{ zIndex: 7000 }}>
-            <div className="modal-premium-card" style={{ maxWidth: "450px" }}>
-                <div className="modal-premium-header">
-                    <h3 className="modal-premium-title uppercase">Reasignar Equipo</h3>
-                    <button
-                        className="btn-close-modal"
-                        onClick={onClose}
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <div className="modal-user-info">
-                    <p className="modal-user-label">Jugador a reasignar</p>
-                    <div className="modal-user-name">
-                        {user.name}
-                    </div>
-                    <div className="modal-user-dni text-slate-400">
-                        DNI: {user.dni}
-                        <br />
-                        Actual: {user.team} / {user.category}
-                    </div>
-                </div>
-
-                <div className="management-section">
-                    <h4 className="management-label management-label-blue">
-                        <Activity size={14} /> 1. SELECCIONAR NUEVO EQUIPO
-                    </h4>
-                    <select
-                        className="premium-input w-full mb-4"
-                        value={moveTargetTeam}
-                        onChange={(e) => setMoveTargetTeam(e.target.value)}
-                    >
-                        <option value="">Seleccione Equipo...</option>
-                        {teamsMetadata.map(t => (
-                            <option key={t.id} value={t.name}>{t.name}</option>
-                        ))}
-                        {teams.filter(t => !teamsMetadata.find(tm => tm.name === t)).map(t => (
-                            <option key={t} value={t}>{t}</option>
-                        ))}
-                    </select>
-
-                    {moveTargetTeam && (
-                        <>
-                            <h4 className="management-label management-label-emerald mt-4">
-                                <ArrowRightLeft size={14} /> 2. ASIGNAR A CATEGORÍA
-                            </h4>
-                            <div className="flex-gap-2">
-                                {teamsMetadata
-                                    .find(t => t.name === moveTargetTeam)?.categories?.map((cat: string) => (
-                                        <button
-                                            key={cat}
-                                            className="category-pill category-pill-move"
-                                            onClick={async () => {
-                                                try {
-                                                    await onUpdateUser(user.id, {
-                                                        team: moveTargetTeam,
-                                                        category: cat,
-                                                        categories: [cat]
-                                                    });
-                                                    onClose();
-                                                } catch (error: any) {
-                                                    alert("Error al cambiar equipo y categoría: " + error.message);
-                                                }
-                                            }}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-});
-
-const ManageCategoriesModal = React.memo(({
-    isOpen,
-    user,
-    currentCat,
-    categoriesForTeam,
-    onClose,
-    onUpdateUserCategories
-}: {
-    isOpen: boolean,
-    user: any | null,
-    currentCat: string,
-    categoriesForTeam: (string | null)[],
-    onClose: () => void,
-    onUpdateUserCategories: (id: string, oldCat: string, newCat: string, mode: string) => Promise<void>
-}) => {
-    if (!isOpen || !user) return null;
-    return (
-        <div className="modal-premium-overlay" style={{ zIndex: 7000 }}>
-            <div className="modal-premium-card" style={{ maxWidth: "450px" }}>
-                <div className="modal-premium-header">
-                    <h3 className="modal-premium-title uppercase">Gestionar Categorías</h3>
-                    <button
-                        className="btn-close-modal"
-                        onClick={onClose}
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <div className="modal-user-info">
-                    <p className="modal-user-label">Jugador</p>
-                    <div className="modal-user-name">
-                        {user.name}
-                    </div>
-                    <div className="modal-user-dni">
-                        DNI: {user.dni}
-                    </div>
-                </div>
-
-                <div className="management-section">
-                    <h4 className="management-label management-label-blue">
-                        <ArrowRightLeft size={14} /> MOVER CATEGORÍA
-                    </h4>
-                    <p className="management-action-subtitle">
-                        Cambiar "{currentCat}" por:
-                    </p>
-                    <div className="flex-gap-2">
-                        {categoriesForTeam
-                            .filter((c) => c !== currentCat)
-                            .map((cat) => (
-                                <button
-                                    key={cat}
-                                    className="category-pill category-pill-move"
-                                    onClick={async () => {
-                                        try {
-                                            await onUpdateUserCategories(
-                                                user.id,
-                                                currentCat,
-                                                cat || "",
-                                                "move",
-                                            );
-                                            onClose();
-                                        } catch (error: any) {
-                                            alert("Error al mover categoría: " + error.message);
-                                        }
-                                    }}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                    </div>
-                </div>
-
-                <div className="management-section">
-                    <h4 className="management-label management-label-emerald">
-                        <UserPlus size={14} /> AÑADIR A OTRA CATEGORÍA
-                    </h4>
-                    <p className="management-action-subtitle">
-                        Mantener actual y agregar:
-                    </p>
-                    <div className="flex-gap-2">
-                        {categoriesForTeam
-                            .filter((c) => {
-                                const userCats = Array.isArray(user.categories)
-                                    ? user.categories
-                                    : [user.category];
-                                return !userCats.includes(c);
-                            })
-                            .map((cat) => (
-                                <button
-                                    key={cat}
-                                    className="category-pill category-pill-add"
-                                    onClick={async () => {
-                                        try {
-                                            await onUpdateUserCategories(
-                                                user.id,
-                                                "",
-                                                cat || "",
-                                                "add",
-                                            );
-                                            onClose();
-                                        } catch (error: any) {
-                                            alert("Error al añadir categoría: " + (error?.message || "Error desconocido"));
-                                        }
-                                    }}
-                                >
-                                    <Plus size={12} /> {cat}
-                                </button>
-                            ))}
-                    </div>
-                </div>
-
-                <div className="management-section">
-                    <h4 className="management-label management-label-red">
-                        <Trash2 size={14} /> ELIMINAR DE ESTA CATEGORÍA
-                    </h4>
-                    <p className="management-action-subtitle">
-                        Quitar a este jugador de "{currentCat}":
-                    </p>
-                    <button
-                        className="category-pill category-pill-remove"
-                        onClick={async () => {
-                            if (
-                                window.confirm(
-                                    `¿Seguro que quieres quitar a este jugador de la categoría ${currentCat}?`,
-                                )
-                            ) {
-                                try {
-                                    await onUpdateUserCategories(
-                                        user.id,
-                                        currentCat || "",
-                                        "",
-                                        "remove",
-                                    );
-                                    onClose();
-                                } catch (error: any) {
-                                    alert("Error al eliminar categoría: " + (error?.message || "Error desconocido"));
-                                }
-                            }
-                        }}
-                    >
-                        <X size={12} /> QUITAR DE{" "}
-                        {currentCat?.toUpperCase() || ""}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-});
-
-const PlayerDetailsModal = React.memo(({
-    isOpen,
-    user,
-    onClose,
-    isAdminOrDev,
-    onPreviewImage,
-    selectedCategory,
-    onUpdateUser,
-    onToggleStatus,
-    onReassignTeam,
-    onManageCategories,
-    onDeletePlayer
-}: {
-    isOpen: boolean,
-    user: any | null,
-    onClose: () => void,
-    isAdminOrDev: boolean,
-    onPreviewImage: (url: string) => void,
-    selectedCategory: string | null,
-    onUpdateUser: (id: string, data: any) => Promise<void>,
-    onToggleStatus: (user: any, cat: string | null) => void,
-    onReassignTeam: (user: any) => void,
-    onManageCategories: (user: any, cat: string) => void,
-    onDeletePlayer: (user: any) => void
-}) => {
-    if (!isOpen || !user) return null;
-
-    const u = user;
-    const name = u.name || (u.nombre && u.apellido ? `${u.nombre} ${u.apellido}` : (u.nombre || u.apellido || 'Sin nombre'));
-    const photo = u.photo || u.photoURL || u.imagen_url || u.imagen;
-
-    return (
-        <div className="modal-premium-overlay" style={{ zIndex: 6000 }} onClick={onClose}>
-            <div className="modal-premium-card" style={{ maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
-                <div className="modal-premium-header">
-                    <h3 className="modal-premium-title uppercase">Detalles del Jugador</h3>
-                    <button className="btn-close-modal" onClick={onClose}>
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <div className="flex flex-col items-center mb-6">
-                    <div
-                        className="user-avatar-large mb-4 cursor-pointer relative group"
-                        onClick={() => photo && onPreviewImage(photo)}
-                    >
-                        {photo ? (
-                            <img src={photo} alt="" className="w-full h-full object-cover rounded-full" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center opacity-20">
-                                <UserCircle size={60} />
-                            </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Search size={20} className="text-white" />
-                        </div>
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-100 text-center">{name}</h2>
-                    <p className="text-sm text-primary font-medium">{u.team} - {u.category}</p>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="management-section no-margin-top">
-                        <h4 className="management-label management-label-blue flex items-center gap-2">
-                            <CreditCard size={14} /> INFORMACIÓN PERSONAL
-                        </h4>
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
-                                <span className="text-xs text-slate-400">DNI</span>
-                                {isAdminOrDev ? (
-                                    <input
-                                        type="text"
-                                        defaultValue={u.dni}
-                                        className="bg-transparent text-right text-sm font-mono text-slate-200 outline-none border-b border-white/10 focus:border-primary px-1"
-                                        onBlur={async (e) => {
-                                            if (e.target.value !== u.dni) {
-                                                await onUpdateUser(u.id, { dni: e.target.value });
-                                            }
-                                        }}
-                                    />
-                                ) : (
-                                    <span className="text-sm font-mono text-slate-200">********</span>
-                                )}
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
-                                <span className="text-xs text-slate-400">Dorsal</span>
-                                <input
-                                    type="text"
-                                    defaultValue={u.number || ""}
-                                    className="bg-transparent text-right text-sm font-mono text-slate-200 outline-none border-b border-white/10 focus:border-primary px-1 w-12"
-                                    placeholder="N/A"
-                                    disabled={!isAdminOrDev}
-                                    onBlur={async (e) => {
-                                        if (e.target.value !== u.number) {
-                                            await onUpdateUser(u.id, { number: e.target.value });
-                                        }
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="management-section">
-                        <h4 className="management-label management-label-emerald flex items-center gap-2">
-                            <Shield size={14} /> ESTADO Y ACCESO
-                        </h4>
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
-                                <span className="text-xs text-slate-400">Estado en {selectedCategory || u.category}</span>
-                                <StatusBadge
-                                    status={selectedCategory ? (u.categoryStatuses?.[selectedCategory] || u.status) : u.status}
-                                    onClick={() => isAdminOrDev && onToggleStatus(u, selectedCategory)}
-                                />
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
-                                <span className="text-xs text-slate-400">Rol en la Web</span>
-                                {isAdminOrDev ? (
-                                    <select
-                                        value={u.role || 'usuario'}
-                                        onChange={async (e) => {
-                                            await onUpdateUser(u.id, { role: e.target.value });
-                                        }}
-                                        className="bg-transparent text-right text-sm text-slate-200 outline-none"
-                                    >
-                                        <option value="usuario" className="bg-slate-900">Usuario</option>
-                                        <option value="admin" className="bg-slate-900">Admin</option>
-                                        <option value="referee" className="bg-slate-900">Árbitro</option>
-                                        <option value="dev" className="bg-slate-900">Dev</option>
-                                    </select>
-                                ) : (
-                                    <span className="text-sm text-slate-400 uppercase">{u.role || 'usuario'}</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {isAdminOrDev && (
-                        <div className="management-section">
-                            <h4 className="management-label management-label-amber flex items-center gap-2">
-                                <ArrowRightLeft size={14} /> GESTIÓN DE PLANTEL
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    className="glass-button text-[0.7rem] py-2 flex items-center justify-center gap-2"
-                                    onClick={() => onReassignTeam(u)}
-                                >
-                                    <UserPlus size={14} /> REASIGNAR EQUIPO
-                                </button>
-                                <button
-                                    className="glass-button text-[0.7rem] py-2 flex items-center justify-center gap-2"
-                                    onClick={() => onManageCategories(u, selectedCategory || u.category || "")}
-                                >
-                                    <ArrowRightLeft size={14} /> GESTIONAR CATS
-                                </button>
-                                <button
-                                    className="glass-button text-[0.7rem] py-2 flex items-center justify-center gap-2 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 col-span-2"
-                                    onClick={() => onDeletePlayer(u)}
-                                >
-                                    <Trash2 size={14} /> ELIMINAR JUGADOR PERMANENTEMENTE
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-});
-
-
-// ===========================================
 // 2. MAIN COMPONENT & STATE
-// ===========================================
+// ============================================================================
 /**
  * Componente principal Home.
  * Renderiza el dashboard administrativo y la tabla de gestión de usuarios.
@@ -1879,99 +1269,570 @@ const Home = ({ userRole }: { userRole?: string }) => {
             )}
 
             {/* Modales Profesionales */}
-            <DeletePlayerModal
-                isOpen={deleteModal.open}
-                userName={deleteModal.userName}
-                onClose={() => setDeleteModal({ open: false, userId: null, userName: "" })}
-                onConfirm={execDelete}
-            />
+            {
+                deleteModal.open && (
+                    <div className="modal-overlay">
+                        <div className="modal-card">
+                            <AlertCircle
+                                size={32}
+                                color="#f87171"
+                                style={{ marginBottom: "15px" }}
+                            />
+                            <h3 style={{ margin: "0 0 10px 0" }}>Eliminar Jugador</h3>
+                            <p
+                                style={{
+                                    fontSize: "1rem",
+                                    opacity: 0.7,
+                                    marginBottom: "20px",
+                                }}
+                            >
+                                ¿Deseas eliminar a <strong>{deleteModal.userName}</strong>?
+                            </p>
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                <button
+                                    onClick={() =>
+                                        setDeleteModal({ open: false, userId: null, userName: "" })
+                                    }
+                                    className="glass-button"
+                                    style={{ flex: 1, background: "rgba(255,255,255,0.05)" }}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button
+                                    onClick={execDelete}
+                                    className="glass-button"
+                                    style={{ flex: 1, background: "#ef4444" }}
+                                >
+                                    ELIMINAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
-            <NewTeamModal
-                isOpen={showTeamModal}
-                onClose={() => setShowTeamModal(false)}
-                onConfirm={handleConfirmAddTeam}
-                modalInput={modalInput}
-                setModalInput={setModalInput}
-            />
+            {/* Modales de Gestión Rápida */}
+            {
+                showTeamModal && (
+                    <div className="modal-overlay" style={{ zIndex: 4000 }}>
+                        <div
+                            className="modal-card"
+                            style={{ borderTop: "2px solid var(--primary)" }}
+                        >
+                            <h3 style={{ marginBottom: "20px" }}>Nuevo Equipo</h3>
+                            <input
+                                autoFocus
+                                className="premium-input"
+                                placeholder="Nombre"
+                                value={modalInput}
+                                onChange={(e) => setModalInput(e.target.value)}
+                            />
+                            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                                <button
+                                    onClick={() => setShowTeamModal(false)}
+                                    className="glass-button button-secondary"
+                                    style={{ flex: 1 }}
+                                >
+                                    Cerrar
+                                </button>
+                                <button
+                                    onClick={handleConfirmAddTeam}
+                                    className="glass-button"
+                                    style={{ flex: 1 }}
+                                >
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
-            <NewCategoryModal
-                isOpen={showCategoryModal.open}
-                team={showCategoryModal.team}
-                onClose={() => setShowCategoryModal({ open: false, team: "" })}
-                onConfirm={handleConfirmAddCategory}
-                modalInput={modalInput}
-                setModalInput={setModalInput}
-            />
+            {
+                showCategoryModal.open && (
+                    <div className="modal-premium-overlay" onClick={() => setShowCategoryModal({ open: false, team: "" })}>
+                        <div className="modal-premium-card" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-premium-header">
+                                <h3 className="modal-premium-title">Nueva Categoría</h3>
+                                <button className="btn-close-modal" onClick={() => setShowCategoryModal({ open: false, team: "" })}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <p className="modal-premium-subtitle">Equipo: {showCategoryModal.team}</p>
+                            <input
+                                autoFocus
+                                className="premium-input-full"
+                                placeholder="Nombre (ej: Libre)"
+                                value={modalInput}
+                                onChange={(e) => setModalInput(e.target.value)}
+                            />
+                            <div className="btn-group-modal">
+                                <button
+                                    onClick={() => setShowCategoryModal({ open: false, team: "" })}
+                                    className="glass-button button-secondary flex-1"
+                                >
+                                    Cerrar
+                                </button>
+                                <button
+                                    onClick={handleConfirmAddCategory}
+                                    className="glass-button flex-1"
+                                >
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             <LazyMotion features={domAnimation}>
                 <AnimatePresence mode="wait">
-                    {showQuickRegister && (
-                        <m.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                        >
-                            <QuickRegisterModal
-                                data={quickRegisterData}
-                                onClose={() => setShowQuickRegister(false)}
-                            />
-                        </m.div>
-                    )}
+                    {
+                        showQuickRegister && (
+                            <m.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                            >
+                                <QuickRegisterModal
+                                    data={quickRegisterData}
+                                    onClose={() => setShowQuickRegister(false)}
+                                />
+                            </m.div>
+                        )
+                    }
 
-                    <ImagePreviewModal
-                        image={previewImage}
-                        onClose={() => setPreviewImage(null)}
-                    />
+                    {
+                        previewImage && (
+                            <m.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="modal-premium-overlay overlay-dark"
+                                onClick={() => setPreviewImage(null)}
+                            >
+                                <m.div
+                                    initial={{ scale: 0.95, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="modal-preview-card"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <button className="btn-close-modal-overlap" onClick={() => setPreviewImage(null)}>
+                                        <X size={20} />
+                                    </button>
+                                    <img
+                                        src={previewImage || ""}
+                                        alt="Preview"
+                                        className="img-preview"
+                                    />
+                                </m.div>
+                            </m.div>
+                        )
+                    }
                 </AnimatePresence>
             </LazyMotion>
 
-            <ReassignTeamModal
-                isOpen={movePlayerControl.open}
-                user={movePlayerControl.user}
-                teamsMetadata={teamsMetadata}
-                teams={teams}
-                moveTargetTeam={moveTargetTeam}
-                setMoveTargetTeam={setMoveTargetTeam}
-                onClose={() => {
-                    setMovePlayerControl({ open: false, user: null });
-                    setMoveTargetTeam("");
-                }}
-                onUpdateUser={updateUser}
-            />
+            {/* Modal de Control de Cambio de Equipo */}
+            {
+                movePlayerControl.open && (
+                    <div className="modal-premium-overlay" style={{ zIndex: 7000 }}>
+                        <div className="modal-premium-card" style={{ maxWidth: "450px" }}>
+                            <div className="modal-premium-header">
+                                <h3 className="modal-premium-title uppercase">Reasignar Equipo</h3>
+                                <button
+                                    className="btn-close-modal"
+                                    onClick={() => {
+                                        setMovePlayerControl({ open: false, user: null });
+                                        setMoveTargetTeam("");
+                                    }}
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
 
-            <ManageCategoriesModal
-                isOpen={categoryControl.open}
-                user={categoryControl.user}
-                currentCat={categoryControl.currentCat}
-                categoriesForTeam={categoriesForTeam}
-                onClose={() => setCategoryControl({ open: false, user: null, currentCat: "" })}
-                onUpdateUserCategories={updateUserCategories}
-            />
+                            <div className="modal-user-info">
+                                <p className="modal-user-label">Jugador a reasignar</p>
+                                <div className="modal-user-name">
+                                    {(movePlayerControl.user as any)?.name}
+                                </div>
+                                <div className="modal-user-dni text-slate-400">
+                                    DNI: {(movePlayerControl.user as any)?.dni}
+                                    <br />
+                                    Actual: {(movePlayerControl.user as any)?.team} / {(movePlayerControl.user as any)?.category}
+                                </div>
+                            </div>
 
-            <PlayerDetailsModal
-                isOpen={playerDetails.open}
-                user={playerDetails.user}
-                onClose={() => setPlayerDetails({ open: false, user: null })}
-                isAdminOrDev={isAdminOrDev}
-                onPreviewImage={setPreviewImage}
-                selectedCategory={selectedCategory}
-                onUpdateUser={updateUser}
-                onToggleStatus={handleToggleStatus}
-                onReassignTeam={(u: any) => {
-                    setMovePlayerControl({ open: true, user: u });
-                    setMoveTargetTeam(u.team || "");
-                    setPlayerDetails({ open: false, user: null });
-                }}
-                onManageCategories={(u: any, cat: string) => {
-                    setCategoryControl({ open: true, user: u, currentCat: cat });
-                    setPlayerDetails({ open: false, user: null });
-                }}
-                onDeletePlayer={(u: any) => {
-                    setDeleteModal({ open: true, userId: u.id, userName: u.name });
-                    setPlayerDetails({ open: false, user: null });
-                }}
-            />
-        </div>
+                            <div className="management-section">
+                                <h4 className="management-label management-label-blue">
+                                    <Activity size={14} /> 1. SELECCIONAR NUEVO EQUIPO
+                                </h4>
+                                <select
+                                    className="premium-input w-full mb-4"
+                                    value={moveTargetTeam}
+                                    onChange={(e) => setMoveTargetTeam(e.target.value)}
+                                >
+                                    <option value="">Seleccione Equipo...</option>
+                                    {teamsMetadata.map(t => (
+                                        <option key={t.id} value={t.name}>{t.name}</option>
+                                    ))}
+                                    {/* En caso de que haya equipos sin metadata */}
+                                    {teams.filter(t => !teamsMetadata.find(tm => tm.name === t)).map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+
+                                {moveTargetTeam && (
+                                    <>
+                                        <h4 className="management-label management-label-emerald mt-4">
+                                            <ArrowRightLeft size={14} /> 2. ASIGNAR A CATEGORÍA
+                                        </h4>
+                                        <div className="flex-gap-2">
+                                            {teamsMetadata
+                                                .find(t => t.name === moveTargetTeam)?.categories?.map((cat: string) => (
+                                                    <button
+                                                        key={cat}
+                                                        className="category-pill category-pill-move"
+                                                        onClick={async () => {
+                                                            try {
+                                                                if (!movePlayerControl.user) return;
+                                                                await updateUser((movePlayerControl.user as any).id, {
+                                                                    team: moveTargetTeam,
+                                                                    category: cat,
+                                                                    categories: [cat]
+                                                                });
+                                                                setMovePlayerControl({ open: false, user: null });
+                                                                setMoveTargetTeam("");
+                                                            } catch (error: any) {
+                                                                alert("Error al cambiar equipo y categoría: " + error.message);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {cat}
+                                                    </button>
+                                                ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal de Control de Categorías */}
+            {
+                categoryControl.open && (
+                    <div className="modal-premium-overlay" style={{ zIndex: 7000 }}>
+                        <div className="modal-premium-card" style={{ maxWidth: "450px" }}>
+                            <div className="modal-premium-header">
+                                <h3 className="modal-premium-title uppercase">Gestionar Categorías</h3>
+                                <button
+                                    className="btn-close-modal"
+                                    onClick={() =>
+                                        setCategoryControl({
+                                            open: false,
+                                            user: null,
+                                            currentCat: "",
+                                        })
+                                    }
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="modal-user-info">
+                                <p className="modal-user-label">Jugador</p>
+                                <div className="modal-user-name">
+                                    {(categoryControl.user as any)?.name}
+                                </div>
+                                <div className="modal-user-dni">
+                                    DNI: {(categoryControl.user as any)?.dni}
+                                </div>
+                            </div>
+
+                            <div className="management-section">
+                                <h4 className="management-label management-label-blue">
+                                    <ArrowRightLeft size={14} /> MOVER CATEGORÍA
+                                </h4>
+                                <p className="management-action-subtitle">
+                                    Cambiar "{categoryControl.currentCat}" por:
+                                </p>
+                                <div className="flex-gap-2">
+                                    {categoriesForTeam
+                                        .filter((c) => c !== categoryControl.currentCat)
+                                        .map((cat) => (
+                                            <button
+                                                key={cat}
+                                                className="category-pill category-pill-move"
+                                                onClick={async () => {
+                                                    try {
+                                                        if (!categoryControl.user) return;
+                                                        await updateUserCategories(
+                                                            (categoryControl.user as any).id,
+                                                            categoryControl.currentCat,
+                                                            cat,
+                                                            "move",
+                                                        );
+                                                        setCategoryControl({
+                                                            open: false,
+                                                            user: null,
+                                                            currentCat: "",
+                                                        });
+                                                    } catch (error: any) {
+                                                        alert("Error al mover categoría: " + error.message);
+                                                    }
+                                                }}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                </div>
+                            </div>
+
+                            <div className="management-section">
+                                <h4 className="management-label management-label-emerald">
+                                    <UserPlus size={14} /> AÑADIR A OTRA CATEGORÍA
+                                </h4>
+                                <p className="management-action-subtitle">
+                                    Mantener actual y agregar:
+                                </p>
+                                <div className="flex-gap-2">
+                                    {categoriesForTeam
+                                        .filter((c) => {
+                                            const userCats = Array.isArray((categoryControl.user as any)?.categories)
+                                                ? (categoryControl.user as any).categories
+                                                : [(categoryControl.user as any)?.category];
+                                            return !userCats.includes(c);
+                                        })
+                                        .map((cat) => (
+                                            <button
+                                                key={cat}
+                                                className="category-pill category-pill-add"
+                                                onClick={async () => {
+                                                    try {
+                                                        if (!categoryControl.user) return;
+                                                        await updateUserCategories(
+                                                            (categoryControl.user as any).id,
+                                                            "",
+                                                            cat,
+                                                            "add",
+                                                        );
+                                                        setCategoryControl({
+                                                            open: false,
+                                                            user: null,
+                                                            currentCat: "",
+                                                        });
+                                                    } catch (error: any) {
+                                                        alert("Error al añadir categoría: " + (error?.message || "Error desconocido"));
+                                                    }
+                                                }}
+                                            >
+                                                <Plus size={12} /> {cat}
+                                            </button>
+                                        ))}
+                                </div>
+                            </div>
+
+                            <div className="management-section">
+                                <h4 className="management-label management-label-red">
+                                    <Trash2 size={14} /> ELIMINAR DE ESTA CATEGORÍA
+                                </h4>
+                                <p className="management-action-subtitle">
+                                    Quitar a este jugador de "{categoryControl.currentCat}":
+                                </p>
+                                <button
+                                    className="category-pill category-pill-remove"
+                                    onClick={async () => {
+                                        if (
+                                            window.confirm(
+                                                `¿Seguro que quieres quitar a este jugador de la categoría ${categoryControl.currentCat}?`,
+                                            )
+                                        ) {
+                                            try {
+                                                if (!categoryControl.user) return;
+                                                await updateUserCategories(
+                                                    (categoryControl.user as any).id,
+                                                    categoryControl.currentCat || "",
+                                                    "",
+                                                    "remove",
+                                                );
+                                                setCategoryControl({
+                                                    open: false,
+                                                    user: null,
+                                                    currentCat: "",
+                                                });
+                                            } catch (error: any) {
+                                                alert("Error al eliminar categoría: " + (error?.message || "Error desconocido"));
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <X size={12} /> QUITAR DE{" "}
+                                    {categoryControl.currentCat?.toUpperCase() || ""}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Modal de Detalles del Jugador */}
+            {playerDetails.open && playerDetails.user && (
+                <div className="modal-premium-overlay" style={{ zIndex: 6000 }} onClick={() => setPlayerDetails({ open: false, user: null })}>
+                    <div className="modal-premium-card" style={{ maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-premium-header">
+                            <h3 className="modal-premium-title uppercase">Detalles del Jugador</h3>
+                            <button
+                                className="btn-close-modal"
+                                onClick={() => setPlayerDetails({ open: false, user: null })}
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col items-center mb-6">
+                            <div
+                                className="user-avatar-large mb-4 cursor-pointer relative group"
+                                onClick={() => playerDetails.user.photo && setPreviewImage(playerDetails.user.photo)}
+                            >
+                                {playerDetails.user.photo || playerDetails.user.photoURL || playerDetails.user.imagen_url || playerDetails.user.imagen ? (
+                                    <img src={playerDetails.user.photo || playerDetails.user.photoURL || playerDetails.user.imagen_url || playerDetails.user.imagen} alt="" className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center opacity-20">
+                                        <UserCircle size={60} />
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Search size={20} className="text-white" />
+                                </div>
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-100 text-center">
+                                {playerDetails.user.name || (playerDetails.user.nombre && playerDetails.user.apellido ? `${playerDetails.user.nombre} ${playerDetails.user.apellido}` : (playerDetails.user.nombre || playerDetails.user.apellido || 'Sin nombre'))}
+                            </h2>
+                            <p className="text-sm text-primary font-medium">{playerDetails.user.team} - {playerDetails.user.category}</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* DNI */}
+                            <div className="management-section no-margin-top">
+                                <h4 className="management-label management-label-blue flex items-center gap-2">
+                                    <CreditCard size={14} /> INFORMACIÓN PERSONAL
+                                </h4>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-xs text-slate-400">DNI</span>
+                                        {isAdminOrDev ? (
+                                            <input
+                                                type="text"
+                                                defaultValue={playerDetails.user.dni}
+                                                className="bg-transparent text-right text-sm font-mono text-slate-200 outline-none border-b border-white/10 focus:border-primary px-1"
+                                                onBlur={async (e) => {
+                                                    if (e.target.value !== playerDetails.user.dni) {
+                                                        await updateUser(playerDetails.user.id, { dni: e.target.value });
+                                                    }
+                                                }}
+                                            />
+                                        ) : (
+                                            <span className="text-sm font-mono text-slate-200">********</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-xs text-slate-400">Dorsal</span>
+                                        <input
+                                            type="text"
+                                            defaultValue={playerDetails.user.number || ""}
+                                            className="bg-transparent text-right text-sm font-mono text-slate-200 outline-none border-b border-white/10 focus:border-primary px-1 w-12"
+                                            placeholder="N/A"
+                                            disabled={!isAdminOrDev}
+                                            onBlur={async (e) => {
+                                                if (e.target.value !== playerDetails.user.number) {
+                                                    await updateUser(playerDetails.user.id, { number: e.target.value });
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ESTADO Y ROL */}
+                            <div className="management-section">
+                                <h4 className="management-label management-label-emerald flex items-center gap-2">
+                                    <Shield size={14} /> ESTADO Y ACCESO
+                                </h4>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-xs text-slate-400">Estado en {selectedCategory || playerDetails.user.category}</span>
+                                        <StatusBadge
+                                            status={selectedCategory ? (playerDetails.user.categoryStatuses?.[selectedCategory] || playerDetails.user.status) : playerDetails.user.status}
+                                            onClick={() => isAdminOrDev && handleToggleStatus(playerDetails.user, selectedCategory)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-xs text-slate-400">Rol en la Web</span>
+                                        {isAdminOrDev ? (
+                                            <select
+                                                value={playerDetails.user.role || 'usuario'}
+                                                onChange={async (e) => {
+                                                    await updateUser(playerDetails.user.id, { role: e.target.value });
+                                                }}
+                                                className="bg-transparent text-right text-sm text-slate-200 outline-none"
+                                            >
+                                                <option value="usuario" className="bg-slate-900">Usuario</option>
+                                                <option value="admin" className="bg-slate-900">Admin</option>
+                                                <option value="referee" className="bg-slate-900">Árbitro</option>
+                                                <option value="dev" className="bg-slate-900">Dev</option>
+                                            </select>
+                                        ) : (
+                                            <span className="text-sm text-slate-400 uppercase">{playerDetails.user.role || 'usuario'}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* GESTIÓN DE EQUIPO */}
+                            {isAdminOrDev && (
+                                <div className="management-section">
+                                    <h4 className="management-label management-label-amber flex items-center gap-2">
+                                        <ArrowRightLeft size={14} /> GESTIÓN DE PLANTEL
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            className="glass-button text-[0.7rem] py-2 flex items-center justify-center gap-2"
+                                            onClick={() => {
+                                                setMovePlayerControl({ open: true, user: playerDetails.user });
+                                                setMoveTargetTeam(playerDetails.user.team || "");
+                                                setPlayerDetails({ open: false, user: null });
+                                            }}
+                                        >
+                                            <UserPlus size={14} /> REASIGNAR EQUIPO
+                                        </button>
+                                        <button
+                                            className="glass-button text-[0.7rem] py-2 flex items-center justify-center gap-2"
+                                            onClick={() => {
+                                                setCategoryControl({ open: true, user: playerDetails.user, currentCat: selectedCategory || playerDetails.user.category || "" });
+                                                setPlayerDetails({ open: false, user: null });
+                                            }}
+                                        >
+                                            <ArrowRightLeft size={14} /> GESTIONAR CATS
+                                        </button>
+                                        <button
+                                            className="glass-button text-[0.7rem] py-2 flex items-center justify-center gap-2 bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 col-span-2"
+                                            onClick={() => {
+                                                setDeleteModal({ open: true, userId: playerDetails.user.id, userName: playerDetails.user.name });
+                                                setPlayerDetails({ open: false, user: null });
+                                            }}
+                                        >
+                                            <Trash2 size={14} /> ELIMINAR JUGADOR PERMANENTEMENTE
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div >
     );
 };
 

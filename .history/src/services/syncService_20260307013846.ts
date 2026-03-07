@@ -113,11 +113,7 @@ export const syncMatchDayData = async (options: {
             const playersToProcess = players.filter(p => p.face_api);
             if (playersToProcess.length === 0) return;
 
-            const { writeBatch } = await import('firebase/firestore');
-            const batch = writeBatch(db);
-            let count = 0;
-
-            for (const p of playersToProcess) {
+            await Promise.all(playersToProcess.map(async (p) => {
                 const playerId = String(p.jleid || p.id || p.dni);
                 const userRef = doc(db, 'users', playerId);
 
@@ -138,13 +134,8 @@ export const syncMatchDayData = async (options: {
                     categories: arrayUnion(category),
                 };
 
-                batch.set(userRef, payload, { merge: true });
-                count++;
-            }
-
-            if (count > 0) {
-                await batch.commit();
-            }
+                await setDoc(userRef, payload, { merge: true });
+            }));
         };
 
         // ── Paso 3: Procesar partidos en paralelo controlado ──────────────────
