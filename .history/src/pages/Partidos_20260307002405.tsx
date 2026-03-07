@@ -4,13 +4,13 @@
  * Permite visualizar partidos en vivo, programados y finalizados.
  * Incluye funcionalidad para eliminar partidos (protegida con código).
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Calendar, Clock, Activity, Trash2, Square, ScanFace, Search, LogIn, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Calendar, Clock, ChevronRight, Activity, Trash2, Square, ScanFace, Search, Plus, LogIn } from 'lucide-react';
 import { m } from 'framer-motion';
 import AppLogo from '../Applogo.webp';
 import { subscribeToMatches, deleteMatch } from '../services/matchesService';
-import { syncMatchDayData } from '../services/syncService';
+import { syncADCCData } from '../services/syncService';
 import { subscribeToTeams, Team } from '../services/teamsService';
 import { getAdccImageUrl } from '../utils/imageUtils';
 
@@ -23,12 +23,6 @@ const Partidos = ({ userRole }: { userRole: string }) => {
     const [showPast, setShowPast] = useState(false);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
-
-    // Sync state
-    const [syncRunning, setSyncRunning] = useState(false);
-    const [syncLogs, setSyncLogs] = useState<string[]>([]);
-    const [showSyncPanel, setShowSyncPanel] = useState(false);
-    const logsEndRef = useRef<HTMLDivElement>(null);
 
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -62,25 +56,16 @@ const Partidos = ({ userRole }: { userRole: string }) => {
         };
     }, []);
 
-    // Auto-scroll log panel to bottom
-    useEffect(() => {
-        logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [syncLogs]);
-
-    const handleSync = async () => {
-        if (syncRunning) return;
-        setSyncRunning(true);
-        setSyncLogs([]);
-        setShowSyncPanel(true);
+    const handleManualSync = async () => {
         try {
-            await syncMatchDayData({
-                userRole,
-                onProgress: (msg: string) => setSyncLogs(prev => [...prev, msg]),
-            });
-        } catch (err: any) {
-            setSyncLogs(prev => [...prev, `💥 Error inesperado: ${err?.message || err}`]);
+            setLoading(true);
+            await syncADCCData({ userRole });
+            alert("Sincronización completada con éxito");
+        } catch (err) {
+            console.error("Manual sync failed:", err);
+            alert("Error en la sincronización. Intente de nuevo más tarde.");
         } finally {
-            setSyncRunning(false);
+            setLoading(false);
         }
     };
 
@@ -181,63 +166,16 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                         <h1 className="list-title">Lista de <span className="text-highlight" style={{ color: 'var(--primary)' }}>Partidos</span></h1>
                         <p className="list-subtitle">Sigue los resultados en tiempo real</p>
                     </div>
-                    {/* Botón de importación ADCC — solo admin/dev */}
-                    {(userRole === 'admin' || userRole === 'dev') && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-                            <button
-                                onClick={handleSync}
-                                disabled={syncRunning}
-                                className="glass-button"
-                                style={{
-                                    background: syncRunning ? 'rgba(0,135,81,0.08)' : 'rgba(0,135,81,0.18)',
-                                    border: '1px solid var(--primary)',
-                                    color: 'var(--primary)',
-                                    opacity: syncRunning ? 0.7 : 1,
-                                    display: 'flex', alignItems: 'center', gap: '8px'
-                                }}
-                            >
-                                <RefreshCw size={15} style={{ animation: syncRunning ? 'spin 1s linear infinite' : 'none' }} />
-                                {syncRunning ? 'IMPORTANDO...' : 'IMPORTAR PARTIDOS ADCC'}
-                            </button>
-                            {syncLogs.length > 0 && (
-                                <button
-                                    onClick={() => setShowSyncPanel(p => !p)}
-                                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                >
-                                    {showSyncPanel ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                    {showSyncPanel ? 'Ocultar log' : 'Ver log'}
-                                </button>
-                            )}
-                        </div>
+                    {userRole !== 'public' && (
+                        <button
+                            onClick={handleManualSync}
+                            className="glass-button"
+                            style={{ background: 'rgba(0, 135, 81, 0.15)', border: '1px solid var(--primary)', color: 'var(--primary)' }}
+                        >
+                            <Activity size={16} /> SINCRONIZAR AHORA
+                        </button>
                     )}
                 </div>
-
-                {/* Panel de log en vivo */}
-                {showSyncPanel && syncLogs.length > 0 && (
-                    <div style={{
-                        marginTop: '12px',
-                        background: 'rgba(0,0,0,0.6)',
-                        border: '1px solid rgba(0,135,81,0.25)',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                        maxHeight: '220px',
-                        overflowY: 'auto',
-                        fontFamily: 'monospace',
-                        fontSize: '0.75rem',
-                        lineHeight: '1.6',
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>📋 LOG DE SINCRONIZACIÓN</span>
-                            <button onClick={() => setShowSyncPanel(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={12} /></button>
-                        </div>
-                        {syncLogs.map((line, i) => (
-                            <div key={i} style={{ color: line.includes('❌') || line.includes('💥') ? '#ef4444' : line.includes('✅') || line.includes('✔') ? '#10b981' : 'rgba(255,255,255,0.75)' }}>
-                                {line}
-                            </div>
-                        ))}
-                        <div ref={logsEndRef} />
-                    </div>
-                )}
 
                 <div className="header-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', marginTop: '20px' }}>
                     {(userRole === 'admin' || userRole === 'dev') && (
@@ -454,40 +392,41 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                                     </div>
                                 </div>
                             );
+            );
                         };
 
-                        return (
+                    return (
+                    <>
+                        {upcomingMatches.length === 0 && pastMatches.length === 0 && (
+                            <div className="glass-panel empty-state-card">
+                                <Shield size={48} style={{ opacity: 0.1, marginBottom: '1.25rem' }} />
+                                <p className="list-subtitle">No se encontraron partidos con este filtro.</p>
+                            </div>
+                        )}
+
+                        {upcomingMatches.length > 0 && (
                             <>
-                                {upcomingMatches.length === 0 && pastMatches.length === 0 && (
-                                    <div className="glass-panel empty-state-card">
-                                        <Shield size={48} style={{ opacity: 0.1, marginBottom: '1.25rem' }} />
-                                        <p className="list-subtitle">No se encontraron partidos con este filtro.</p>
-                                    </div>
-                                )}
-
-                                {upcomingMatches.length > 0 && (
-                                    <>
-                                        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Activity size={14} /> Próximos & En Vivo
-                                        </h2>
-                                        {upcomingMatches.map(renderMatchCard)}
-                                    </>
-                                )}
-
-                                {pastMatches.length > 0 && (
-                                    <div style={{ marginTop: '30px' }}>
-                                        <button
-                                            onClick={() => setShowPast(p => !p)}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', padding: 0 }}
-                                        >
-                                            <Clock size={14} /> Ya Disputados ({pastMatches.length})
-                                            <span style={{ fontSize: '0.75rem', marginLeft: '4px' }}>{showPast ? '▲' : '▼'}</span>
-                                        </button>
-                                        {showPast && pastMatches.map(renderMatchCard)}
-                                    </div>
-                                )}
+                                <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Activity size={14} /> Próximos & En Vivo
+                                </h2>
+                                {upcomingMatches.map(renderMatchCard)}
                             </>
-                        );
+                        )}
+
+                        {pastMatches.length > 0 && (
+                            <div style={{ marginTop: '30px' }}>
+                                <button
+                                    onClick={() => setShowPast(p => !p)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', padding: 0 }}
+                                >
+                                    <Clock size={14} /> Ya Disputados ({pastMatches.length})
+                                    <span style={{ fontSize: '0.75rem', marginLeft: '4px' }}>{showPast ? '▲' : '▼'}</span>
+                                </button>
+                                {showPast && pastMatches.map(renderMatchCard)}
+                            </div>
+                        )}
+                    </>
+                    );
                     })()}
                 </div>
             )

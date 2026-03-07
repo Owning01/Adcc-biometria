@@ -877,7 +877,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                     {match.status === 'scheduled' ? 'INICIAR PARTIDO' :
                                         match.status === 'live' ? 'EN VIVO' :
                                             match.status === 'halftime' ? 'ENTRETIEMPO' :
-                                                match.status === 'finished' ? 'FINALIZADO' : (match.status?.toUpperCase() ?? 'DESCONOCIDO')}
+                                                match.status === 'finished' ? 'FINALIZADO' : match.status.toUpperCase()}
                                 </div>
                             )}
                         </div>

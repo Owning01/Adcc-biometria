@@ -10,8 +10,7 @@ const MIN_DATE = '2026-03-01';
 
 function isMatchInScope(match: any): boolean {
     const dateStr = match.dia?.split(' ')[0] || '';
-    // Strict requirement: 2026 AND from March onwards
-    return dateStr.startsWith('2026-') && dateStr >= MIN_DATE;
+    return dateStr >= MIN_DATE;
 }
 
 /**
