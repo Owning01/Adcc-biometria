@@ -81,6 +81,13 @@ const CheckIn = () => {
                 const descriptor = await getFaceDescriptorFromCrop(croppedCanvas);
 
                 if (descriptor) {
+                    const fakeDetection = { box: { width: mpDetection.boundingBox.width } };
+                    const qualityFull = checkFaceQuality(fakeDetection, video);
+                    if (!qualityFull.ok) {
+                        setFeedbackMsg(qualityFull.reason);
+                        return;
+                    }
+
                     // ── PASO 5: Matching contra los descriptores registrados ──
                     const match = matcher.findBestMatch(descriptor);
 
@@ -133,7 +140,7 @@ const CheckIn = () => {
             }
         }, 800);
         return () => clearInterval(interval);
-    }, [matcher, users, activeMatches, pendingNumberUser, matchResult]);
+    }, [matcher, isProcessing, users, activeMatches, pendingNumberUser, matchResult]);
 
     const handleConfirmNumber = async () => {
         if (!pendingNumberUser || !shirtNumber) return;

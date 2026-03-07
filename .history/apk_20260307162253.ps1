@@ -5,7 +5,7 @@
 $ErrorActionPreference = "Stop"
 
 Write-Host "------------------------------------------------" -ForegroundColor Cyan
-Write-Host "       Apk compilacion." -ForegroundColor Cyan
+Write-Host "       ADCC BIOMETRIC -" -ForegroundColor Cyan
 Write-Host "------------------------------------------------" -ForegroundColor Cyan
 
 # PVERIFICACIÓN PREVIA: GITHUB CLI Y CORRECCIÓN DE PATH

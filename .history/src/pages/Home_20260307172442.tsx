@@ -1310,7 +1310,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
 
         const unsubTeams = subscribeToTeams((data) => {
             setTeamsMetadata(data);
-            try { localStorage.setItem(CACHE_KEY_HOME_TEAMS_META, JSON.stringify(data)); } catch { /* cuota llena */ }
         });
 
         // Cargar contador de jugadores
@@ -1334,7 +1333,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
             // Cargar solo los usuarios del equipo seleccionado
             unsubUsers = subscribeToUsersByTeam(selectedTeam, (data) => {
                 setUsers(data);
-                try { localStorage.setItem(CACHE_KEY_HOME_USERS, JSON.stringify(data)); } catch { /* cuota llena */ }
             });
         } else if (searchTerm && searchTerm.length >= 3) {
             // Búsqueda en el servidor si no hay equipo seleccionado

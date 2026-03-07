@@ -1213,24 +1213,12 @@ const PlayerDetailsModal = React.memo(({
  * Componente principal Home.
  * Renderiza el dashboard administrativo y la tabla de gestión de usuarios.
  */
-// ============================================================
-// CONSTANTS: Caché claves localStorage
-// ============================================================
-const CACHE_KEY_HOME_USERS = 'adcc_cache_home_users';
-const CACHE_KEY_HOME_TEAMS_META = 'adcc_cache_home_teams_meta';
-
 const Home = ({ userRole }: { userRole?: string }) => {
     // --- ESTADOS PRINCIPALES ---
-    const [users, setUsers] = useState<any[]>(() => {
-        try { const c = localStorage.getItem(CACHE_KEY_HOME_USERS); return c ? JSON.parse(c) : []; } catch { return []; }
-    });
+    const [users, setUsers] = useState<any[]>([]);
     const [history, setHistory] = useState<any[]>([]);
-    const [teamsMetadata, setTeamsMetadata] = useState<Team[]>(() => {
-        try { const c = localStorage.getItem(CACHE_KEY_HOME_TEAMS_META); return c ? JSON.parse(c) : []; } catch { return []; }
-    });
-    const [loading, setLoading] = useState(() => {
-        try { return !localStorage.getItem(CACHE_KEY_HOME_USERS); } catch { return true; }
-    });
+    const [teamsMetadata, setTeamsMetadata] = useState<Team[]>([]);
+    const [loading, setLoading] = useState(true);
     const [remoteData, setRemoteData] = useState<any>(null);
     const [remoteVersion, setRemoteVersion] = useState("...");
     const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -1310,7 +1298,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
 
         const unsubTeams = subscribeToTeams((data) => {
             setTeamsMetadata(data);
-            try { localStorage.setItem(CACHE_KEY_HOME_TEAMS_META, JSON.stringify(data)); } catch { /* cuota llena */ }
         });
 
         // Cargar contador de jugadores
@@ -1334,7 +1321,6 @@ const Home = ({ userRole }: { userRole?: string }) => {
             // Cargar solo los usuarios del equipo seleccionado
             unsubUsers = subscribeToUsersByTeam(selectedTeam, (data) => {
                 setUsers(data);
-                try { localStorage.setItem(CACHE_KEY_HOME_USERS, JSON.stringify(data)); } catch { /* cuota llena */ }
             });
         } else if (searchTerm && searchTerm.length >= 3) {
             // Búsqueda en el servidor si no hay equipo seleccionado

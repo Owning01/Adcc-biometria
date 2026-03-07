@@ -3,9 +3,8 @@ import Webcam from 'react-webcam';
 import { getMatchDayUsers } from '../services/db';
 import { getMatches, getMatch, updateMatch } from '../services/matchesService';
 import { createMatcher } from '../services/faceService';
-import { cropFaceFromVideo, getFaceDescriptorFromCrop } from '../services/faceServiceLocal';
+import { getFaceDataLocal } from '../services/faceServiceLocal';
 import { checkFaceQuality } from '../services/hybridFaceService';
-import { detectFaceMediaPipe } from '../services/mediapipeService';
 import { playSuccessSound } from '../services/audioService';
 import { CheckCircle, ShieldCheck, RefreshCw, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,45 +43,28 @@ const CheckIn = () => {
 
     useEffect(() => {
         let interval: any;
-        let running = false; // bandera local para evitar solapamiento sin bloquear el UI
-
         const detectFace = async () => {
-            if (!webcamRef.current || !webcamRef.current.video || !matcher || running) return;
+            if (!webcamRef.current || !webcamRef.current.video || !matcher || isProcessing) return;
 
             const video = webcamRef.current.video;
             if (video.readyState !== 4) return;
 
-            running = true;
             setIsProcessing(true);
 
             try {
-                // ── PASO 1: MediaPipe detecta la posición del rostro (≈20ms) ──
-                const mpDetection = await detectFaceMediaPipe(video);
+                const faceData = await getFaceDataLocal(video);
 
-                if (!mpDetection) {
-                    setFeedbackMsg('Buscando rostro...');
-                    return;
-                }
+                if (faceData && faceData.descriptor && faceData.detection) {
+                    const quality = checkFaceQuality(faceData.detection, video);
 
-                // ── PASO 2: Verificar calidad/distancia con MediaPipe ──
-                const quality = checkFaceQuality(mpDetection, video);
-                if (!quality.ok) {
-                    setFeedbackMsg(quality.reason);
-                    return;
-                }
+                    if (!quality.ok) {
+                        setFeedbackMsg(quality.reason);
+                        setTimeout(() => setIsProcessing(false), 500);
+                        return;
+                    }
 
-                setFeedbackMsg('');
-
-                // ── PASO 3: Recortar SOLO el área del rostro (160×160px) ──
-                const croppedCanvas = cropFaceFromVideo(video, mpDetection.boundingBox);
-                if (!croppedCanvas) return;
-
-                // ── PASO 4: Face-API procesa solo el recorte pequeño (≈300-600ms vs 5-10s) ──
-                const descriptor = await getFaceDescriptorFromCrop(croppedCanvas);
-
-                if (descriptor) {
-                    // ── PASO 5: Matching contra los descriptores registrados ──
-                    const match = matcher.findBestMatch(descriptor);
+                    setFeedbackMsg('');
+                    const match = matcher.findBestMatch(faceData.descriptor);
 
                     if (match.label !== 'unknown') {
                         const user = users.find(u => u.id === match.label);
@@ -119,21 +101,19 @@ const CheckIn = () => {
                     }
                 }
             } catch (err) {
-                // Error silencioso de detección
+                // Error
             } finally {
-                running = false;
-                setIsProcessing(false);
+                setTimeout(() => setIsProcessing(false), 1500);
             }
         };
 
-        // Intervalo reducido a 800ms: cada ciclo es mucho más rápido ahora con Crop-First
         interval = setInterval(() => {
             if (!pendingNumberUser && !matchResult) {
                 detectFace();
             }
-        }, 800);
+        }, 1500);
         return () => clearInterval(interval);
-    }, [matcher, users, activeMatches, pendingNumberUser, matchResult]);
+    }, [matcher, isProcessing, users, activeMatches, pendingNumberUser, matchResult]);
 
     const handleConfirmNumber = async () => {
         if (!pendingNumberUser || !shirtNumber) return;

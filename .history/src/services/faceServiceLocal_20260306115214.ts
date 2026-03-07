@@ -27,16 +27,14 @@ export const loadModelsLocal = async () => {
     if (modelsLoaded) return { success: true };
 
     try {
-        // Intentar backends en orden de rendimiento: WebGL > WASM > CPU
-        const backends = ['webgl', 'wasm', 'cpu'];
-        for (const backend of backends) {
-            try {
-                await faceapi.tf.setBackend(backend);
-                await faceapi.tf.ready();
-                break; // Éxito, salir del loop
-            } catch (_e) {
-                // Probar el siguiente
-            }
+
+        // Intentar activar WebGL si está disponible para aceleración
+        try {
+            await faceapi.tf.setBackend('webgl');
+            await faceapi.tf.ready();
+        } catch (e: any) {
+            // WebGL no disponible
+            await faceapi.tf.setBackend('cpu');
         }
     } catch (e: any) {
         // Error configurando backend
@@ -174,82 +172,6 @@ export const getFaceDataFromImage = async (imageElement: HTMLImageElement) => {
         return null;
     } catch (err) {
         // Error en detección desde imagen
-        return null;
-    }
-};
-
-// ============================================================================
-// 3. CROP-FIRST: RECORTE INTELIGENTE + RECONOCIMIENTO RÁPIDO
-// ============================================================================
-
-/**
- * Recorta el rostro detectado por MediaPipe en un canvas pequeño.
- * Reducir la resolución de entrada del modelo es la optimización principal.
- *
- * @param videoElement - El video element de react-webcam.
- * @param boundingBox  - El boundingBox retornado por MediaPipe (originX, originY, width, height).
- * @param paddingFactor - Cuánto margen añadir al recorte (0.35 = 35% extra alrededor).
- * @param outputSize   - Tamaño del canvas de salida en píxeles (por defecto 160x160).
- * @returns HTMLCanvasElement con solo la cara o null si falla.
- */
-export const cropFaceFromVideo = (
-    videoElement: HTMLVideoElement,
-    boundingBox: { originX: number; originY: number; width: number; height: number },
-    paddingFactor = 0.35,
-    outputSize = 160
-): HTMLCanvasElement | null => {
-    try {
-        const { originX, originY, width, height } = boundingBox;
-        const vW = videoElement.videoWidth;
-        const vH = videoElement.videoHeight;
-
-        // Añadir margen proporcional al tamaño del rostro para incluir frente y mentón
-        const pad = Math.max(width, height) * paddingFactor;
-        const x = Math.max(0, originX - pad);
-        const y = Math.max(0, originY - pad);
-        const w = Math.min(width + pad * 2, vW - x);
-        const h = Math.min(height + pad * 2, vH - y);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = outputSize;
-        canvas.height = outputSize;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return null;
-
-        ctx.drawImage(videoElement, x, y, w, h, 0, 0, outputSize, outputSize);
-        return canvas;
-    } catch {
-        return null;
-    }
-};
-
-/**
- * Extrae un descriptor facial de un canvas PRE-RECORTADO.
- * La cara ya está aislada, así que usamos TinyFaceDetector primero (ultra-rápido).
- * Esto es hasta 6x más rápido que procesar el frame completo con SSD.
- *
- * @param croppedCanvas - Canvas con solo el rostro (ej. 160x160).
- * @returns Float32Array descriptor (128 floats) o null.
- */
-export const getFaceDescriptorFromCrop = async (croppedCanvas: HTMLCanvasElement): Promise<Float32Array | null> => {
-    if (!croppedCanvas) return null;
-    try {
-        // Intento 1: TinyFaceDetector — rápido, suficiente para imagen ya recortada
-        const tinyOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.15 });
-        let result = await faceapi.detectSingleFace(croppedCanvas, tinyOptions)
-            .withFaceLandmarks(true)   // true = usar el modelo de 68 landmarks ligero
-            .withFaceDescriptor();
-
-        if (result) return result.descriptor;
-
-        // Intento 2: SSD como fallback si Tiny no encontró nada
-        const ssdOptions = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 });
-        result = await faceapi.detectSingleFace(croppedCanvas, ssdOptions)
-            .withFaceLandmarks()
-            .withFaceDescriptor() as any;
-
-        return result ? result.descriptor : null;
-    } catch {
         return null;
     }
 };
