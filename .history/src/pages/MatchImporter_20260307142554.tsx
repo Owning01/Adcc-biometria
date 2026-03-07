@@ -103,21 +103,6 @@ export default function MatchImporter() {
                         {status === 'loading_matches' ? 'Cargando...' : 'Actualizar Partidos'}
                     </button>
 
-                    <button
-                        onClick={() => fixAllStoredPhotos()}
-                        disabled={status === 'processing' || status === 'loading_matches'}
-                        className="glass-button"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            border: '1px solid #a855f7',
-                            color: '#a855f7'
-                        }}
-                    >
-                        <RefreshCw size={18} className={status === 'processing' ? 'spin' : ''} /> Reparar Fotos Almacenadas
-                    </button>
-
                     {(status === 'idle' || status === 'ready' || status === 'paused' || status === 'finished') && (
                         <>
                             <button
@@ -170,6 +155,20 @@ export default function MatchImporter() {
                                 }}
                             >
                                 <Play size={18} /> {status === 'paused' ? 'Continuar' : 'Iniciar Procesamiento Global'}
+                            </button>
+                            <button
+                                onClick={() => fixAllStoredPhotos()}
+                                disabled={status === 'processing'}
+                                className="glass-button"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    border: '1px solid #a855f7',
+                                    color: '#a855f7'
+                                }}
+                            >
+                                <RefreshCw size={18} className={status === 'processing' ? 'spin' : ''} /> Reparar Fotos Almacenadas
                             </button>
                         </>
                     )}

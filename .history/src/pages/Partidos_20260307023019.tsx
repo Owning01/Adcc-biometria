@@ -10,7 +10,7 @@ import { Shield, Calendar, Clock, Activity, Trash2, Square, ScanFace, Search, Lo
 import { m } from 'framer-motion';
 import { useMatchBatchProcessor } from '../contexts/MatchBatchProcessorContext';
 
-
+import AppLogo from '../Applogo.webp';
 import { subscribeToMatches, deleteMatch, getMatches } from '../services/matchesService';
 import { syncMatchDayData } from '../services/syncService';
 import { subscribeToTeams, Team } from '../services/teamsService';
@@ -23,7 +23,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
     return (
         <m.div
             layout
-            initial={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="glass-panel"
@@ -145,7 +145,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
     const [syncRunning, setSyncRunning] = useState(false);
     const [syncLogs, setSyncLogs] = useState<string[]>([]);
     const [showSyncPanel, setShowSyncPanel] = useState(false);
-    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedDate, setSelectedDate] = useState(getLocalDateStr(new Date()));
     const [selectedTournament, setSelectedTournament] = useState<string>('todos');
     const [searchTerm, setSearchTerm] = useState('');
     const [showPast, setShowPast] = useState(false);
@@ -496,7 +496,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                             className="premium-input"
                             style={{ flex: '1 1 140px', minWidth: '140px', background: 'rgba(0, 51, 102, 0.5)', color: 'white', border: '1px solid rgba(0, 135, 81, 0.3)' }}
                         >
-                            <option value="todos">🏆 Todos los Torneos</option>
+                            <option value="all">🏆 Todos los Torneos</option>
                             {tournamentOptions.map(tName => (
                                 <option key={tName} value={tName}>{tName}</option>
                             ))}

@@ -6,11 +6,9 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Calendar, Clock, Activity, Trash2, Square, ScanFace, Search, LogIn, RefreshCw, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Filter, AlertCircle, Play } from 'lucide-react';
+import { Shield, Calendar, Clock, Activity, Trash2, Square, ScanFace, Search, LogIn, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { m } from 'framer-motion';
-import { useMatchBatchProcessor } from '../contexts/MatchBatchProcessorContext';
-
-
+import AppLogo from '../Applogo.webp';
 import { subscribeToMatches, deleteMatch, getMatches } from '../services/matchesService';
 import { syncMatchDayData } from '../services/syncService';
 import { subscribeToTeams, Team } from '../services/teamsService';
@@ -23,7 +21,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
     return (
         <m.div
             layout
-            initial={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="glass-panel"
@@ -136,7 +134,6 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
 
 const Partidos = ({ userRole }: { userRole: string }) => {
     const [matches, setMatches] = useState<any[]>([]);
-    const { startSpecificProcessing, status: processorStatus } = useMatchBatchProcessor();
     const [teamsMetadata, setTeamsMetadata] = useState<Team[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
@@ -145,7 +142,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
     const [syncRunning, setSyncRunning] = useState(false);
     const [syncLogs, setSyncLogs] = useState<string[]>([]);
     const [showSyncPanel, setShowSyncPanel] = useState(false);
-    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedDate, setSelectedDate] = useState(getLocalDateStr(new Date()));
     const [selectedTournament, setSelectedTournament] = useState<string>('todos');
     const [searchTerm, setSearchTerm] = useState('');
     const [showPast, setShowPast] = useState(false);
@@ -165,7 +162,6 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                 return `${dateA}T${timeA}` > `${dateB}T${timeB}` ? 1 : -1;
             });
             setMatches(sorted);
-            setLoading(false);
         });
 
         const unsubTeams = subscribeToTeams((data) => {
@@ -184,7 +180,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
     }, []);
 
     // Memoize the filtered lists
-    const { upcomingMatches, pastMatches, tournamentOptions, filteredMatches } = React.useMemo(() => {
+    const { upcomingMatches, pastMatches, tournamentOptions } = React.useMemo(() => {
         const todayStr = new Date().toISOString().split('T')[0];
 
         const normalizedSearch = searchTerm.toLowerCase().trim();
@@ -228,7 +224,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                 .map(m => String(m.tournamentName || m.liga || 'General').trim())
         )).sort();
 
-        return { upcomingMatches: upcoming, pastMatches: past, tournamentOptions: tournaments, filteredMatches: baseFiltered };
+        return { upcomingMatches: upcoming, pastMatches: past, tournamentOptions: tournaments, filteredCount: baseFiltered.length };
     }, [matches, searchTerm, selectedTournament, selectedDate]);
 
 
@@ -344,17 +340,6 @@ const Partidos = ({ userRole }: { userRole: string }) => {
         }
     }, []);
 
-    const handleSpecificIds = async () => {
-        const criticalIds = [35631, 35624, 35617, 35610];
-        try {
-            await startSpecificProcessing(criticalIds);
-        } catch (error) {
-            console.error("Error processing specific IDs:", error);
-        }
-    };
-
-    const isProcessing = processorStatus === 'processing';
-
     return (
         <div style={{ padding: '20px', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
             {/* Barra Superior Móvil */}
@@ -387,40 +372,9 @@ const Partidos = ({ userRole }: { userRole: string }) => {
 
             <header className="list-header" style={{ borderBottom: '2px solid rgba(0, 135, 81, 0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <Calendar className="w-6 h-6 text-indigo-400" />
-                                Partidos
-                            </h1>
-                            <p className="text-slate-400 text-sm mt-1">
-                                {filteredMatches.length} partidos encontrados para esta fecha
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                            {(userRole === 'admin' || userRole === 'dev') && (
-                                <button
-                                    onClick={handleSpecificIds}
-                                    disabled={isProcessing}
-                                    className={`flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium shadow-lg shadow-indigo-500/20`}
-                                >
-                                    {isProcessing ? (
-                                        <RefreshCw className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Play className="w-4 h-4" />
-                                    )}
-                                    Procesar IDs Críticos
-                                </button>
-                            )}
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700"
-                                title="Recargar página"
-                            >
-                                <RefreshCw className="w-5 h-5" />
-                            </button>
-                        </div>
+                    <div>
+                        <h1 className="list-title">Lista de <span className="text-highlight" style={{ color: 'var(--primary)' }}>Partidos</span></h1>
+                        <p className="list-subtitle">Sigue los resultados en tiempo real</p>
                     </div>
                     {(userRole === 'admin' || userRole === 'dev') && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
@@ -496,7 +450,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
                             className="premium-input"
                             style={{ flex: '1 1 140px', minWidth: '140px', background: 'rgba(0, 51, 102, 0.5)', color: 'white', border: '1px solid rgba(0, 135, 81, 0.3)' }}
                         >
-                            <option value="todos">🏆 Todos los Torneos</option>
+                            <option value="all">🏆 Todos los Torneos</option>
                             {tournamentOptions.map(tName => (
                                 <option key={tName} value={tName}>{tName}</option>
                             ))}

@@ -1068,7 +1068,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                 title={match.teamA?.name ?? 'Equipo Local'}
                                 logoUrl={teamsMetadata.find(t => t.name === match.teamA?.name)?.logoUrl || getAdccImageUrl(match.teamA?.logo)}
                                 players={match.playersA || []}
-                                teamSide="A"
+                                teamType="A"
                                 onAdd={() => setShowAddPlayer('A')}
                                 onSubstitution={() => handleSubstitution('A')}
                                 onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'A', field, val)}
@@ -1076,13 +1076,12 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                 isReferee={isReferee}
                                 userRole={userRole}
                                 onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
-                                onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
                             />
                             <SquadColumn
                                 title={match.teamB?.name ?? 'Equipo Visitante'}
                                 logoUrl={teamsMetadata.find(t => t.name === match.teamB?.name)?.logoUrl || getAdccImageUrl(match.teamB?.logo)}
                                 players={match.playersB || []}
-                                teamSide="B"
+                                teamType="B"
                                 onAdd={() => setShowAddPlayer('B')}
                                 onSubstitution={() => handleSubstitution('B')}
                                 onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'B', field, val)}
@@ -1090,7 +1089,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                 isReferee={isReferee}
                                 userRole={userRole}
                                 onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
-                                onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
                             />
                         </div>
                     )
@@ -1504,10 +1502,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                             <button onClick={() => setSelectedPlayer(null)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.5 }}><X size={24} /></button>
 
                             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-                                <div
-                                    onClick={() => setZoomedPhoto({ url: getAdccImageUrl(selectedPlayer.player.photo) || '', name: selectedPlayer.player.name })}
-                                    style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden', margin: '0 auto 15px', border: '2px solid var(--primary)', cursor: 'zoom-in' }}
-                                >
+                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden', margin: '0 auto 15px', border: '2px solid var(--primary)' }}>
                                     <img src={getAdccImageUrl(selectedPlayer.player.photo) || 'https://via.placeholder.com/80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
                                 <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem' }}>{selectedPlayer.player.name}</h3>
@@ -1646,32 +1641,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         </div>
                     </div>
                 )}
-
-                {/* MODAL ZOOM DE FOTO */}
-                {zoomedPhoto && (
-                    <div
-                        className="modal-overlay animate-fade-in"
-                        onClick={() => setZoomedPhoto(null)}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 15000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backdropFilter: 'blur(15px)', cursor: 'zoom-out' }}
-                    >
-                        <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={() => setZoomedPhoto(null)}
-                                style={{ position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none', color: 'white', cursor: 'pointer', zIndex: 10 }}
-                            >
-                                <X size={32} />
-                            </button>
-                            <img
-                                src={zoomedPhoto.url}
-                                alt={zoomedPhoto.name}
-                                style={{ width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '80vh', borderRadius: '15px', boxShadow: '0 0 50px rgba(0,0,0,0.5)', border: '2px solid rgba(255,255,255,0.1)' }}
-                            />
-                            <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}>{zoomedPhoto.name}</h3>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -1702,7 +1671,7 @@ interface SquadColumnProps {
     title: string;
     logoUrl?: string;
     players: any[];
-    teamSide: string;
+    teamType: string;
     onAdd: () => void;
     onSubstitution: (team: string) => void;
     onUpdate: (idx: number, field: string, value: any) => void;

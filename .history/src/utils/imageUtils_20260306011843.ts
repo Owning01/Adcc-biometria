@@ -4,18 +4,14 @@
 export const getAdccImageUrl = (url: string | undefined): string => {
     if (!url) return 'https://placehold.co/100x100?text=.';
 
-    // If it's already a full local URL (blob or data), return as is
-    if (url.startsWith('blob:') || url.startsWith('data:')) {
+    // If it's already a local URL or blob, return as is
+    if (url.startsWith('/') || url.startsWith('blob:') || url.startsWith('data:')) {
         return url;
     }
 
     // Use Weserv Image Proxy to bypass 403 Forbidden and CORS issues from ADCC server.
+    // Weserv is a fast image cache/proxy that behaves like a CDN and usually bypasses WAFs.
     const WESERV_PROXY = 'https://images.weserv.nl/?url=';
-
-    // If it's already using the proxy, don't double proxy
-    if (url.includes('weserv.nl')) {
-        return url;
-    }
 
     // If it's a direct ADCC URL, we use the external proxy
     if (url.includes('adccanning.com.ar')) {

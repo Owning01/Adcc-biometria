@@ -31,7 +31,6 @@ import MatchDetail from './pages/MatchDetail';
 import NotFound from './pages/NotFound';
 import { LazyMotion, domAnimation, m, motion, AnimatePresence } from 'framer-motion';
 import { MatchBatchProcessorProvider, useMatchBatchProcessor } from './contexts/MatchBatchProcessorContext';
-import { getAdccImageUrl } from './utils/imageUtils';
 
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -642,8 +641,8 @@ function App() {
         {currentPlayer && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '12px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {(currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url) ? (
-                <img src={getAdccImageUrl(currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url ? (
+                <img src={currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <UserCircle size={20} color="rgba(255,255,255,0.2)" />
               )}

@@ -119,10 +119,6 @@ export const BatchProcessorProvider: React.FC<{ children: React.ReactNode }> = (
             log(`Filtrado: ${allPlayers.length - filtered.length} jugadores ignorados por face_api: null.`);
 
             const normalized = filtered.map(p => {
-                // Normalización CRÍTICA: Asegurar que nombre y apellido existan siempre
-                const nombre = p.nombre || p.nombre_jugador || '';
-                const apellido = p.apellido || p.apellido_jugador || '';
-
                 return {
                     ...p,
                     nombre,

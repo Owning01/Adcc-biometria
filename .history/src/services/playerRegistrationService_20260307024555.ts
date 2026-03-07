@@ -85,18 +85,15 @@ export const playerRegistrationService = {
             const { getFaceDataFromImage } = await import('./faceServiceLocal');
             const data = await getFaceDataFromImage(img);
 
-            // GATE: Si no se detecta rostro, NO se procede con el guardado.
-            if (!data) {
-                console.warn('[playerRegistrationService] No se detectó rostro en la imagen. Guardado cancelado.');
-                return {
-                    success: false,
-                    step: 'face_detection',
-                    error: 'No se detectó un rostro válido en la imagen del jugador.'
-                };
-            }
+            let descriptorArray: number[] = [];
+            let descriptorString: string = '';
 
-            const descriptorArray: number[] = Array.from(data.descriptor);
-            const descriptorString: string = JSON.stringify(descriptorArray);
+            if (data) {
+                descriptorArray = Array.from(data.descriptor);
+                descriptorString = JSON.stringify(descriptorArray);
+            } else {
+                console.warn('No se detectó rostro en la imagen, se procederá solo con el guardado de la foto.');
+            }
 
             // 2. Procesar y Subir imagen a Firebase Storage (600x600 .webp)
             let firebaseImageUrl = player.foto;

@@ -1,0 +1,42 @@
+{
+    "matches": [
+        {
+            "id": 35631,
+            "dia": "2026-02-15",
+            "local_nombre": "Equipo A",
+            "visitante_nombre": "Equipo B",
+            "liga": "Torneo Verano",
+            "categoria": "Senior",
+            "local_categoria": "Senior A",
+            "visitante_categoria": "Senior B"
+        }
+    ],
+    "details": {
+        "35631": {
+            "equipo_local": [
+                {
+                    "id": 1001,
+                    "jleid": 5001,
+                    "dni": 12345678,
+                    "nombre": "Juan",
+                    "apellido": "Perez",
+                    "imagen": "url_to_image",
+                    "face_api": "face_data_string",
+                    "categoria": "Senior A"
+                }
+            ],
+            "equipo_visitante": [
+                {
+                    "id": 1002,
+                    "jleid": 5002,
+                    "dni": 87654321,
+                    "nombre": "Pedro",
+                    "apellido": "Gomez",
+                    "imagen": "url_to_image",
+                    "face_api": "face_data_string",
+                    "categoria": "Senior B"
+                }
+            ]
+        }
+    }
+}

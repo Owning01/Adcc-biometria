@@ -23,7 +23,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
     return (
         <m.div
             layout
-            initial={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="glass-panel"
@@ -145,7 +145,7 @@ const Partidos = ({ userRole }: { userRole: string }) => {
     const [syncRunning, setSyncRunning] = useState(false);
     const [syncLogs, setSyncLogs] = useState<string[]>([]);
     const [showSyncPanel, setShowSyncPanel] = useState(false);
-    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedDate, setSelectedDate] = useState(getLocalDateStr(new Date()));
     const [selectedTournament, setSelectedTournament] = useState<string>('todos');
     const [searchTerm, setSearchTerm] = useState('');
     const [showPast, setShowPast] = useState(false);

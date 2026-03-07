@@ -10,12 +10,8 @@ export const getAdccImageUrl = (url: string | undefined): string => {
     }
 
     // Use Weserv Image Proxy to bypass 403 Forbidden and CORS issues from ADCC server.
+    // Weserv is a fast image cache/proxy that behaves like a CDN and usually bypasses WAFs.
     const WESERV_PROXY = 'https://images.weserv.nl/?url=';
-
-    // If it's already using the proxy, don't double proxy
-    if (url.includes('weserv.nl')) {
-        return url;
-    }
 
     // If it's a direct ADCC URL, we use the external proxy
     if (url.includes('adccanning.com.ar')) {

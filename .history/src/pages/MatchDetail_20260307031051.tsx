@@ -78,9 +78,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
     // Estado para Modal de Acciones de Jugador
     const [selectedPlayer, setSelectedPlayer] = useState<{ index: number, teamSide: string, player: any } | null>(null);
 
-    // Estado para Foto en Grande (Zoom)
-    const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string } | null>(null);
-
     // ============================================================================
     // 2. EFFECTS & SUBSCRIPTIONS
     // ============================================================================
@@ -264,7 +261,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         let changed = false;
 
                         if (hasNoPlayersA) {
-                            const teamAUsers = allUsers.filter((u: any) => u && u.team === match.teamA?.name);
+                            const teamAUsers = allUsers.filter((u: any) => u && u.team === match.teamA.name);
                             if (teamAUsers.length > 0) {
                                 updates.playersA = teamAUsers.map((u: any, idx: number) => ({
                                     userId: u.id,
@@ -282,7 +279,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         }
 
                         if (hasNoPlayersB) {
-                            const teamBUsers = allUsers.filter((u: any) => u && u.team === match.teamB?.name);
+                            const teamBUsers = allUsers.filter((u: any) => u && u.team === match.teamB.name);
                             if (teamBUsers.length > 0) {
                                 updates.playersB = teamBUsers.map((u: any, idx: number) => ({
                                     userId: u.id,
@@ -346,7 +343,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
             if (newGoals > oldGoals) {
                 extraData.events = [...(targetMatch.events || []), {
                     id: Date.now().toString(), type: 'goal', player: player.name,
-                    team: teamType === 'A' ? targetMatch.teamA?.name : targetMatch.teamB?.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
                     teamSide: teamType, time: timeStr, timestamp: Date.now()
                 }];
             } else if (newGoals < oldGoals) {
@@ -367,7 +364,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
             if (newQty > oldQty) {
                 extraData.events = [...(targetMatch.events || []), {
                     id: Date.now().toString(), type: 'assist', player: player.name,
-                    team: teamType === 'A' ? targetMatch.teamA?.name : targetMatch.teamB?.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
                     teamSide: teamType, time: timeStr, timestamp: Date.now()
                 }];
             } else if (newQty < oldQty) {
@@ -391,7 +388,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                     type: isDoubleYellow ? 'red_card' : 'yellow_card',
                     player: player.name,
                     detail: isDoubleYellow ? 'Doble Amarilla' : 'Amonestación',
-                    team: teamType === 'A' ? targetMatch.teamA?.name : targetMatch.teamB?.name,
+                    team: teamType === 'A' ? targetMatch.teamA.name : targetMatch.teamB.name,
                     teamSide: teamType, time: timeStr, timestamp: Date.now()
                 };
                 extraData.events = [...(targetMatch.events || []), newEvent];
@@ -639,8 +636,8 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
         }
 
         if (command === 'score_check') {
-            const leading = (currentMatch.score?.a ?? 0) > (currentMatch.score?.b ?? 0) ? `Gana ${currentMatch.teamA?.name} ` : ((currentMatch.score?.b ?? 0) > (currentMatch.score?.a ?? 0) ? `Gana ${currentMatch.teamB?.name} ` : "Empate");
-            voiceReferee.speak(`${currentMatch.score?.a ?? 0} a ${currentMatch.score?.b ?? 0}. ${leading} `);
+            const leading = currentMatch.score.a > currentMatch.score.b ? `Gana ${currentMatch.teamA.name} ` : (currentMatch.score.b > currentMatch.score.a ? `Gana ${currentMatch.teamB.name} ` : "Empate");
+            voiceReferee.speak(`${currentMatch.score.a} a ${currentMatch.score.b}. ${leading} `);
         }
 
         if (command === 'start_match') await changeMatchStatus('live');
@@ -733,9 +730,9 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
 
         const payload = {
             partido_id: finalMatchId,
-            res_local: match.score?.a ?? 0,
+            res_local: match.score.a,
             res_local_p: reportData.res_local_p || 0,
-            res_visitante: match.score?.b ?? 0,
+            res_visitante: match.score.b,
             res_visitante_p: reportData.res_visitante_p || 0,
             arbitro1: reportData.arbitro1 || "",
             arbitro2: reportData.arbitro2 || "",
@@ -1065,10 +1062,10 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                             gap: '20px'
                         }}>
                             <SquadColumn
-                                title={match.teamA?.name ?? 'Equipo Local'}
-                                logoUrl={teamsMetadata.find(t => t.name === match.teamA?.name)?.logoUrl || getAdccImageUrl(match.teamA?.logo)}
+                                title={match.teamA.name}
+                                logoUrl={teamsMetadata.find(t => t.name === match.teamA.name)?.logoUrl || getAdccImageUrl(match.teamA.logo)}
                                 players={match.playersA || []}
-                                teamSide="A"
+                                teamType="A"
                                 onAdd={() => setShowAddPlayer('A')}
                                 onSubstitution={() => handleSubstitution('A')}
                                 onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'A', field, val)}
@@ -1076,13 +1073,12 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                 isReferee={isReferee}
                                 userRole={userRole}
                                 onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
-                                onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
                             />
                             <SquadColumn
-                                title={match.teamB?.name ?? 'Equipo Visitante'}
-                                logoUrl={teamsMetadata.find(t => t.name === match.teamB?.name)?.logoUrl || getAdccImageUrl(match.teamB?.logo)}
+                                title={match.teamB.name}
+                                logoUrl={teamsMetadata.find(t => t.name === match.teamB.name)?.logoUrl || getAdccImageUrl(match.teamB.logo)}
                                 players={match.playersB || []}
-                                teamSide="B"
+                                teamType="B"
                                 onAdd={() => setShowAddPlayer('B')}
                                 onSubstitution={() => handleSubstitution('B')}
                                 onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'B', field, val)}
@@ -1090,7 +1086,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                 isReferee={isReferee}
                                 userRole={userRole}
                                 onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
-                                onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
                             />
                         </div>
                     )
@@ -1108,8 +1103,8 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                                     <StatBar
                                         label="Goles"
-                                        a={match.score?.a ?? 0}
-                                        b={match.score?.b ?? 0}
+                                        a={match.score.a}
+                                        b={match.score.b}
                                         icon={<Target size={14} />}
                                     />
                                     <StatBar
@@ -1504,10 +1499,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                             <button onClick={() => setSelectedPlayer(null)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.5 }}><X size={24} /></button>
 
                             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-                                <div
-                                    onClick={() => setZoomedPhoto({ url: getAdccImageUrl(selectedPlayer.player.photo) || '', name: selectedPlayer.player.name })}
-                                    style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden', margin: '0 auto 15px', border: '2px solid var(--primary)', cursor: 'zoom-in' }}
-                                >
+                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden', margin: '0 auto 15px', border: '2px solid var(--primary)' }}>
                                     <img src={getAdccImageUrl(selectedPlayer.player.photo) || 'https://via.placeholder.com/80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
                                 <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem' }}>{selectedPlayer.player.name}</h3>
@@ -1646,32 +1638,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         </div>
                     </div>
                 )}
-
-                {/* MODAL ZOOM DE FOTO */}
-                {zoomedPhoto && (
-                    <div
-                        className="modal-overlay animate-fade-in"
-                        onClick={() => setZoomedPhoto(null)}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 15000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backdropFilter: 'blur(15px)', cursor: 'zoom-out' }}
-                    >
-                        <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={() => setZoomedPhoto(null)}
-                                style={{ position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none', color: 'white', cursor: 'pointer', zIndex: 10 }}
-                            >
-                                <X size={32} />
-                            </button>
-                            <img
-                                src={zoomedPhoto.url}
-                                alt={zoomedPhoto.name}
-                                style={{ width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '80vh', borderRadius: '15px', boxShadow: '0 0 50px rgba(0,0,0,0.5)', border: '2px solid rgba(255,255,255,0.1)' }}
-                            />
-                            <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}>{zoomedPhoto.name}</h3>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -1702,7 +1668,7 @@ interface SquadColumnProps {
     title: string;
     logoUrl?: string;
     players: any[];
-    teamSide: string;
+    teamType: string;
     onAdd: () => void;
     onSubstitution: (team: string) => void;
     onUpdate: (idx: number, field: string, value: any) => void;
@@ -1710,10 +1676,9 @@ interface SquadColumnProps {
     isReferee: boolean;
     userRole: string;
     onPlayerClick: (idx: number, player: any) => void;
-    onPhotoClick: (url: string, name: string) => void;
 }
 
-const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick }: SquadColumnProps) => {
+const SquadColumn = ({ title, logoUrl, players, teamType, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick }: SquadColumnProps) => {
     const isAdmin = userRole === 'admin' || userRole === 'dev';
     const canManageMatch = isAdmin || userRole === 'referee';
     const isUsuario = userRole === 'usuario';
@@ -1748,7 +1713,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                 </div>
                 {canManageMatch && (
                     <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button onClick={() => onSubstitution(teamSide)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
+                        <button onClick={() => onSubstitution(teamType)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
                             <Repeat2 size={12} /> <span className="hide-mobile">CAMBIO</span>
                         </button>
                         {isAdmin && (
@@ -1792,13 +1757,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                                         disabled={!isAdmin}
                                     />
                                 </div>
-                                <div
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
-                                    }}
-                                    style={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden', border: p.isDisabled ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.1)', cursor: 'zoom-in' }}
-                                >
+                                <div style={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '50%', background: '#1e293b', overflow: 'hidden', border: p.isDisabled ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}>
                                     <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/40'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
                                 <div style={{ flex: 1, opacity: p.status === 'suplente' ? 0.5 : 1 }}>

@@ -4,7 +4,6 @@ import { loadModelsLocal } from '../services/faceServiceLocal';
 import { playerRegistrationService, PlayerData, RegistrationResult } from '../services/playerRegistrationService';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getAdccImageUrl } from '../utils/imageUtils';
 
 export interface Progress {
     processed: number;
@@ -34,7 +33,6 @@ interface MatchBatchProcessorContextType {
     startMassProcessing: () => Promise<void>;
     startSpecificProcessing: (matchIds: number[]) => Promise<void>;
     startLocalProcessing: (data: { matches: ADCCMatch[], details: Record<number, ADCCMatchDetail> }) => Promise<void>;
-    fixAllStoredPhotos: () => Promise<void>;
     pauseProcessing: () => void;
     resetProcessor: () => void;
     clearLogs: () => void;
@@ -75,17 +73,12 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
         }
     };
 
-    const normalizeImageUrl = (url: string | null | undefined): string => {
-        return getAdccImageUrl(url || undefined);
-    };
-
     const processPlayer = async (player: ADCCPlayer): Promise<boolean> => {
         setCurrentPlayer(player);
         setCurrentStep('Validando datos...');
 
         try {
-            const rawFotoUrl = player.foto || player.imagen || player.imagen_url;
-            const fotoUrl = normalizeImageUrl(rawFotoUrl);
+            const fotoUrl = player.foto || player.imagen || player.imagen_url;
             if (!fotoUrl) {
                 log(`⚠️ ${player.nombre} ${player.apellido}: No tiene foto.`, 'warning', player.jleid);
                 return false;
@@ -218,32 +211,24 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                 log(`[Partido ${m + 1}/${matchesToProcess.length}] ID: ${match.id} - ${match.local_nombre} vs ${match.visitante_nombre}`, 'info');
 
                 let players: ADCCPlayer[] = [];
-                let detail: any = null;
 
                 try {
-                    detail = await fetchWithRetry(() => fetchADCCMatchDetail(match.id), `obtener detalle partido ${match.id}`);
+                    const detail = await fetchWithRetry(() => fetchADCCMatchDetail(match.id), `obtener detalle partido ${match.id}`);
                     const allPlayers = [
-                        ...detail.equipo_local.map((p: any) => ({ ...p, equipo: detail.partido.local_nombre, categoria: detail.partido.categoria })),
-                        ...detail.equipo_visitante.map((p: any) => ({ ...p, equipo: detail.partido.visitante_nombre, categoria: detail.partido.categoria }))
+                        ...detail.equipo_local.map(p => ({ ...p, equipo: detail.partido.local_nombre, categoria: detail.partido.categoria })),
+                        ...detail.equipo_visitante.map(p => ({ ...p, equipo: detail.partido.visitante_nombre, categoria: detail.partido.categoria }))
                     ];
 
                     players = allPlayers.filter(p => p.face_api !== null && p.face_api !== undefined);
 
-                    if (allPlayers.length > players.length) {
-                        log(`⚠️ ${allPlayers.length - players.length} jugadores ignorados (sin datos biométricos).`, 'warning');
-                    }
                 } catch (err: any) {
                     log(`❌ Error al obtener detalle del partido ${match.id}: ${err.message}`, 'error');
                     continue;
                 }
 
-                if (players.length === 0 && !detail) {
-                    log(`>> Partido sin datos ni jugadores. Saltando...`, 'warning');
-                    continue;
-                }
-
                 if (players.length === 0) {
-                    log(`>> Partido sin jugadores aptos para procesar. Guardando datos del partido...`, 'warning');
+                    log(`>> Partido sin jugadores aptos para procesar. Saltando...`, 'warning');
+                    continue;
                 }
 
                 log(`>> Procesando ${players.length} jugadores...`, 'info');
@@ -269,50 +254,18 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                     }));
                 }
 
-                // Registrar el partido con datos completos
+                // Registrar el partido como completado
                 try {
-                    const partido = detail?.partido || match;
-                    const tournamentCat = partido.categoria || match.categoria || 'General';
-                    const leagueName = partido.liga || match.liga || 'General';
-                    const tournamentId = `${leagueName}-${tournamentCat}`.toLowerCase().replace(/\s+/g, '-');
-
                     await setDoc(doc(db, 'matches', `adcc_${match.id}`), {
-                        realId: match.id,
-                        partido_id: match.id,
-                        tournamentId,
-                        tournamentName: `${leagueName} - ${tournamentCat}`,
-                        liga: leagueName,
-                        category: tournamentCat,
-                        teamA: { name: match.local_nombre, logo: match.local_escudo },
-                        teamB: { name: match.visitante_nombre, logo: match.visitante_escudo },
-                        date: match.dia?.split(' ')[0] || '',
-                        time: match.dia?.split(' ')[1]?.substring(0, 5) || '00:00',
-                        status: match.estado_partido === 'Finalizado'
-                            ? 'finished'
-                            : match.estado_partido === 'En juego'
-                                ? 'live'
-                                : 'scheduled',
-                        score: { a: match.res_local ?? 0, b: match.res_visitante ?? 0 },
-                        playersA: (detail?.equipo_local || []).map((p: any) => ({
-                            dni: String(p.dni),
-                            name: `${p.nombre} ${p.apellido}`,
-                            jleid: p.jleid,
-                            number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
-                            status: 'suplente',
-                        })),
-                        playersB: (detail?.equipo_visitante || []).map((p: any) => ({
-                            dni: String(p.dni),
-                            name: `${p.nombre} ${p.apellido}`,
-                            jleid: p.jleid,
-                            number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
-                            status: 'suplente',
-                        })),
+                        id: match.id,
+                        local_nombre: match.local_nombre,
+                        visitante_nombre: match.visitante_nombre,
+                        liga: match.liga,
+                        categoria: match.categoria,
                         processedAt: new Date().toISOString(),
                         source: 'mass_processor'
-                    }, { merge: true });
-                    log(`✅ Partido ${match.id} completado y guardado con datos completos.`, 'success');
+                    });
+                    log(`✅ Partido ${match.id} completado y guardado en registro.`, 'success');
                 } catch (saveErr: any) {
                     log(`⚠️ Partido ${match.id} completado pero falló guardar registro: ${saveErr.message}`, 'warning');
                 }
@@ -363,33 +316,25 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                 log(`[Partido ${m + 1}/${matchIds.length}] ID: ${matchId}`, 'info');
 
                 let players: ADCCPlayer[] = [];
-                let detail: ADCCMatchDetail | null = null;
 
                 try {
-                    detail = await fetchWithRetry(() => fetchADCCMatchDetail(matchId), `obtener detalle partido ${matchId}`);
-                    const matchInfo = detail.partido;
+                    const detail = await fetchWithRetry(() => fetchADCCMatchDetail(matchId), `obtener detalle partido ${matchId}`);
                     const allPlayers = [
-                        ...detail.equipo_local.map((p: any) => ({ ...p, equipo: matchInfo.local_nombre, categoria: matchInfo.categoria })),
-                        ...detail.equipo_visitante.map((p: any) => ({ ...p, equipo: matchInfo.visitante_nombre, categoria: matchInfo.categoria }))
+                        ...detail.equipo_local.map(p => ({ ...p, equipo: detail.partido.local_nombre, categoria: detail.partido.categoria })),
+                        ...detail.equipo_visitante.map(p => ({ ...p, equipo: detail.partido.visitante_nombre, categoria: detail.partido.categoria }))
                     ];
 
-                    players = allPlayers.filter(p => p.face_api !== null && p.face_api !== undefined);
+                    players = allPlayers;
 
-                    if (allPlayers.length > players.length) {
-                        log(`⚠️ ${allPlayers.length - players.length} jugadores ignorados (sin datos biométricos).`, 'warning');
-                    }
+
                 } catch (err: any) {
                     log(`❌ Error al obtener detalle del partido ${matchId}: ${err.message}`, 'error');
                     continue;
                 }
 
-                if (players.length === 0 && !detail) {
-                    log(`>> Partido sin datos ni jugadores. Saltando...`, 'warning');
-                    continue;
-                }
-
                 if (players.length === 0) {
-                    log(`>> Partido sin jugadores aptos para biometría. Guardando datos del partido...`, 'warning');
+                    log(`>> Partido sin jugadores aptos para procesar. Saltando...`, 'warning');
+                    continue;
                 }
 
                 log(`>> Procesando ${players.length} jugadores...`, 'info');
@@ -415,50 +360,14 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                     }));
                 }
 
-                // Registrar el partido con datos COMPLETOS (reutilizando detail ya obtenido)
+                // Registrar el partido como completado
                 try {
-                    const partido = detail!.partido;
-                    const tournamentCat = partido.categoria || 'General';
-                    const leagueName = partido.liga || 'General';
-                    const tournamentId = `${leagueName}-${tournamentCat}`.toLowerCase().replace(/\s+/g, '-');
-
                     await setDoc(doc(db, 'matches', `adcc_${matchId}`), {
-                        realId: matchId,
-                        partido_id: matchId,
-                        tournamentId,
-                        tournamentName: `${leagueName} - ${tournamentCat}`,
-                        liga: leagueName,
-                        category: tournamentCat,
-                        teamA: { name: partido.local_nombre, logo: partido.local_escudo },
-                        teamB: { name: partido.visitante_nombre, logo: partido.visitante_escudo },
-                        date: partido.dia?.split(' ')[0] || '',
-                        time: partido.dia?.split(' ')[1]?.substring(0, 5) || '00:00',
-                        status: partido.estado_partido === 'Finalizado'
-                            ? 'finished'
-                            : partido.estado_partido === 'En juego'
-                                ? 'live'
-                                : 'scheduled',
-                        score: { a: partido.res_local ?? 0, b: partido.res_visitante ?? 0 },
-                        playersA: (detail!.equipo_local || []).map((p: any) => ({
-                            dni: String(p.dni),
-                            name: `${p.nombre} ${p.apellido}`,
-                            jleid: p.jleid,
-                            number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
-                            status: 'suplente',
-                        })),
-                        playersB: (detail!.equipo_visitante || []).map((p: any) => ({
-                            dni: String(p.dni),
-                            name: `${p.nombre} ${p.apellido}`,
-                            jleid: p.jleid,
-                            number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
-                            status: 'suplente',
-                        })),
+                        id: matchId,
                         processedAt: new Date().toISOString(),
                         source: 'specific_processor'
-                    }, { merge: true });
-                    log(`✅ Partido ${matchId} completado y guardado con datos completos.`, 'success');
+                    });
+                    log(`✅ Partido ${matchId} completado y guardado en registro.`, 'success');
                 } catch (saveErr: any) {
                     log(`⚠️ Partido ${matchId} completado pero falló guardar registro: ${saveErr.message}`, 'warning');
                 }
@@ -583,90 +492,6 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
         setCurrentStep('');
     };
 
-    const fixAllStoredPhotos = async () => {
-        if (isProcessingRef.current) return;
-        isProcessingRef.current = true;
-        setStatus('processing');
-        setProgress({ processed: 0, total: 0, success: 0, failed: 0 });
-        setLogs([]);
-        log('🚀 Iniciando corrección global de fotos y logos...', 'info');
-
-        try {
-            const { collection, getDocs, updateDoc, doc, getDoc } = await import('firebase/firestore');
-            const matchesSnap = await getDocs(collection(db, 'matches'));
-            const matchesDocs = matchesSnap.docs;
-            setProgress(prev => ({ ...prev, total: matchesDocs.length }));
-
-            for (let i = 0; i < matchesDocs.length; i++) {
-                const matchDoc = matchesDocs[i];
-                const data = matchDoc.data();
-                let changed = false;
-
-                const fixPlayerList = async (players: any[]) => {
-                    const result = [...players];
-                    for (let pIdx = 0; pIdx < result.length; pIdx++) {
-                        const p = result[pIdx];
-                        let bestPhoto = p.photo;
-
-                        // 1. Prioridad: Buscar si el jugador ya está procesado en 'users' (Firebase)
-                        if (p.jleid || p.dni) {
-                            const userRef = doc(db, 'users', String(p.jleid || p.dni));
-                            const userSnap = await getDoc(userRef);
-                            if (userSnap.exists()) {
-                                const userData = userSnap.data();
-                                if (userData.photoURL && !userData.photoURL.includes('adccanning')) {
-                                    // Si tiene photoURL en Firebase Storage, la usamos
-                                    bestPhoto = userData.photoURL;
-                                }
-                            }
-                        }
-
-                        // 2. Fallback: Normalizar URL de ADCC si sigue siendo la original
-                        const fixed = getAdccImageUrl(bestPhoto);
-                        if (fixed !== p.photo) {
-                            result[pIdx] = { ...p, photo: fixed };
-                            changed = true;
-                        }
-                    }
-                    return result;
-                };
-
-                const playersA = await fixPlayerList(data.playersA || []);
-                const playersB = await fixPlayerList(data.playersB || []);
-
-                // También corregir logos de equipos si son relativos
-                const logoA = getAdccImageUrl(data.teamA?.logo);
-                const logoB = getAdccImageUrl(data.teamB?.logo);
-
-                if (logoA !== data.teamA?.logo) changed = true;
-                if (logoB !== data.teamB?.logo) changed = true;
-
-                if (changed) {
-                    await updateDoc(matchDoc.ref, {
-                        playersA,
-                        playersB,
-                        'teamA.logo': logoA,
-                        'teamB.logo': logoB
-                    });
-                    log(`✅ Partido ${matchDoc.id} actualizado.`, 'success');
-                    setProgress(prev => ({ ...prev, success: prev.success + 1 }));
-                } else {
-                    setProgress(prev => ({ ...prev, processed: prev.processed + 1 }));
-                }
-
-                setProgress(prev => ({ ...prev, processed: i + 1 }));
-            }
-
-            log('🏁 Corrección global finalizada.', 'success');
-            setStatus('finished');
-        } catch (err: any) {
-            log(`❌ Error en corrección global: ${err.message}`, 'error');
-            setStatus('error');
-        } finally {
-            isProcessingRef.current = false;
-        }
-    };
-
     const clearLogs = () => setLogs([]);
 
     return (
@@ -686,8 +511,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
             startLocalProcessing,
             pauseProcessing,
             resetProcessor,
-            clearLogs,
-            fixAllStoredPhotos
+            clearLogs
         }}>
             {children}
         </MatchBatchProcessorContext.Provider>

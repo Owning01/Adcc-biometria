@@ -23,7 +23,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
     return (
         <m.div
             layout
-            initial={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="glass-panel"

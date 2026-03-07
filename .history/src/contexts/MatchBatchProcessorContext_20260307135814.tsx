@@ -4,7 +4,6 @@ import { loadModelsLocal } from '../services/faceServiceLocal';
 import { playerRegistrationService, PlayerData, RegistrationResult } from '../services/playerRegistrationService';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getAdccImageUrl } from '../utils/imageUtils';
 
 export interface Progress {
     processed: number;
@@ -34,7 +33,6 @@ interface MatchBatchProcessorContextType {
     startMassProcessing: () => Promise<void>;
     startSpecificProcessing: (matchIds: number[]) => Promise<void>;
     startLocalProcessing: (data: { matches: ADCCMatch[], details: Record<number, ADCCMatchDetail> }) => Promise<void>;
-    fixAllStoredPhotos: () => Promise<void>;
     pauseProcessing: () => void;
     resetProcessor: () => void;
     clearLogs: () => void;
@@ -76,7 +74,10 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
     };
 
     const normalizeImageUrl = (url: string | null | undefined): string => {
-        return getAdccImageUrl(url || undefined);
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        // Si no empieza con http, asumimos que es una imagen en la carpeta de fotos de ADCC
+        return `https://adccanning.com.ar/img/foto/${url}`;
     };
 
     const processPlayer = async (player: ADCCPlayer): Promise<boolean> => {
@@ -298,7 +299,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                             name: `${p.nombre} ${p.apellido}`,
                             jleid: p.jleid,
                             number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
+                            photo: p.imagen || p.foto || p.imagen_url || '',
                             status: 'suplente',
                         })),
                         playersB: (detail?.equipo_visitante || []).map((p: any) => ({
@@ -306,7 +307,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                             name: `${p.nombre} ${p.apellido}`,
                             jleid: p.jleid,
                             number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
+                            photo: p.imagen || p.foto || p.imagen_url || '',
                             status: 'suplente',
                         })),
                         processedAt: new Date().toISOString(),
@@ -444,7 +445,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                             name: `${p.nombre} ${p.apellido}`,
                             jleid: p.jleid,
                             number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
+                            photo: p.imagen || p.foto || p.imagen_url || '',
                             status: 'suplente',
                         })),
                         playersB: (detail!.equipo_visitante || []).map((p: any) => ({
@@ -452,7 +453,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
                             name: `${p.nombre} ${p.apellido}`,
                             jleid: p.jleid,
                             number: p.camiseta ?? null,
-                            photo: normalizeImageUrl(p.imagen || p.foto || p.imagen_url),
+                            photo: p.imagen || p.foto || p.imagen_url || '',
                             status: 'suplente',
                         })),
                         processedAt: new Date().toISOString(),
@@ -583,90 +584,6 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
         setCurrentStep('');
     };
 
-    const fixAllStoredPhotos = async () => {
-        if (isProcessingRef.current) return;
-        isProcessingRef.current = true;
-        setStatus('processing');
-        setProgress({ processed: 0, total: 0, success: 0, failed: 0 });
-        setLogs([]);
-        log('🚀 Iniciando corrección global de fotos y logos...', 'info');
-
-        try {
-            const { collection, getDocs, updateDoc, doc, getDoc } = await import('firebase/firestore');
-            const matchesSnap = await getDocs(collection(db, 'matches'));
-            const matchesDocs = matchesSnap.docs;
-            setProgress(prev => ({ ...prev, total: matchesDocs.length }));
-
-            for (let i = 0; i < matchesDocs.length; i++) {
-                const matchDoc = matchesDocs[i];
-                const data = matchDoc.data();
-                let changed = false;
-
-                const fixPlayerList = async (players: any[]) => {
-                    const result = [...players];
-                    for (let pIdx = 0; pIdx < result.length; pIdx++) {
-                        const p = result[pIdx];
-                        let bestPhoto = p.photo;
-
-                        // 1. Prioridad: Buscar si el jugador ya está procesado en 'users' (Firebase)
-                        if (p.jleid || p.dni) {
-                            const userRef = doc(db, 'users', String(p.jleid || p.dni));
-                            const userSnap = await getDoc(userRef);
-                            if (userSnap.exists()) {
-                                const userData = userSnap.data();
-                                if (userData.photoURL && !userData.photoURL.includes('adccanning')) {
-                                    // Si tiene photoURL en Firebase Storage, la usamos
-                                    bestPhoto = userData.photoURL;
-                                }
-                            }
-                        }
-
-                        // 2. Fallback: Normalizar URL de ADCC si sigue siendo la original
-                        const fixed = getAdccImageUrl(bestPhoto);
-                        if (fixed !== p.photo) {
-                            result[pIdx] = { ...p, photo: fixed };
-                            changed = true;
-                        }
-                    }
-                    return result;
-                };
-
-                const playersA = await fixPlayerList(data.playersA || []);
-                const playersB = await fixPlayerList(data.playersB || []);
-
-                // También corregir logos de equipos si son relativos
-                const logoA = getAdccImageUrl(data.teamA?.logo);
-                const logoB = getAdccImageUrl(data.teamB?.logo);
-
-                if (logoA !== data.teamA?.logo) changed = true;
-                if (logoB !== data.teamB?.logo) changed = true;
-
-                if (changed) {
-                    await updateDoc(matchDoc.ref, {
-                        playersA,
-                        playersB,
-                        'teamA.logo': logoA,
-                        'teamB.logo': logoB
-                    });
-                    log(`✅ Partido ${matchDoc.id} actualizado.`, 'success');
-                    setProgress(prev => ({ ...prev, success: prev.success + 1 }));
-                } else {
-                    setProgress(prev => ({ ...prev, processed: prev.processed + 1 }));
-                }
-
-                setProgress(prev => ({ ...prev, processed: i + 1 }));
-            }
-
-            log('🏁 Corrección global finalizada.', 'success');
-            setStatus('finished');
-        } catch (err: any) {
-            log(`❌ Error en corrección global: ${err.message}`, 'error');
-            setStatus('error');
-        } finally {
-            isProcessingRef.current = false;
-        }
-    };
-
     const clearLogs = () => setLogs([]);
 
     return (
@@ -686,8 +603,7 @@ export const MatchBatchProcessorProvider: React.FC<{ children: React.ReactNode }
             startLocalProcessing,
             pauseProcessing,
             resetProcessor,
-            clearLogs,
-            fixAllStoredPhotos
+            clearLogs
         }}>
             {children}
         </MatchBatchProcessorContext.Provider>

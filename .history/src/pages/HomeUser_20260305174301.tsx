@@ -13,9 +13,7 @@ const HomeUser = () => {
 
     useEffect(() => {
         const unsubscribe = subscribeToMatches((matches: any[]) => {
-            console.log("[HomeUser] Matches updated:", matches.length);
             const active = matches.filter((m: any) => m.status === 'live' || m.status === 'scheduled');
-            console.log("[HomeUser] Active matches:", active.length);
             setActiveMatches(active.slice(0, 5));
         });
         return () => unsubscribe();

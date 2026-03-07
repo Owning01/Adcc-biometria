@@ -1646,32 +1646,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         </div>
                     </div>
                 )}
-
-                {/* MODAL ZOOM DE FOTO */}
-                {zoomedPhoto && (
-                    <div
-                        className="modal-overlay animate-fade-in"
-                        onClick={() => setZoomedPhoto(null)}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 15000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', backdropFilter: 'blur(15px)', cursor: 'zoom-out' }}
-                    >
-                        <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={() => setZoomedPhoto(null)}
-                                style={{ position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none', color: 'white', cursor: 'pointer', zIndex: 10 }}
-                            >
-                                <X size={32} />
-                            </button>
-                            <img
-                                src={zoomedPhoto.url}
-                                alt={zoomedPhoto.name}
-                                style={{ width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '80vh', borderRadius: '15px', boxShadow: '0 0 50px rgba(0,0,0,0.5)', border: '2px solid rgba(255,255,255,0.1)' }}
-                            />
-                            <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}>{zoomedPhoto.name}</h3>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

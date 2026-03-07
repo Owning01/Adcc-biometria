@@ -31,7 +31,6 @@ export default function MatchImporter() {
         startMassProcessing,
         startSpecificProcessing,
         startLocalProcessing,
-        fixAllStoredPhotos,
         pauseProcessing,
         clearLogs
     } = useMatchBatchProcessor();
@@ -101,21 +100,6 @@ export default function MatchImporter() {
                     >
                         <RefreshCw size={18} className={status === 'loading_matches' ? 'spin' : ''} />
                         {status === 'loading_matches' ? 'Cargando...' : 'Actualizar Partidos'}
-                    </button>
-
-                    <button
-                        onClick={() => fixAllStoredPhotos()}
-                        disabled={status === 'processing' || status === 'loading_matches'}
-                        className="glass-button"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            border: '1px solid #a855f7',
-                            color: '#a855f7'
-                        }}
-                    >
-                        <RefreshCw size={18} className={status === 'processing' ? 'spin' : ''} /> Reparar Fotos Almacenadas
                     </button>
 
                     {(status === 'idle' || status === 'ready' || status === 'paused' || status === 'finished') && (

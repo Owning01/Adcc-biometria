@@ -31,8 +31,7 @@ import MatchDetail from './pages/MatchDetail';
 import NotFound from './pages/NotFound';
 import { LazyMotion, domAnimation, m, motion, AnimatePresence } from 'framer-motion';
 import { MatchBatchProcessorProvider, useMatchBatchProcessor } from './contexts/MatchBatchProcessorContext';
-import { getAdccImageUrl } from './utils/imageUtils';
-
+import { useAuth } from './contexts/AuthContext';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { logEvent } from './services/auditService';
@@ -642,8 +641,8 @@ function App() {
         {currentPlayer && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '12px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {(currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url) ? (
-                <img src={getAdccImageUrl(currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url ? (
+                <img src={currentPlayer.foto || currentPlayer.imagen || currentPlayer.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <UserCircle size={20} color="rgba(255,255,255,0.2)" />
               )}
@@ -684,228 +683,225 @@ function App() {
 
   return (
     <BrowserRouter>
-      <MatchBatchProcessorProvider>
-        <div className="app-main-container">
+      <div className="app-main-container">
 
 
-
-          {/* Botón Flotante Tema */}
-          <button
-            onClick={toggleTheme}
-            className="glass-button floating-theme-toggle"
-          >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-
-
-          <Navigation userRole={userRole} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
-          <BatchProcessorOverlay />
-          <MatchBatchProcessorOverlay />
+        {/* Botón Flotante Tema */}
+        <button
+          onClick={toggleTheme}
+          className="glass-button floating-theme-toggle"
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
 
 
-          {/* Indicador de Modo Offline */}
-          {!isOnline && (
-            <div className="offline-indicator">
-              <WifiOff size={16} /> MODO OFFLINE - Los cambios se sincronizarán al conectar
-            </div>
-          )}
+        <Navigation userRole={userRole} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+        <BatchProcessorOverlay />
 
-          {/* Indicador de IA cargando en background */}
-          {!modelsLoaded && (
-            <div style={{
-              position: 'fixed',
-              bottom: '90px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 999,
-              background: 'rgba(0,0,0,0.92)',
-              border: '1px solid rgba(0,135,81,0.3)',
-              borderRadius: '99px',
-              padding: '8px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '0.7rem',
-              color: '#008751',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap'
-            }}>
-              <RefreshCw size={12} className="animate-spin" />
-              Cargando motor biométrico...
-            </div>
-          )}
-          {modelsError && modelsLoaded && (
-            <div style={{
-              position: 'fixed',
-              bottom: '90px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 999,
-              background: 'rgba(239,68,68,0.15)',
-              border: '1px solid rgba(239,68,68,0.3)',
-              borderRadius: '99px',
-              padding: '8px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '0.7rem',
-              color: '#f87171',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap'
-            }}>
-              <AlertCircle size={12} />
-              Biometric no disponible
-            </div>
-          )}
+        {/* Indicador de Modo Offline */}
+        {!isOnline && (
+          <div className="offline-indicator">
+            <WifiOff size={16} /> MODO OFFLINE - Los cambios se sincronizarán al conectar
+          </div>
+        )}
 
-          <main className="container" style={{ paddingBottom: '120px', paddingTop: '40px' }}>
-            <Routes>
-              <Route path="/" element={userRole !== 'public' ? (
-                userRole === 'usuario' ? <HomeUser /> : <Home userRole={userRole} />
+        {/* Indicador de IA cargando en background */}
+        {!modelsLoaded && (
+          <div style={{
+            position: 'fixed',
+            bottom: '90px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999,
+            background: 'rgba(0,0,0,0.92)',
+            border: '1px solid rgba(0,135,81,0.3)',
+            borderRadius: '99px',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.7rem',
+            color: '#008751',
+            backdropFilter: 'blur(10px)',
+            whiteSpace: 'nowrap'
+          }}>
+            <RefreshCw size={12} className="animate-spin" />
+            Cargando motor biométrico...
+          </div>
+        )}
+        {modelsError && modelsLoaded && (
+          <div style={{
+            position: 'fixed',
+            bottom: '90px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999,
+            background: 'rgba(239,68,68,0.15)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            borderRadius: '99px',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.7rem',
+            color: '#f87171',
+            backdropFilter: 'blur(10px)',
+            whiteSpace: 'nowrap'
+          }}>
+            <AlertCircle size={12} />
+            Biometric no disponible
+          </div>
+        )}
+
+        <main className="container" style={{ paddingBottom: '120px', paddingTop: '40px' }}>
+          <Routes>
+            <Route path="/" element={userRole !== 'public' ? (
+              userRole === 'usuario' ? <HomeUser /> : <Home userRole={userRole} />
+            ) : (
+              <HomePublic />
+            )} />
+
+            {/* Ruta Pública de Login */}
+            <Route path="/login" element={
+              userRole !== 'public' ? (
+                <Navigate to="/" replace />
               ) : (
-                <HomePublic />
-              )} />
+                <AdminLogin
+                  handleLogin={handleLogin}
+                  loginForm={loginForm}
+                  setLoginForm={setLoginForm}
+                  onFaceLogin={() => setShowFaceLogin(true)}
+                />
+              )
+            } />
 
-              {/* Ruta Pública de Login */}
-              <Route path="/login" element={
-                userRole !== 'public' ? (
-                  <Navigate to="/" replace />
-                ) : (
-                  <AdminLogin
-                    handleLogin={handleLogin}
-                    loginForm={loginForm}
-                    setLoginForm={setLoginForm}
-                    onFaceLogin={() => setShowFaceLogin(true)}
-                  />
-                )
-              } />
-
-              {/* Rutas Protegidas (Solo Autenticados con Permisos) */}
-              <Route path="/register" element={<ProtectedRoute isAllowed={isAdminOrDev || userRole === 'referee'}><Register /></ProtectedRoute>} />
-              <Route path="/alta" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><AltaLocal /></ProtectedRoute>} />
-              <Route path="/equipos" element={<Equipos userRole={userRole} />} />
-              <Route path="/partidos" element={
-                <ProtectedRoute isAllowed={!!userRole && userRole !== 'public'}>
+            {/* Rutas Protegidas (Solo Autenticados con Permisos) */}
+            <Route path="/register" element={<ProtectedRoute isAllowed={isAdminOrDev || userRole === 'referee'}><Register /></ProtectedRoute>} />
+            <Route path="/alta" element={<ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev' || userRole === 'referee'}><AltaLocal /></ProtectedRoute>} />
+            <Route path="/equipos" element={<Equipos userRole={userRole} />} />
+            <Route path="/partidos" element={
+              <ProtectedRoute isAllowed={!!userRole && userRole !== 'public'}>
+                <MatchBatchProcessorProvider>
                   <Partidos userRole={userRole} />
-                </ProtectedRoute>
-              } />
+                </MatchBatchProcessorProvider>
+              </ProtectedRoute>
+            } />
 
-              <Route path="/importar-partidos" element={
-                <ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev'}>
+            <Route path="/importar-partidos" element={
+              <ProtectedRoute isAllowed={userRole === 'admin' || userRole === 'dev'}>
+                <MatchBatchProcessorProvider>
                   <MatchImporter />
-                </ProtectedRoute>
-              } />
+                </MatchBatchProcessorProvider>
+              </ProtectedRoute>
+            } />
 
-              <Route path="/partido/:id" element={<MatchDetail userRole={userRole} />} />
+            <Route path="/partido/:id" element={<MatchDetail userRole={userRole} />} />
+
+            {/* Rutas de Desarrollador */}
+            <Route path="/dev" element={<ProtectedRoute isAllowed={userRole === 'dev'}><DevTools /></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute isAllowed={isAdminOrDev}><AuditLogs /></ProtectedRoute>} />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
 
 
-              {/* Rutas de Desarrollador */}
-              <Route path="/dev" element={<ProtectedRoute isAllowed={userRole === 'dev'}><DevTools /></ProtectedRoute>} />
-              <Route path="/audit" element={<ProtectedRoute isAllowed={isAdminOrDev}><AuditLogs /></ProtectedRoute>} />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+          <footer style={{ marginTop: '50px', textAlign: 'center', opacity: 0.3, fontSize: '0.7rem', paddingBottom: '20px' }}>
+            2026 Gbro
+          </footer>
+        </main>
 
+        {/* Modal de Login Facial */}
+        {showFaceLogin && (
+          <div className="facial-login-overlay animate-fade-in" style={{ zIndex: 9999 }}>
+            <div className="glass-premium facial-login-card" style={{ maxWidth: '500px', width: '100%', padding: '20px' }}>
+              <button
+                onClick={() => setShowFaceLogin(false)}
+                className="btn-close-modal"
+                style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 300 }}
+              >
+                <X size={24} />
+              </button>
 
+              <div className="text-center" style={{ marginBottom: '1.5rem' }}>
+                <h3 className="modal-premium-title" style={{ fontSize: '1.5rem' }}>Login Biométrico</h3>
+                <p className="modal-premium-subtitle">Sistema de Acceso Seguro</p>
+              </div>
 
-            <footer style={{ marginTop: '50px', textAlign: 'center', opacity: 0.3, fontSize: '0.7rem', paddingBottom: '20px' }}>
-              2026 Gbro
-            </footer>
-          </main>
+              {/* Tips Section */}
+              <div className="glass-panel" style={{ padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', marginBottom: '15px', minHeight: '45px', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ minWidth: '24px' }}>{tips[tipIndex].icon}</div>
+                <span className="animate-fade-in" key={tipIndex} style={{ fontSize: '0.8rem' }}>
+                  {tips[tipIndex].text}
+                </span>
+              </div>
 
-          {/* Modal de Login Facial */}
-          {showFaceLogin && (
-            <div className="facial-login-overlay animate-fade-in" style={{ zIndex: 9999 }}>
-              <div className="glass-premium facial-login-card" style={{ maxWidth: '500px', width: '100%', padding: '20px' }}>
-                <button
-                  onClick={() => setShowFaceLogin(false)}
-                  className="btn-close-modal"
-                  style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 300 }}
-                >
-                  <X size={24} />
-                </button>
+              {/* Camera Wrapper - Same as AltaLocal */}
+              <div className="webcam-wrapper" style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', border: '2px solid rgba(0, 135, 81, 0.3)', position: 'relative', borderRadius: '24px' }}>
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  playsInline
+                  muted
+                  autoPlay
+                  videoConstraints={{ facingMode: "user" }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
 
-                <div className="text-center" style={{ marginBottom: '1.5rem' }}>
-                  <h3 className="modal-premium-title" style={{ fontSize: '1.5rem' }}>Login Biométrico</h3>
-                  <p className="modal-premium-subtitle">Sistema de Acceso Seguro</p>
-                </div>
-
-                {/* Tips Section */}
-                <div className="glass-panel" style={{ padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', marginBottom: '15px', minHeight: '45px', background: 'rgba(255,255,255,0.02)' }}>
-                  <div style={{ minWidth: '24px' }}>{tips[tipIndex].icon}</div>
-                  <span className="animate-fade-in" key={tipIndex} style={{ fontSize: '0.8rem' }}>
-                    {tips[tipIndex].text}
-                  </span>
-                </div>
-
-                {/* Camera Wrapper - Same as AltaLocal */}
-                <div className="webcam-wrapper" style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', border: '2px solid rgba(0, 135, 81, 0.3)', position: 'relative', borderRadius: '24px' }}>
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/jpeg"
-                    playsInline
-                    muted
-                    autoPlay
-                    videoConstraints={{ facingMode: "user" }}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-
-                  {/* Face Box Overlay */}
-                  {faceBox && (
-                    <div className="face-box-overlay">
-                      <div
-                        className={`face-box ${qualityError ? 'invalid' : ''} ${matchingFace ? 'processing' : ''}`}
-                        style={{
-                          left: `${faceBox.x}%`,
-                          top: `${faceBox.y}%`,
-                          width: `${faceBox.w}%`,
-                          height: `${faceBox.h}%`
-                        }}
-                      >
-                        <div className="face-box-corner tl"></div>
-                        <div className="face-box-corner tr"></div>
-                        <div className="face-box-corner bl"></div>
-                        <div className="face-box-corner br"></div>
-                      </div>
+                {/* Face Box Overlay */}
+                {faceBox && (
+                  <div className="face-box-overlay">
+                    <div
+                      className={`face-box ${qualityError ? 'invalid' : ''} ${matchingFace ? 'processing' : ''}`}
+                      style={{
+                        left: `${faceBox.x}%`,
+                        top: `${faceBox.y}%`,
+                        width: `${faceBox.w}%`,
+                        height: `${faceBox.h}%`
+                      }}
+                    >
+                      <div className="face-box-corner tl"></div>
+                      <div className="face-box-corner tr"></div>
+                      <div className="face-box-corner bl"></div>
+                      <div className="face-box-corner br"></div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Status Badges Overlay */}
-                  <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', zIndex: 20 }}>
-                    <div className="status-badge" style={{
-                      background: qualityError ? 'rgba(239, 68, 68, 0.9)' : (matchingFace ? 'rgba(59, 130, 246, 0.9)' : 'rgba(34, 197, 94, 0.9)'),
-                      color: '#fff',
-                      padding: '5px 10px',
-                      borderRadius: '8px',
-                      fontSize: '0.75rem',
-                      display: 'flex', alignItems: 'center', gap: '5px'
-                    }}>
-                      {matchingFace ? <RefreshCw className="animate-spin" size={12} /> : (qualityError ? <XCircle size={12} /> : <Zap size={12} />)}
-                      {qualityError ? qualityError : statusText}
-                    </div>
-
-                    {!matchingFace && (
-                      <div style={{ width: '100px', height: '4px', background: 'rgba(0,0,0,0.3)', borderRadius: '2px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${scanProgress}%`, background: '#008751', transition: 'width 0.1s linear' }} />
-                      </div>
-                    )}
+                {/* Status Badges Overlay */}
+                <div style={{ position: 'absolute', top: '15px', right: '15px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', zIndex: 20 }}>
+                  <div className="status-badge" style={{
+                    background: qualityError ? 'rgba(239, 68, 68, 0.9)' : (matchingFace ? 'rgba(59, 130, 246, 0.9)' : 'rgba(34, 197, 94, 0.9)'),
+                    color: '#fff',
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    display: 'flex', alignItems: 'center', gap: '5px'
+                  }}>
+                    {matchingFace ? <RefreshCw className="animate-spin" size={12} /> : (qualityError ? <XCircle size={12} /> : <Zap size={12} />)}
+                    {qualityError ? qualityError : statusText}
                   </div>
 
-                  <div className="camera-mask"></div>
+                  {!matchingFace && (
+                    <div style={{ width: '100px', height: '4px', background: 'rgba(0,0,0,0.3)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${scanProgress}%`, background: '#008751', transition: 'width 0.1s linear' }} />
+                    </div>
+                  )}
                 </div>
 
-                <p style={{ textAlign: 'center', opacity: 0.5, fontSize: '0.7rem', marginTop: '15px' }}>
-                  Mantén tu rostro en el recuadro para ingresar
-                </p>
-
+                <div className="camera-mask"></div>
               </div>
+
+              <p style={{ textAlign: 'center', opacity: 0.5, fontSize: '0.7rem', marginTop: '15px' }}>
+                Mantén tu rostro en el recuadro para ingresar
+              </p>
+
             </div>
-          )}
-          <MatchBatchProcessorOverlay />
-        </div>
-      </MatchBatchProcessorProvider>
-    </BrowserRouter>
+          </div>
+        )}
+      </div>
+    </BrowserRouter >
   );
 }
 
