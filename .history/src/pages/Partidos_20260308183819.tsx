@@ -66,7 +66,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
                         ) : (
                             <Shield size={32} className="text-white/10" />
                         )}
-                        <div className="absolute inset-0 bg-linear-to-t from-slate-900/40 to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none" />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-tight px-1">
                         {match.teamA?.name || 'Equipo A'}
@@ -100,7 +100,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
                         ) : (
                             <Shield size={32} className="text-white/10" />
                         )}
-                        <div className="absolute inset-0 bg-linear-to-t from-slate-900/40 to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none" />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-tight px-1">
                         {match.teamB?.name || 'Equipo B'}

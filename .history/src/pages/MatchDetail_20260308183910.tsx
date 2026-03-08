@@ -82,9 +82,9 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
     return (
         <div className="glass-panel overflow-hidden border border-white/10 flex flex-col h-full bg-white/5 backdrop-blur-md">
             {/* Squad Header */}
-            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-linear-to-r from-primary/10 to-transparent">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-primary/10 to-transparent">
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden p-1.5">
                         {logoUrl ? (
                             <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" onError={(e) => (e.currentTarget.src = 'https://placehold.co/64x64?text=T')} />
                         ) : (
@@ -97,7 +97,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                     </div>
                 </div>
                 {canManageMatch && (
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 flex-shrink-0">
                         <button onClick={() => onSubstitution(teamSide)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-all text-[0.7rem] font-black">
                             <Repeat2 size={12} /> <span className="hidden sm:inline">CAMBIO</span>
                         </button>
@@ -126,7 +126,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                                 className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-300 ${p.isDisabled ? 'opacity-50 grayscale bg-red-500/5 border-red-500/10' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20'} ${canManageMatch ? 'cursor-pointer' : ''}`}
                             >
                                 {/* Player Number */}
-                                <div className="w-10 h-10 shrink-0 bg-black/40 border border-white/10 rounded-lg flex items-center justify-center text-lg font-black text-primary shadow-inner">
+                                <div className="w-10 h-10 flex-shrink-0 bg-black/40 border border-white/10 rounded-lg flex items-center justify-center text-lg font-black text-primary shadow-inner">
                                     <input
                                         type="number"
                                         value={p.number}
@@ -143,7 +143,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                                         e.stopPropagation();
                                         onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
                                     }}
-                                    className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 shrink-0 relative group/photo"
+                                    className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 relative group/photo"
                                 >
                                     <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/80'} alt={p.name} className="w-full h-full object-cover transition-transform group-hover/photo:scale-110" />
                                     <div className="absolute inset-0 bg-primary/0 group-hover/photo:bg-primary/20 transition-colors flex items-center justify-center">
@@ -1317,7 +1317,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         <div className="h-1 w-12 bg-primary rounded-full"></div>
                     </div>
 
-                    <div className="relative pl-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-primary/50 before:via-primary/20 before:to-transparent">
+                    <div className="relative pl-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-primary/50 before:via-primary/20 before:to-transparent">
                         {(match.events || []).length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-white/30 italic">
                                 <Info size={32} className="mb-4 opacity-20" />

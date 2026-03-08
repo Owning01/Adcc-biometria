@@ -1,0 +1,97 @@
+# 🧠 ADCC Biometric - Documentación Técnica Integral
+
+Este documento proporciona una visión detallada de la aplicación **ADCC Biometric**, una plataforma avanzada de gestión deportiva y autenticación biométrica diseñada para el control de acceso de jugadores y árbitros en tiempo real.
+
+---
+
+## 1. Visión General del Proyecto
+
+ADCC Biometric es una Progressive Web App (PWA) de alto rendimiento que centraliza la administración de torneos deportivos. Su característica distintiva es un **motor de reconocimiento facial híbrido** que permite validar la identidad de los participantes en el campo de juego sin necesidad de hardware especializado, utilizando únicamente la cámara del dispositivo móvil o tablet.
+
+### Objetivos Claves:
+*   **Seguridad**: Validación biométrica de jugadores para evitar suplantaciones.
+*   **Velocidad**: Reconocimiento facial en menos de 2-5 segundos.
+*   **Disponibilidad**: Funcionamiento offline parcial con sincronización tardía y caché local.
+*   **Estética**: Interfaz "Futurista Premium" con alto impacto visual.
+
+---
+
+## 2. Stack Tecnológico
+
+La aplicación utiliza tecnologías modernas para garantizar escalabilidad, seguridad y una experiencia de usuario fluida:
+
+| Capa | Tecnología | Propósito |
+| :--- | :--- | :--- |
+| **Frontend** | React 18 + TypeScript | Lógica de componentes y tipado estricto. |
+| **Build Tool** | Vite | Compilación ultra-rápida y HMR. |
+| **Backend / DB** | Firebase (Firestore) | Base de datos NoSQL en tiempo real. |
+| **Auth** | Firebase Authentication | Gestión de roles (Admin, Árbitro, Dev, Usuario). |
+| **Storage** | Firebase Storage | Almacenamiento de fotos de perfil y descriptores. |
+| **Biometría (M)** | Google MediaPipe | Detección facial ultra-rápida (detección de caja). |
+| **Biometría (R)** | Face-API.js / TFJS | Extracción de descriptores y comparación (identificación). |
+| **UI / Estilos** | CSS Moderno (Glassmorphism) | Diseño premium con transparencias y efectos de desenfoque. |
+| **Iconografía** | Lucide React | Set de iconos vectoriales modernos. |
+| **Animaciones** | Framer Motion | Transiciones suaves y efectos de micro-interacción. |
+
+---
+
+## 3. Arquitectura del Sistema
+
+### 3.1. Motor Biométrico Híbrido (Core)
+El sistema utiliza una estrategia de **"Crop-First"** (Recortar Primero) para optimizar el rendimiento en móviles:
+1.  **MediaPipe Detection**: Localiza la cara en el video (~20ms).
+2.  **Smart Crop**: Recorta solo la región facial y la envía a un canvas pequeño (160x160).
+3.  **Face-API Recognition**: Procesa el recorte pequeño para extraer el descriptor facial único.
+4.  **Matching**: Compara el descriptor contra la base de datos local (IndexedDB) o remota.
+
+### 3.2. Gestión de Datos y Caché (Stale-While-Revalidate)
+Para evitar "pantallas blancas" y mejorar la fluidez:
+*   **LocalStorage**: Se cachean listas de equipos (`teamsMetadata`), jugadores (`users`) y partidos (`matches`).
+*   **Flujo**: Al abrir una página, se cargan los datos del caché instantáneamente. En paralelo, se activa la suscripción en tiempo real de Firestore, la cual actualiza la UI y refresca el caché silenciosamente.
+
+### 3.3. Sistema de Diseño (Premium Aesthetic)
+Definido principalmente en [src/index.css](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/index.css), el diseño sigue el concepto de **Glassmorphism**:
+*   Fondos con `backdrop-filter: blur(10px)`.
+*   Bordes sutiles `1px solid rgba(255,255,255,0.1)`.
+*   Degradados radiales profundos para el fondo de la aplicación.
+*   Uso de **Hexágonos** dinámicos para las tarjetas de equipos.
+
+---
+
+## 4. Estructura del Código (`src/`)
+
+### 4.1. `/pages` (Pantallas Principales)
+*   **[Home.tsx](file:///C:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/pages/Home.tsx)**: Dashboard administrativo. Gestión de equipos, jugadores y estadísticas globales.
+*   **[Partidos.tsx](file:///C:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/pages/Partidos.tsx)**: Listado de partidos (Próximos y Pasados). Implementa paginación local de 7 elementos.
+*   **[AltaLocal.tsx](file:///C:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/pages/AltaLocal.tsx) / [CheckIn.tsx](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/pages/CheckIn.tsx)**: El "Modo Kiosco". Interfaz de reconocimiento facial para el campo de juego.
+*   **[MatchDetail.tsx](file:///C:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/pages/MatchDetail.tsx)**: Gestión detallada de un partido específico (Incidencias, Estadísticas, Planillas).
+*   **[Register.tsx](file:///C:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/pages/Register.tsx)**: Flujo de registro de nuevos jugadores con captura de biometría inicial.
+
+### 4.2. `/services` (Lógica de Negocio)
+*   **[db.ts](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/services/db.ts) / [matchesService.ts](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/services/matchesService.ts)**: Capas de abstracción para todas las operaciones con Firestore.
+*   **[hybridFaceService.ts](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/services/hybridFaceService.ts)**: Orquestador principal de MediaPipe y Face-API.
+*   **[auditService.ts](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/services/auditService.ts)**: Registra cada evento crítico (Logins, Check-ins, Errores) en una colección global de auditoría.
+*   **[syncService.ts](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/services/syncService.ts)**: Maneja la lógica de sincronización de datos y versiones de la app.
+
+### 4.3. `/contexts` (Estado Global)
+*   **[MatchBatchProcessorContext.tsx](file:///c:/Users/Octavio/Desktop/3%29%20adcc%20biometric/src/contexts/MatchBatchProcessorContext.tsx)**: Permite procesar múltiples partidos o importaciones masivas de datos en segundo plano.
+
+---
+
+## 5. Modelado de Datos (Firebase Collections)
+
+1.  **`users`**: Jugadores, Árbitros, Admins. (Contiene `faceDescriptor` e `imageUrl`).
+2.  **`matches`**: Detalles del encuentro, equipos, score, estado, incidencias.
+3.  **`teams`**: Metadatos de los clubes (Nombres, Logos, Categorías).
+4.  **`audit`**: Historial de acciones realizadas en el sistema.
+5.  **`attendance`**: Registro de presencia de jugadores validada biométricamente.
+
+---
+
+## 6. Flujo de Trabajo y Mantenimiento
+
+*   **PWA**: La aplicación está configurada para instalarse en móviles Android/iOS a través del navegador.
+*   **Auto-Update**: Verifica y notifica nuevas versiones de la aplicación comparando `version.json` del hosting.
+*   **Seguridad**: Roles de acceso restringidos vía Firestore Security Rules. Solo los usuarios con rol `admin` o `dev` pueden realizar operaciones destructivas o de gestión masiva.
+
+---

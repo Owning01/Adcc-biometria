@@ -57,7 +57,7 @@ interface SquadColumnProps {
     title: string;
     logoUrl?: string;
     players: any[];
-    teamSide: string; // 'A' or 'B'
+    teamSide: string;
     onAdd: () => void;
     onSubstitution: (team: string) => void;
     onUpdate: (idx: number, field: string, value: any) => void;
@@ -66,150 +66,97 @@ interface SquadColumnProps {
     userRole: string;
     onPlayerClick: (idx: number, player: any) => void;
     onPhotoClick: (url: string, name: string) => void;
-    matchEvents?: any[];
 }
 
-const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick, matchEvents = [] }: SquadColumnProps) => {
+const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution, onUpdate, onRemove, isReferee, userRole, onPlayerClick, onPhotoClick }: SquadColumnProps) => {
     const isAdmin = userRole === 'admin' || userRole === 'dev';
     const canManageMatch = isAdmin || userRole === 'referee';
 
-    const getGoalTimes = (playerName: string) => {
-        return (matchEvents || [])
-            .filter(e => e.type === 'goal' && e.player === playerName && e.teamSide === teamSide)
-            .map(e => e.time);
-    };
-
     return (
-        <div className="glass-panel overflow-hidden border border-white/10 flex flex-col h-full bg-white/5 backdrop-blur-md">
-            {/* Squad Header */}
-            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-linear-to-r from-primary/10 to-transparent">
-                <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
-                        {logoUrl ? (
-                            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" onError={(e) => (e.currentTarget.src = 'https://placehold.co/64x64?text=T')} />
-                        ) : (
-                            <Users size={20} className="text-primary" />
-                        )}
+        <div className="glass-panel squad-column-premium">
+            <div className="squad-header-premium">
+                <div className="squad-team-info">
+                    <div className="squad-logo-container">
+                        {logoUrl ? <img src={logoUrl} alt="L" onError={(e) => (e.currentTarget.style.display = 'none')} /> : <Users size={20} color="var(--primary)" />}
                     </div>
-                    <div className="min-w-0">
-                        <h4 className="text-lg font-black text-white truncate uppercase tracking-tight leading-none mb-1">{title}</h4>
-                        <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-[1px]">Plantel: {players.length} JUGADORES</div>
+                    <div className="squad-title-box">
+                        <h4 className="squad-title-text" title={title}>{title}</h4>
+                        <div className="squad-count-text">Plantel: {players.length} jugadores</div>
                     </div>
                 </div>
                 {canManageMatch && (
-                    <div className="flex gap-2 shrink-0">
-                        <button onClick={() => onSubstitution(teamSide)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-all text-[0.7rem] font-black">
-                            <Repeat2 size={12} /> <span className="hidden sm:inline">CAMBIO</span>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        <button onClick={() => onSubstitution(teamSide)} className="glass-button" style={{ fontSize: '0.8rem', padding: '5px 8px', background: 'rgba(59, 130, 246, 0.1)' }}>
+                            <Repeat2 size={12} /> <span className="hide-mobile">CAMBIO</span>
                         </button>
                         {isAdmin && (
-                            <button onClick={onAdd} className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 flex items-center justify-center transition-all">
+                            <button onClick={onAdd} className="glass-button" style={{ width: '30px', height: '30px', padding: 0, borderRadius: '50%', fontSize: '0.8rem' }}>
                                 <Plus size={16} />
                             </button>
                         )}
                     </div>
                 )}
             </div>
-
-            {/* Players List */}
-            <div className="p-2 flex flex-col gap-2 max-h-[600px] overflow-y-auto custom-scrollbar">
+            <div className="squad-players-list">
                 {players.length === 0 ? (
-                    <div className="py-12 text-center text-white/20 italic font-medium flex flex-col items-center gap-2">
-                        <Users size={32} className="opacity-10" />
-                        Sin jugadores asignados
-                    </div>
+                    <div style={{ textAlign: 'center', padding: 'var(--space-xl)', color: 'var(--text-muted)', fontSize: '1rem' }}>Sin jugadores asignados</div>
                 ) : (
-                    players.map((p: any, idx: number) => {
-                        const goalTimes = getGoalTimes(p.name);
-                        return (
-                            <div key={idx}
-                                onClick={() => canManageMatch && onPlayerClick(idx, p)}
-                                className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-300 ${p.isDisabled ? 'opacity-50 grayscale bg-red-500/5 border-red-500/10' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20'} ${canManageMatch ? 'cursor-pointer' : ''}`}
-                            >
-                                {/* Player Number */}
-                                <div className="w-10 h-10 shrink-0 bg-black/40 border border-white/10 rounded-lg flex items-center justify-center text-lg font-black text-primary shadow-inner">
+                    players.map((p: any, idx: number) => (
+                        <div key={idx}
+                            onClick={() => canManageMatch && onPlayerClick(idx, p)}
+                            className={`player-card-premium ${p.isDisabled ? 'disabled' : ''} ${canManageMatch ? 'clickable' : ''}`}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 200px' }}>
+                                <div className="player-number-display">
                                     <input
                                         type="number"
                                         value={p.number}
                                         onChange={(e) => onUpdate(idx, 'number', e.target.value)}
-                                        className="bg-transparent border-none text-center w-full focus:outline-none pointer-events-auto"
+                                        style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'center', fontWeight: 'bold' }}
                                         disabled={!isAdmin}
-                                        onClick={(e) => e.stopPropagation()}
                                     />
                                 </div>
-
-                                {/* Player Photo */}
                                 <div
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
                                     }}
-                                    className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 shrink-0 relative group/photo"
+                                    className={`player-photo-wrapper ${p.isDisabled ? 'disabled' : ''}`}
                                 >
-                                    <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/80'} alt={p.name} className="w-full h-full object-cover transition-transform group-hover/photo:scale-110" />
-                                    <div className="absolute inset-0 bg-primary/0 group-hover/photo:bg-primary/20 transition-colors flex items-center justify-center">
-                                        <Plus size={12} className="text-white opacity-0 group-hover/photo:opacity-100" />
-                                    </div>
+                                    <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/40'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
-
-                                {/* Player Info */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center flex-wrap gap-1">
-                                        <div className={`font-bold truncate text-[0.95rem] ${p.status === 'expulsado' ? 'text-red-500' : 'text-white'} ${p.status === 'suplente' ? 'opacity-60' : ''}`}>
-                                            {p.name}
-                                        </div>
-                                        {p.isDisabled && <span className="text-red-500 animate-pulse" title="Inhabilitado">⚠️</span>}
-                                        {p.status === 'expulsado' && <span className="px-1.5 py-0.5 bg-red-500 text-[0.6rem] text-white rounded font-black uppercase tracking-[1px]">ROJA</span>}
-
-                                        {/* Goal Times Badge */}
-                                        {goalTimes.length > 0 && (
-                                            <div className="flex gap-1">
-                                                {goalTimes.map((gt, gidx) => (
-                                                    <span key={gidx} className="flex items-center gap-0.5 px-1 py-0.5 bg-emerald-500/20 text-emerald-400 text-[0.6rem] font-bold rounded border border-emerald-500/30">
-                                                        <Activity size={8} /> {gt}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                <div className="player-info-content" style={{ opacity: p.status === 'suplente' ? 0.5 : 1 }}>
+                                    <div className="player-name-text" style={{ color: p.isDisabled ? '#fca5a5' : (p.status === 'expulsado' ? '#ef4444' : 'white') }}>
+                                        {p.name}
+                                        {p.isDisabled && <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '900', marginLeft: '5px' }}>⚠️</span>}
+                                        {p.status === 'expulsado' && <span style={{ fontSize: '0.8rem', background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', marginLeft: '5px' }}>ROJA</span>}
                                     </div>
-                                    <div className="text-[0.65rem] font-bold uppercase tracking-widest text-white/40">
+                                    <div className="player-status-text">
                                         {p.status === 'titular' ? (p.isDisabled ? 'Inhabilitado' : 'Titular') : (p.status === 'suplente' ? 'Suplente' : 'Expulsado')}
                                     </div>
                                 </div>
-
-                                {/* Player Stats Indicators */}
-                                <div className="flex items-center gap-2">
-                                    {(parseInt(p.yellowCards) > 0) && (
-                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-400/10 border border-amber-400/20 rounded-md">
-                                            <div className="w-2 h-3 bg-amber-400 rounded-sm"></div>
-                                            <span className="text-[0.7rem] font-black text-amber-400">{p.yellowCards}</span>
-                                        </div>
-                                    )}
-                                    {p.redCard && (
-                                        <div className="w-2.5 h-4 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
-                                    )}
-                                    {(parseInt(p.goals) > 0) && (
-                                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-                                            <Target size={12} className="text-emerald-500" />
-                                            <span className="text-[0.7rem] font-black text-emerald-500">{p.goals}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Remove button only for admins/referees if needed */}
-                                    {isAdmin && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onRemove(idx);
-                                            }}
-                                            className="ml-1 w-7 h-7 flex items-center justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    )}
-                                </div>
                             </div>
-                        );
-                    })
+
+                            {/* Indicadores rápidos de goles y tarjetas */}
+                            <div className="player-stats-indicators">
+                                {parseInt(p.yellowCards) > 0 && (
+                                    <div className="indicator-badge indicator-yellow">
+                                        <div style={{ width: '8px', height: '12px', background: '#fbbf24', borderRadius: '1.5px' }}></div>
+                                        <span>{p.yellowCards}</span>
+                                    </div>
+                                )}
+                                {p.redCard && (
+                                    <div className="indicator-red"></div>
+                                )}
+                                {parseInt(p.goals) > 0 && (
+                                    <div className="indicator-badge indicator-goals">
+                                        <Target size={12} color="#10b981" />
+                                        <span>{p.goals}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
         </div>
@@ -368,8 +315,8 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
     /**
      * Actualiza el marcador global del partido.
      * @param {string} team - 'a' o 'b'
-                                    * @param {number} delta - Valor a sumar o restar (ej: 1, -1)
-                                    */
+     * @param {number} delta - Valor a sumar o restar (ej: 1, -1)
+     */
     const handleScoreChange = async (team: string, delta: number, matchOverride: Match | null = null) => {
         const targetMatch = matchOverride || match;
         if (!targetMatch) return;
@@ -1202,60 +1149,60 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
             </div>
 
             {/* Tab Content: Planteles */}
-            {activeTab === 'planteles' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <SquadColumn
-                        title={match.teamA?.name ?? 'Equipo Local'}
-                        logoUrl={teamsMetadata.find(t => t.name === match.teamA?.name)?.logoUrl || getAdccImageUrl(match.teamA?.logo)}
-                        players={match.playersA || []}
-                        teamSide="A"
-                        onAdd={() => setShowAddPlayer('A')}
-                        onSubstitution={() => handleSubstitution('A')}
-                        onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'A', field, val)}
-                        onRemove={(idx: number) => removePlayer(idx, 'A')}
-                        isReferee={isReferee}
-                        userRole={userRole}
-                        onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
-                        onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
-                        matchEvents={match.events || []}
-                    />
-                    <SquadColumn
-                        title={match.teamB?.name ?? 'Equipo Visitante'}
-                        logoUrl={teamsMetadata.find(t => t.name === match.teamB?.name)?.logoUrl || getAdccImageUrl(match.teamB?.logo)}
-                        players={match.playersB || []}
-                        teamSide="B"
-                        onAdd={() => setShowAddPlayer('B')}
-                        onSubstitution={() => handleSubstitution('B')}
-                        onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'B', field, val)}
-                        onRemove={(idx: number) => removePlayer(idx, 'B')}
-                        isReferee={isReferee}
-                        userRole={userRole}
-                        onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
-                        onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
-                        matchEvents={match.events || []}
-                    />
-                </div>
-            )}
+            {
+                activeTab === 'planteles' && (
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))',
+                        gap: '20px'
+                    }}>
+                        <SquadColumn
+                            title={match.teamA?.name ?? 'Equipo Local'}
+                            logoUrl={teamsMetadata.find(t => t.name === match.teamA?.name)?.logoUrl || getAdccImageUrl(match.teamA?.logo)}
+                            players={match.playersA || []}
+                            teamSide="A"
+                            onAdd={() => setShowAddPlayer('A')}
+                            onSubstitution={() => handleSubstitution('A')}
+                            onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'A', field, val)}
+                            onRemove={(idx: number) => removePlayer(idx, 'A')}
+                            isReferee={isReferee}
+                            userRole={userRole}
+                            onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
+                            onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
+                        />
+                        <SquadColumn
+                            title={match.teamB?.name ?? 'Equipo Visitante'}
+                            logoUrl={teamsMetadata.find(t => t.name === match.teamB?.name)?.logoUrl || getAdccImageUrl(match.teamB?.logo)}
+                            players={match.playersB || []}
+                            teamSide="B"
+                            onAdd={() => setShowAddPlayer('B')}
+                            onSubstitution={() => handleSubstitution('B')}
+                            onUpdate={(idx: number, field: string, val: any) => handleUpdatePlayer(idx, 'B', field, val)}
+                            onRemove={(idx: number) => removePlayer(idx, 'B')}
+                            isReferee={isReferee}
+                            userRole={userRole}
+                            onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
+                            onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
+                        />
+                    </div>
+                )
+            }
 
             {
                 activeTab === 'stats' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="glass-panel p-6 sm:p-10 relative overflow-hidden group">
-                            {/* Decorative elements for premium feel */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-primary/10 transition-colors duration-700"></div>
-
-                            <h3 className="flex items-center justify-center gap-2.5 mb-10 text-[0.85rem] uppercase tracking-[4px] text-white/80 font-black relative">
-                                <Zap size={20} className="text-primary animate-pulse" />
+                    <div className="animate-fade-in flex flex-col gap-5">
+                        <div className="glass-panel p-6 sm:p-10">
+                            <h3 className="flex items-center justify-center gap-2.5 mb-8 text-[0.85rem] uppercase tracking-[3px] opacity-70 font-bold">
+                                <Zap size={18} className="text-primary" />
                                 Comparativa de Rendimiento
                             </h3>
 
-                            <div className="flex flex-col gap-10 relative">
+                            <div className="flex flex-col gap-8">
                                 <StatBar
-                                    label="Goles Totales"
+                                    label="Goles"
                                     a={match.score?.a ?? 0}
                                     b={match.score?.b ?? 0}
                                     icon={<Target size={14} />}
-                                    color="var(--primary)"
                                 />
                                 <StatBar
                                     label="Tarjetas Amarillas"
@@ -1272,32 +1219,17 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                     color="#ef4444"
                                 />
                                 <StatBar
-                                    label="Asistencias"
-                                    a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'assist').length}
-                                    b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'assist').length}
-                                    icon={<Star size={14} />}
-                                    color="#fde047"
-                                />
-                                <StatBar
-                                    label="Cambios Realizados"
-                                    a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'substitution').length}
-                                    b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'substitution').length}
-                                    icon={<Repeat2 size={14} />}
-                                    color="#a855f7"
-                                />
-                                <StatBar
-                                    label="Convocados"
+                                    label="Total Jugadores"
                                     a={(match.playersA || []).length}
                                     b={(match.playersB || []).length}
                                     icon={<Users size={14} />}
-                                    color="#60a5fa"
                                 />
                                 <StatBar
-                                    label="Expulsiones Clínicas"
+                                    label="Expulsados"
                                     a={(match.playersA || []).filter(p => p.status === 'expulsado').length}
                                     b={(match.playersB || []).filter(p => p.status === 'expulsado').length}
                                     icon={<ShieldAlert size={14} />}
-                                    color="#f43f5e"
+                                    color="#ef4444"
                                 />
                             </div>
                         </div>
@@ -1305,105 +1237,142 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                 )
             }
 
-            {activeTab === 'eventos' && (
-                <div className="glass-panel p-4 sm:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex flex-col items-center mb-10">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <TrendingUp size={20} className="text-primary" />
-                            </div>
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Cronología Dinámica</h3>
+            {
+                activeTab === 'eventos' && (
+                    <div className="animate-fade-in glass-panel" style={{ padding: '30px' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                            <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>Cronología Dinámica</h3>
+                            <div style={{ height: '2px', width: '50px', background: 'var(--primary)', margin: '10px auto' }}></div>
                         </div>
-                        <div className="h-1 w-12 bg-primary rounded-full"></div>
-                    </div>
 
-                    <div className="relative pl-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-primary/50 before:via-primary/20 before:to-transparent">
-                        {(match.events || []).length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-white/30 italic">
-                                <Info size={32} className="mb-4 opacity-20" />
-                                <p>No hay incidencias registradas.</p>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-6">
-                                {[...(match.events || [])].reverse().map((event, idx) => {
-                                    const isLocal = event.teamSide === 'A' || !event.teamSide;
-                                    const iconColor = event.type === 'goal' ? 'text-emerald-500' : (event.type === 'red_card' ? 'text-red-500' : (event.type === 'yellow_card' ? 'text-amber-400' : 'text-blue-400'));
-                                    const bgColor = event.type === 'goal' ? 'bg-emerald-500/10' : (event.type === 'red_card' ? 'bg-red-500/10' : (event.type === 'yellow_card' ? 'bg-amber-400/10' : 'bg-blue-400/10'));
-                                    const borderColor = event.type === 'goal' ? 'border-emerald-500/20' : (event.type === 'red_card' ? 'border-red-500/20' : (event.type === 'yellow_card' ? 'border-amber-400/20' : 'border-blue-400/20'));
+                        <div style={{ position: 'relative' }}>
+                            {/* Central Line */}
+                            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, bottom: 0, width: '2px', background: 'rgba(255,255,255,0.05)', display: window.innerWidth > 768 ? 'block' : 'none' }} />
 
-                                    return (
-                                        <div key={event.id || idx} className="relative group animate-in fade-in slide-in-from-left-4 duration-300" style={{ animationDelay: `${idx * 50}ms` }}>
-                                            {/* Timeline Time Indicator */}
-                                            <div className="absolute -left-[38px] top-2 w-7 h-5 rounded-full bg-dark-soft border border-primary/50 flex items-center justify-center z-10 shadow-lg">
-                                                <span className="text-[0.6rem] font-bold text-white leading-none tabular-nums">{event.time}</span>
-                                            </div>
+                            {(match.events || []).length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No hay incidencias registradas.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                                    {[...(match.events || [])].reverse().map((event) => {
+                                        const isLocal = event.teamSide === 'A' || !event.teamSide;
+                                        const iconColor = event.type === 'goal' ? '#10b981' : (event.type === 'red_card' ? '#ef4444' : (event.type === 'yellow_card' ? '#fbbf24' : '#3b82f6'));
 
-                                            {/* Event Card */}
-                                            <div className={`rounded-xl p-4 border transition-all duration-300 group-hover:translate-x-1 ${isLocal ? 'bg-primary/5 border-primary/10 group-hover:border-primary/30' : 'bg-white/2 border-white/5 group-hover:border-white/20'}`}>
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`px-2 py-0.5 rounded-md ${bgColor} ${borderColor} border`}>
-                                                            <span className={`text-[0.65rem] font-black uppercase tracking-wider ${iconColor}`}>
-                                                                {event.type === 'goal' && '¡GOL!'}
-                                                                {event.type === 'assist' && 'Asistencia'}
-                                                                {event.type === 'yellow_card' && 'Amonestación'}
-                                                                {event.type === 'red_card' && 'Expulsión'}
-                                                                {event.type === 'substitution' && 'Cambio'}
-                                                                {['match_start', 'halftime', 'finish'].includes(event.type) && 'Info'}
-                                                            </span>
+                                        return (
+                                            <div key={event.id} style={{
+                                                display: 'flex',
+                                                justifyContent: window.innerWidth > 768 ? (isLocal ? 'flex-end' : 'flex-start') : 'flex-start',
+                                                alignItems: 'center',
+                                                paddingRight: window.innerWidth > 768 ? (isLocal ? '55%' : '0') : '0',
+                                                paddingLeft: window.innerWidth > 768 ? (isLocal ? '0' : '55%') : '40px',
+                                                position: 'relative'
+                                            }}>
+                                                {/* Desktop Circle in middle */}
+                                                {window.innerWidth > 768 && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        width: '38px',
+                                                        height: '24px',
+                                                        borderRadius: '12px',
+                                                        background: '#1a1a1a',
+                                                        border: `2px solid ${iconColor} `,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        zIndex: 2,
+                                                        boxShadow: `0 0 10px ${iconColor}44`
+                                                    }}>
+                                                        <span className="text-[0.65rem] font-black">{event.time}</span>
+                                                    </div>
+                                                )}
+
+                                                {/* Mobile Circle in side */}
+                                                {window.innerWidth <= 768 && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        left: 0,
+                                                        width: '38px',
+                                                        height: '22px',
+                                                        borderRadius: '11px',
+                                                        background: '#1a1a1a',
+                                                        border: `2px solid ${iconColor} `,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        zIndex: 2,
+                                                    }}>
+                                                        <span className="text-[0.6rem] font-black">{event.time}</span>
+                                                    </div>
+                                                )}
+
+                                                <div className="glass-panel" style={{
+                                                    width: '100%',
+                                                    padding: '15px 20px',
+                                                    background: isLocal ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.02)',
+                                                    border: isLocal ? '1px solid rgba(59, 130, 246, 0.1)' : '1px solid rgba(255,255,255,0.05)',
+                                                    borderRadius: '15px',
+                                                    position: 'relative'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                            <div style={{
+                                                                width: '36px', height: '36px', borderRadius: '10px',
+                                                                background: `${iconColor} 22`,
+                                                                color: iconColor,
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}>
+                                                                {event.type === 'goal' && <Target size={20} />}
+                                                                {event.type === 'assist' && <Star size={20} />}
+                                                                {event.type === 'yellow_card' && <Square size={20} fill="#fbbf24" color="#fbbf24" style={{ borderRadius: '2px' }} />}
+                                                                {event.type === 'red_card' && <Square size={20} fill="#ef4444" color="#ef4444" style={{ borderRadius: '2px' }} />}
+                                                                {event.type === 'substitution' && <Repeat2 size={20} />}
+                                                                {(event.type === 'match_start' || event.type === 'halftime' || event.type === 'finish') && <Info size={20} />}
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                    {event.type === 'goal' && '¡GOL!'}
+                                                                    {event.type === 'assist' && 'Asistencia'}
+                                                                    {event.type === 'yellow_card' && 'Amonestación'}
+                                                                    {event.type === 'red_card' && 'Expulsión'}
+                                                                    {event.type === 'substitution' && 'Cambio'}
+                                                                    {event.type === 'match_start' && 'Inicio'}
+                                                                    {event.type === 'halftime' && 'Pausa'}
+                                                                    {event.type === 'finish' && 'Final'}
+                                                                </div>
+                                                                <div style={{ fontSize: '1.1rem', color: '#fff' }}>
+                                                                    {event.type === 'substitution' ? (
+                                                                        <div style={{ fontSize: '0.95rem' }}>
+                                                                            <span style={{ color: '#ef4444' }}>⬇ {event.playerOut}</span>
+                                                                            <span style={{ margin: '0 8px', opacity: 0.3 }}>|</span>
+                                                                            <span style={{ color: '#10b981' }}>⬆ {event.playerIn}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span style={{ fontWeight: '500' }}>{event.player || event.detail}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <span className="text-[0.6rem] uppercase tracking-widest text-white/40 font-bold">
-                                                            {event.teamSide === 'A' ? (match.teamA?.name) : (match.teamB?.name)}
-                                                        </span>
-                                                    </div>
-                                                    {isAdminOrDev && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); removeEvent(event.id); }}
-                                                            className="p-1.5 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    )}
-                                                </div>
 
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${bgColor} ${iconColor}`}>
-                                                        {event.type === 'goal' && <Target size={20} />}
-                                                        {event.type === 'assist' && <Star size={20} />}
-                                                        {event.type === 'yellow_card' && <Square size={18} fill="currentColor" className="rounded-[2px]" />}
-                                                        {event.type === 'red_card' && <Square size={18} fill="currentColor" className="rounded-[2px]" />}
-                                                        {event.type === 'substitution' && <Repeat2 size={20} />}
-                                                        {['match_start', 'halftime', 'finish'].includes(event.type) && <Info size={20} />}
-                                                    </div>
-
-                                                    <div className="flex-1 min-w-0">
-                                                        {event.type === 'substitution' ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-red-400 font-bold truncate">⬇ {event.playerOut}</span>
-                                                                <div className="w-1 h-1 rounded-full bg-white/10"></div>
-                                                                <span className="text-emerald-500 font-bold truncate">⬆ {event.playerIn}</span>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-white font-black text-lg truncate">
-                                                                {event.player || event.detail}
-                                                            </div>
-                                                        )}
-                                                        {event.details && (
-                                                            <div className="text-[0.8rem] text-white/50 italic truncate">
-                                                                {event.details}
-                                                            </div>
+                                                        {isAdminOrDev && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); removeEvent(event.id); }}
+                                                                style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.4, cursor: 'pointer' }}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Modal Selector Jugadores */}
             {

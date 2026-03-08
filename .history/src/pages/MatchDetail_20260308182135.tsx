@@ -82,9 +82,9 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
     return (
         <div className="glass-panel overflow-hidden border border-white/10 flex flex-col h-full bg-white/5 backdrop-blur-md">
             {/* Squad Header */}
-            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-linear-to-r from-primary/10 to-transparent">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-primary/10 to-transparent">
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden p-1.5">
                         {logoUrl ? (
                             <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" onError={(e) => (e.currentTarget.src = 'https://placehold.co/64x64?text=T')} />
                         ) : (
@@ -97,7 +97,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                     </div>
                 </div>
                 {canManageMatch && (
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 flex-shrink-0">
                         <button onClick={() => onSubstitution(teamSide)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-all text-[0.7rem] font-black">
                             <Repeat2 size={12} /> <span className="hidden sm:inline">CAMBIO</span>
                         </button>
@@ -126,7 +126,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                                 className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-300 ${p.isDisabled ? 'opacity-50 grayscale bg-red-500/5 border-red-500/10' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20'} ${canManageMatch ? 'cursor-pointer' : ''}`}
                             >
                                 {/* Player Number */}
-                                <div className="w-10 h-10 shrink-0 bg-black/40 border border-white/10 rounded-lg flex items-center justify-center text-lg font-black text-primary shadow-inner">
+                                <div className="w-10 h-10 flex-shrink-0 bg-black/40 border border-white/10 rounded-lg flex items-center justify-center text-lg font-black text-primary shadow-inner">
                                     <input
                                         type="number"
                                         value={p.number}
@@ -143,7 +143,7 @@ const SquadColumn = ({ title, logoUrl, players, teamSide, onAdd, onSubstitution,
                                         e.stopPropagation();
                                         onPhotoClick(getAdccImageUrl(p.photo) || '', p.name);
                                     }}
-                                    className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 shrink-0 relative group/photo"
+                                    className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 relative group/photo"
                                 >
                                     <img src={getAdccImageUrl(p.photo) || 'https://via.placeholder.com/80'} alt={p.name} className="w-full h-full object-cover transition-transform group-hover/photo:scale-110" />
                                     <div className="absolute inset-0 bg-primary/0 group-hover/photo:bg-primary/20 transition-colors flex items-center justify-center">
@@ -1217,7 +1217,6 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         userRole={userRole}
                         onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'A', player: p })}
                         onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
-                        matchEvents={match.events || []}
                     />
                     <SquadColumn
                         title={match.teamB?.name ?? 'Equipo Visitante'}
@@ -1232,30 +1231,25 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         userRole={userRole}
                         onPlayerClick={(idx, p) => setSelectedPlayer({ index: idx, teamSide: 'B', player: p })}
                         onPhotoClick={(url, name) => setZoomedPhoto({ url, name })}
-                        matchEvents={match.events || []}
                     />
                 </div>
             )}
 
             {
                 activeTab === 'stats' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="glass-panel p-6 sm:p-10 relative overflow-hidden group">
-                            {/* Decorative elements for premium feel */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-primary/10 transition-colors duration-700"></div>
-
-                            <h3 className="flex items-center justify-center gap-2.5 mb-10 text-[0.85rem] uppercase tracking-[4px] text-white/80 font-black relative">
-                                <Zap size={20} className="text-primary animate-pulse" />
+                    <div className="animate-fade-in flex flex-col gap-5">
+                        <div className="glass-panel p-6 sm:p-10">
+                            <h3 className="flex items-center justify-center gap-2.5 mb-8 text-[0.85rem] uppercase tracking-[3px] opacity-70 font-bold">
+                                <Zap size={18} className="text-primary" />
                                 Comparativa de Rendimiento
                             </h3>
 
-                            <div className="flex flex-col gap-10 relative">
+                            <div className="flex flex-col gap-8">
                                 <StatBar
-                                    label="Goles Totales"
+                                    label="Goles"
                                     a={match.score?.a ?? 0}
                                     b={match.score?.b ?? 0}
                                     icon={<Target size={14} />}
-                                    color="var(--primary)"
                                 />
                                 <StatBar
                                     label="Tarjetas Amarillas"
@@ -1272,32 +1266,17 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                                     color="#ef4444"
                                 />
                                 <StatBar
-                                    label="Asistencias"
-                                    a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'assist').length}
-                                    b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'assist').length}
-                                    icon={<Star size={14} />}
-                                    color="#fde047"
-                                />
-                                <StatBar
-                                    label="Cambios Realizados"
-                                    a={(match.events || []).filter(e => e.teamSide === 'A' && e.type === 'substitution').length}
-                                    b={(match.events || []).filter(e => e.teamSide === 'B' && e.type === 'substitution').length}
-                                    icon={<Repeat2 size={14} />}
-                                    color="#a855f7"
-                                />
-                                <StatBar
-                                    label="Convocados"
+                                    label="Total Jugadores"
                                     a={(match.playersA || []).length}
                                     b={(match.playersB || []).length}
                                     icon={<Users size={14} />}
-                                    color="#60a5fa"
                                 />
                                 <StatBar
-                                    label="Expulsiones Clínicas"
+                                    label="Expulsados"
                                     a={(match.playersA || []).filter(p => p.status === 'expulsado').length}
                                     b={(match.playersB || []).filter(p => p.status === 'expulsado').length}
                                     icon={<ShieldAlert size={14} />}
-                                    color="#f43f5e"
+                                    color="#ef4444"
                                 />
                             </div>
                         </div>
@@ -1317,7 +1296,7 @@ const MatchDetail = ({ userRole }: { userRole: string }) => {
                         <div className="h-1 w-12 bg-primary rounded-full"></div>
                     </div>
 
-                    <div className="relative pl-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-linear-to-b before:from-primary/50 before:via-primary/20 before:to-transparent">
+                    <div className="relative pl-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-primary/50 before:via-primary/20 before:to-transparent">
                         {(match.events || []).length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-white/30 italic">
                                 <Info size={32} className="mb-4 opacity-20" />

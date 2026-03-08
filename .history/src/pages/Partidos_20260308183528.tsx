@@ -66,7 +66,7 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
                         ) : (
                             <Shield size={32} className="text-white/10" />
                         )}
-                        <div className="absolute inset-0 bg-linear-to-t from-slate-900/40 to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none" />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-tight px-1">
                         {match.teamA?.name || 'Equipo A'}
@@ -100,38 +100,13 @@ const MatchCard = React.memo(({ match, teamsMetadata, userRole, navigate, format
                         ) : (
                             <Shield size={32} className="text-white/10" />
                         )}
-                        <div className="absolute inset-0 bg-linear-to-t from-slate-900/40 to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent pointer-events-none" />
                     </div>
                     <span className="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-tight px-1">
                         {match.teamB?.name || 'Equipo B'}
                     </span>
                 </div>
             </div>
-
-
-            {/* Events Summary (Mini-Timeline) */}
-            {match.events && match.events.length > 0 && (
-                <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 px-2 py-3 bg-white/5 rounded-2xl border border-white/5 group-hover:border-emerald-500/20 transition-colors">
-                    {match.events
-                        .filter((e: any) => ['goal', 'yellow_card', 'red_card'].includes(e.type))
-                        .sort((a: any, b: any) => {
-                            const [minA] = (a.time || "0:0").split(':').map(Number);
-                            const [minB] = (b.time || "0:0").split(':').map(Number);
-                            return minA - minB;
-                        })
-                        .map((event: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
-                                <span className="text-[9px] font-black text-slate-500 tabular-nums">{event.time}'</span>
-                                {event.type === 'goal' && <Activity size={10} className="text-emerald-500" />}
-                                {event.type === 'yellow_card' && <div className="w-1.5 h-2.5 bg-amber-400 rounded-[1px] shadow-[0_0_5px_rgba(251,191,36,0.5)]" />}
-                                {event.type === 'red_card' && <div className="w-1.5 h-2.5 bg-red-500 rounded-[1px] shadow-[0_0_5px_rgba(239,68,68,0.5)]" />}
-                                <span className="text-[9px] font-bold text-slate-300 truncate max-w-[60px] uppercase">
-                                    {(event.player || '').split(' ')[0]}
-                                </span>
-                            </div>
-                        ))}
-                </div>
-            )}
 
             {/* Footer: Tournament & Status */}
             <div className="mt-8 pt-4 border-t border-white/5 flex flex-col items-center gap-3 text-center">
